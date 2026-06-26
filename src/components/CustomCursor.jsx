@@ -343,7 +343,7 @@ export default function CustomCursor({ isSleeping = false }) {
     <>
       {/* Outer Slime Outline / Magnetic Snapped Frame */}
       <motion.div
-        className={`fixed pointer-events-none z-[9999] border transition-colors duration-300 overflow-hidden ${
+        className={`fixed pointer-events-none z-[1000000] border transition-colors duration-300 overflow-hidden ${
           magneticTarget 
             ? "border-cyber-purple bg-cyber-purple/10 shadow-[0_0_15px_rgba(176,38,255,0.65)]" 
             : isSleeping
@@ -370,7 +370,7 @@ export default function CustomCursor({ isSleeping = false }) {
 
       {/* Inner User Dot / I-Beam (Cursor pointer) */}
       <motion.div
-        className={`fixed w-2 h-2 pointer-events-none z-[10000] transition-colors duration-300 flex items-center justify-center overflow-visible ${
+        className={`fixed w-2 h-2 pointer-events-none z-[1000001] transition-colors duration-300 flex items-center justify-center overflow-visible ${
           isHoveringText
             ? "bg-transparent shadow-none"
             : `rounded-full ${

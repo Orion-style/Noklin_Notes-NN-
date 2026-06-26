@@ -3,6 +3,7 @@
 @theme {
   --color-cyber-green: #00ff66;
   --color-cyber-purple: #b026ff;
+  --color-cyber-yellow: #ffb700;
   --color-cyber-bg: #06040c;
   --color-cyber-sidebar: #0e091a;
   
@@ -40,6 +41,11 @@
   box-shadow: 0 0 10px rgba(0, 255, 102, 0.25), inset 0 0 10px rgba(0, 255, 102, 0.25);
 }
 
+@utility neon-border-yellow {
+  border: 1px solid rgba(255, 183, 0, 0.35);
+  box-shadow: 0 0 10px rgba(255, 183, 0, 0.25), inset 0 0 10px rgba(255, 183, 0, 0.25);
+}
+
 @utility neon-text-green {
   color: #00ff66;
   text-shadow: 0 0 4px rgba(0, 255, 102, 0.6), 0 0 12px rgba(0, 255, 102, 0.3);
@@ -48,6 +54,11 @@
 @utility neon-text-purple {
   color: #b026ff;
   text-shadow: 0 0 4px rgba(176, 38, 255, 0.6), 0 0 12px rgba(176, 38, 255, 0.3);
+}
+
+@utility neon-text-yellow {
+  color: #ffb700;
+  text-shadow: 0 0 4px rgba(255, 183, 0, 0.6), 0 0 12px rgba(255, 183, 0, 0.3);
 }
 
 @utility neon-glow-hover {

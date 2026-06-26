@@ -1,10 +1,36 @@
 import React, { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Plus, Folder, FolderOpen, FileText, Cpu, Terminal, Layers, Link, ShieldAlert, Check, HelpCircle, ChevronLeft, ChevronRight, Moon, LogOut, Bold, Italic, Highlighter, Heading1, Heading2, CheckSquare, Code, FilePlus, FolderPlus, Compass, Database, Copy, CornerUpRight, Search, Bookmark, Clipboard, Eye, Edit2, Trash2 } from "lucide-react";
+import { Plus, Folder, FolderOpen, FileText, Cpu, Terminal, Layers, Link, ShieldAlert, Check, HelpCircle, ChevronLeft, ChevronRight, Moon, LogOut, Bold, Italic, Highlighter, Heading1, Heading2, CheckSquare, Code, FilePlus, FolderPlus, Compass, Database, Copy, CornerUpRight, Search, Bookmark, Clipboard, Eye, Edit2, Trash2, Gamepad2, Swords, Play, Sparkles, Clock, Gamepad, Settings, Mail, Bell, Activity, HardDrive } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import CustomCursor from "./components/CustomCursor";
 import InteractiveBackground from "./components/InteractiveBackground";
 import OnboardingWidget from "./components/OnboardingWidget";
+
+// Obsidian crystalline SVG icon
+const ObsidianIcon = ({ className }) => (
+  <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50 2L88 35L50 98L12 35Z" stroke="currentColor" strokeWidth="4.5" strokeLinejoin="round" />
+    <path d="M50 2L50 52" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" />
+    <path d="M50 52L88 35" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" />
+    <path d="M50 52L12 35" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" />
+    <path d="M50 52L50 98" stroke="currentColor" strokeWidth="4.5" strokeLinejoin="round" />
+    <path d="M50 2L88 35L50 52Z" fill="currentColor" fillOpacity="0.18" />
+    <path d="M50 52L12 35L50 2Z" fill="currentColor" fillOpacity="0.08" />
+    <path d="M50 52L50 98L12 35Z" fill="currentColor" fillOpacity="0.12" />
+    <path d="M50 52L88 35L50 98Z" fill="currentColor" fillOpacity="0.25" />
+  </svg>
+);
+
+// Endfield styled game target/crosshair icon
+const GameModeIcon = ({ className }) => (
+  <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="4" strokeDasharray="12 8" />
+    <circle cx="50" cy="50" r="28" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M50 15V32M50 68V85M15 50H32M68 50H85" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+    <path d="M38 38L44 44M62 38L56 44M62 62L56 56M38 62L44 56" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    <circle cx="50" cy="50" r="6" fill="currentColor" />
+  </svg>
+);
 
 // Build a nested directory tree from a flat array of relative file paths
 function buildFileTree(files) {
@@ -223,6 +249,236 @@ export default function App() {
     node: null
   });
   const textareaRef = React.useRef(null);
+
+  const [activeMode, setActiveMode] = useState(() => {
+    return localStorage.getItem("cyber_active_mode") || "notebook";
+  });
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [hoveredMode, setHoveredMode] = useState(null);
+  
+  // Games state loaded from localStorage
+  const [games, setGames] = useState(() => {
+    const saved = localStorage.getItem("cyber_games");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [
+      {
+        id: "1",
+        name: "Arknights: Endfield",
+        path: "C:\\Games\\ArknightsEndfield\\Endfield.exe",
+        category: "RPG / Strategy",
+        playTime: 124,
+        lastPlayed: "2026-06-25",
+        coverTheme: "yellow"
+      },
+      {
+        id: "2",
+        name: "Cyberpunk 2077",
+        path: "C:\\Games\\Cyberpunk2077\\bin\\x64\\Cyberpunk2077.exe",
+        category: "Action RPG",
+        playTime: 256,
+        lastPlayed: "2026-06-24",
+        coverTheme: "purple"
+      },
+      {
+        id: "3",
+        name: "Genshin Impact",
+        path: "C:\\Program Files\\Genshin Impact\\GenshinImpact.exe",
+        category: "Action RPG",
+        playTime: 512,
+        lastPlayed: "2026-06-26",
+        coverTheme: "green"
+      }
+    ];
+  });
+
+  const [addGameOpen, setAddGameOpen] = useState(false);
+  const [editingGameId, setEditingGameId] = useState(null);
+  const [newGameName, setNewGameName] = useState("");
+  const [newGamePath, setNewGamePath] = useState("");
+  const [newGameCategory, setNewGameCategory] = useState("RPG / Action");
+  const [newGameTheme, setNewGameTheme] = useState("yellow");
+
+  const [launchingGame, setLaunchingGame] = useState(null);
+  const [launchLogs, setLaunchLogs] = useState([]);
+
+  React.useEffect(() => {
+    localStorage.setItem("cyber_games", JSON.stringify(games));
+  }, [games]);
+
+  React.useEffect(() => {
+    localStorage.setItem("cyber_active_mode", activeMode);
+  }, [activeMode]);
+
+  const handleAddGame = (e) => {
+    e.preventDefault();
+    if (!newGameName || !newGamePath) return;
+    
+    if (editingGameId) {
+      setGames(prev => prev.map(g => {
+        if (g.id === editingGameId) {
+          return {
+            ...g,
+            name: newGameName,
+            path: newGamePath,
+            category: newGameCategory,
+            coverTheme: newGameTheme
+          };
+        }
+        return g;
+      }));
+      setEditingGameId(null);
+    } else {
+      const newGame = {
+        id: Date.now().toString(),
+        name: newGameName,
+        path: newGamePath,
+        category: newGameCategory,
+        playTime: 0,
+        lastPlayed: "Ни разу",
+        coverTheme: newGameTheme
+      };
+      setGames(prev => [...prev, newGame]);
+    }
+    
+    setNewGameName("");
+    setNewGamePath("");
+    setNewGameCategory("RPG / Strategy");
+    setNewGameTheme("yellow");
+    setAddGameOpen(false);
+  };
+
+  const handleDeleteGame = (id, e) => {
+    if (e) e.stopPropagation();
+    setGames(prev => prev.filter(g => g.id !== id));
+  };
+
+  const handleAddGameOpenClick = () => {
+    setEditingGameId(null);
+    setNewGameName("");
+    setNewGamePath("");
+    setNewGameCategory("RPG / Strategy");
+    setNewGameTheme("yellow");
+    setAddGameOpen(true);
+  };
+
+  const handleEditGameClick = (game) => {
+    setEditingGameId(game.id);
+    setNewGameName(game.name);
+    setNewGamePath(game.path);
+    setNewGameCategory(game.category);
+    setNewGameTheme(game.coverTheme || "yellow");
+    setAddGameOpen(true);
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
+  const handleGameContextMenu = (e, game) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const menuWidth = 190;
+    const menuHeight = 100;
+    let x = e.clientX;
+    let y = e.clientY;
+    
+    if (x + menuWidth > window.innerWidth) {
+      x = window.innerWidth - menuWidth - 10;
+    }
+    if (y + menuHeight > window.innerHeight) {
+      y = window.innerHeight - menuHeight - 10;
+    }
+    
+    setContextMenu({
+      visible: true,
+      x: x,
+      y: y,
+      node: game,
+      isGame: true
+    });
+  };
+
+  const handleGameContextAction = (action) => {
+    setContextMenu(prev => ({ ...prev, visible: false }));
+    const game = contextMenu.node;
+    if (!game) return;
+    
+    if (action === "delete") {
+      handleDeleteGame(game.id);
+    } else if (action === "edit") {
+      handleEditGameClick(game);
+    }
+  };
+
+  const handleLaunchGame = async (game) => {
+    setLaunchingGame(game);
+    setLaunchLogs([
+      "INITIALIZING SYSTEM PROTOCOLS...",
+      `CONNECTING TO APPLICATION: ${game.name.toUpperCase()}`,
+      `EXECUTABLE TARGET: ${game.path}`,
+    ]);
+
+    const delay = (ms) => new Promise(res => setTimeout(res, ms));
+
+    await delay(700);
+    setLaunchLogs(prev => [...prev, "ALLOCATING VIRTUAL RUNTIME SPACE..."]);
+    await delay(600);
+    setLaunchLogs(prev => [...prev, "BYPASSING SECURITY SANDBOX... STATUS: OK"]);
+    await delay(500);
+    setLaunchLogs(prev => [...prev, "EXECUTING RUN PROCESS..."]);
+    
+    const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
+    
+    if (isTauri) {
+      try {
+        await invoke("launch_game", { path: game.path });
+        setLaunchLogs(prev => [...prev, "SUCCESS: ENGINE LAUNCHED SECURELY."]);
+        
+        setGames(prev => prev.map(g => {
+          if (g.id === game.id) {
+            return {
+              ...g,
+              playTime: g.playTime + 1,
+              lastPlayed: new Date().toISOString().split('T')[0]
+            };
+          }
+          return g;
+        }));
+        
+        await delay(1000);
+        setLaunchingGame(null);
+      } catch (err) {
+        setLaunchLogs(prev => [...prev, `CRITICAL ERROR: ${err}`]);
+        await delay(3000);
+        setLaunchingGame(null);
+      }
+    } else {
+      setLaunchLogs(prev => [
+        ...prev,
+        "[DEMO FALLBACK] TAURI RUNTIME NOT DETECTED.",
+        `[DEMO MODE] SPAWNED EMULATED PROCESS IN BACKGROUND.`,
+        "SUCCESS: SIMULATED ENGINE LAUNCH COMPLETED."
+      ]);
+      
+      setGames(prev => prev.map(g => {
+        if (g.id === game.id) {
+          return {
+            ...g,
+            playTime: g.playTime + 1,
+            lastPlayed: new Date().toISOString().split('T')[0]
+          };
+        }
+        return g;
+      }));
+      
+      await delay(1800);
+      setLaunchingGame(null);
+    }
+  };
 
   const editTools = [
     { id: "bold", label: "Жирный текст", desc: "Сделать выделенный текст жирным", shortcut: "Ctrl + B", icon: Bold },
@@ -1405,7 +1661,8 @@ export default function App() {
 
       <AnimatePresence mode="wait">
         {!isSleeping ? (
-          <motion.div
+          <>
+            <motion.div
             key="active-ui"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1427,27 +1684,140 @@ export default function App() {
               <div className="flex flex-col h-full w-full overflow-hidden">
                 {/* App Header */}
                 <div 
-                  onMouseEnter={(e) => showGlobalTooltip(e, "CYBER-NOTES TERMINAL", "green")}
+                  onMouseEnter={(e) => showGlobalTooltip(e, activeMode === "game_manager" ? "CYBER-GAMES TERMINAL" : "CYBER-NOTES TERMINAL", activeMode === "game_manager" ? "yellow" : "green")}
                   onMouseLeave={hideGlobalTooltip}
                   className={`flex items-center gap-3 mb-8 shrink-0 ${sidebarCollapsed ? "justify-center" : ""}`}
                 >
-                  <div className="w-10 h-10 rounded border border-cyber-green flex items-center justify-center bg-cyber-green/10 shadow-[0_0_10px_rgba(0,255,102,0.3)] shrink-0">
-                    <Cpu className="w-6 h-6 text-cyber-green animate-pulse" />
+                  <div className={`w-10 h-10 rounded border flex items-center justify-center shrink-0 transition-all ${
+                    activeMode === "game_manager" 
+                      ? "border-cyber-yellow bg-cyber-yellow/10 shadow-[0_0_10px_rgba(255,183,0,0.3)]" 
+                      : "border-cyber-green bg-cyber-green/10 shadow-[0_0_10px_rgba(0,255,102,0.3)]"
+                  }`}>
+                    {activeMode === "game_manager" ? (
+                      <Gamepad2 className="w-6 h-6 text-cyber-yellow animate-pulse" />
+                    ) : (
+                      <Cpu className="w-6 h-6 text-cyber-green animate-pulse" />
+                    )}
                   </div>
                   {!sidebarCollapsed && (
                     <div className="overflow-hidden whitespace-nowrap transition-all duration-300">
-                      <h1 className="text-xl font-black tracking-widest neon-text-green font-mono">
-                        CYBER-NOTES
+                      <h1 className={`text-xl font-black tracking-widest font-mono transition-all ${activeMode === "game_manager" ? "neon-text-yellow" : "neon-text-green"}`}>
+                        {activeMode === "game_manager" ? "CYBER-GAMES" : "CYBER-NOTES"}
                       </h1>
                       <p className="text-[10px] text-cyber-purple uppercase tracking-widest font-mono">
-                        Stage 1 Terminal
+                        {activeMode === "game_manager" ? "Launcher Module" : "Stage 1 Terminal"}
                       </p>
                     </div>
                   )}
                 </div>
 
                 {/* Sidebar Main Content */}
-                {editMode === "preview" ? (
+                {activeMode === "game_manager" ? (
+                  // Game Manager Mode Sidebar
+                  sidebarCollapsed ? (
+                    <div className="flex-1 flex flex-col items-center gap-4 overflow-hidden mt-4 w-full select-none">
+                      <div 
+                        onMouseEnter={(e) => showGlobalTooltip(e, `ИГРОВОЙ ХАБ (${games.length})`, "yellow")}
+                        onMouseLeave={hideGlobalTooltip}
+                        className="relative group flex items-center justify-center w-10 h-10 rounded border border-cyber-yellow/20 bg-cyber-yellow/5 text-cyber-yellow shrink-0"
+                      >
+                        <Gamepad2 className="w-5 h-5" />
+                        <span className="absolute bg-cyber-yellow/10 text-cyber-yellow font-bold text-[9px] -bottom-1 -right-1 px-1 rounded border border-cyber-yellow/30">
+                          {games.length}
+                        </span>
+                      </div>
+                      
+                      <div className="flex-1 w-full overflow-y-auto space-y-3 flex flex-col items-center pl-2 pr-1 pb-2">
+                        {games.map(game => (
+                          <button
+                            key={game.id}
+                            onClick={() => handleLaunchGame(game)}
+                            onMouseEnter={(e) => showGlobalTooltip(e, `ЗАПУСТИТЬ: ${game.name}`, "yellow")}
+                            onMouseLeave={hideGlobalTooltip}
+                            className="magnetic-target w-8 h-8 rounded border border-cyber-yellow/20 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 flex items-center justify-center text-cyber-yellow cursor-none transition-all duration-300 relative group shrink-0"
+                          >
+                            <Play className="w-3.5 h-3.5" />
+                          </button>
+                        ))}
+                        <button
+                          onClick={handleAddGameOpenClick}
+                          onMouseEnter={(e) => showGlobalTooltip(e, "ДОБАВИТЬ ИГРУ", "yellow")}
+                          onMouseLeave={hideGlobalTooltip}
+                          className="magnetic-target w-8 h-8 rounded border border-dashed border-cyber-yellow/30 hover:border-cyber-yellow text-gray-500 hover:text-cyber-yellow flex items-center justify-center cursor-none transition-all shrink-0"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex flex-col overflow-hidden select-none">
+                      <div className="flex items-center justify-between text-xs uppercase tracking-wider text-gray-400 font-mono mb-4 p-1 rounded border border-transparent hover:border-cyber-yellow/35 hover:bg-cyber-yellow/5 transition-all shrink-0">
+                        <span className="flex items-center gap-1.5 text-cyber-yellow font-bold">
+                          <Gamepad className="w-4 h-4" />
+                          SYSTEM GAMES
+                        </span>
+                        <button
+                          onClick={handleAddGameOpenClick}
+                          className="magnetic-target p-1 rounded border border-transparent hover:border-cyber-yellow/30 text-gray-400 hover:text-cyber-yellow hover:bg-cyber-yellow/5 transition-all cursor-none flex items-center justify-center"
+                          title="Добавить новую игру"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Telemetry data */}
+                      <div className="bg-[#ffcc00]/5 border border-cyber-yellow/20 rounded p-3 mb-4 font-mono text-[10px] space-y-2 shrink-0">
+                        <div className="flex justify-between text-gray-400">
+                          <span>SYSTEM METRICS:</span>
+                          <span className="text-cyber-yellow font-bold font-mono">ACTIVE</span>
+                        </div>
+                        <div className="h-[1px] bg-cyber-yellow/10 w-full" />
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">TOTAL HOURS:</span>
+                          <span className="text-white font-bold">{games.reduce((acc, g) => acc + g.playTime, 0)}h</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">SECTOR STATUS:</span>
+                          <span className="text-cyber-green font-bold">SECURED (100%)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">T-ENGINE:</span>
+                          <span className="text-white font-bold">STAGE 2 RUNTIME</span>
+                        </div>
+                      </div>
+
+                      {/* Games list in sidebar */}
+                      <div className="flex-1 overflow-y-auto space-y-2 pr-1 pb-2">
+                        {games.length === 0 ? (
+                          <div className="h-32 border border-dashed border-cyber-yellow/10 rounded flex flex-col items-center justify-center text-center p-4">
+                            <Gamepad className="w-8 h-8 text-gray-600 mb-2" />
+                            <p className="text-xs text-gray-500 font-mono">No games installed.</p>
+                          </div>
+                        ) : (
+                          games.map(game => (
+                            <div 
+                              key={game.id}
+                              onContextMenu={(e) => handleGameContextMenu(e, game)}
+                              className="border border-cyber-yellow/15 bg-[#ffb700]/5 rounded p-2.5 flex items-center justify-between hover:border-cyber-yellow/45 transition-colors group cursor-none"
+                            >
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-mono text-xs font-bold text-gray-200 truncate">{game.name}</span>
+                                <span className="text-[9px] text-gray-500 font-mono mt-0.5 uppercase tracking-wider">{game.category}</span>
+                              </div>
+                              <button
+                                onClick={() => handleLaunchGame(game)}
+                                className="magnetic-target w-7 h-7 rounded border border-cyber-yellow/30 bg-cyber-yellow/10 text-cyber-yellow hover:text-white hover:bg-cyber-yellow hover:border-cyber-yellow/65 flex items-center justify-center shrink-0 cursor-none transition-all shadow-[0_0_6px_rgba(255,183,0,0.15)]"
+                                title={`Запустить ${game.name}`}
+                              >
+                                <Play className="w-3.5 h-3.5 fill-current" />
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )
+                ) : editMode === "preview" ? (
                   // Preview mode sidebar (File Tree)
                   sidebarCollapsed ? (
                     <div className="flex-1 flex flex-col items-center gap-4 overflow-hidden mt-4 w-full">
@@ -1719,12 +2089,12 @@ export default function App() {
                 )}
 
                 {/* Separator (only shown if connection panel is visible) */}
-                {shouldShowConnection && (
+                {activeMode === "notebook" && shouldShowConnection && (
                   <div className="h-[1px] bg-cyber-purple/10 w-full my-3 shrink-0" />
                 )}
 
                 {/* Connection Input Panel / Button */}
-                {shouldShowConnection && (
+                {activeMode === "notebook" && shouldShowConnection && (
                   sidebarCollapsed ? (
                     <div className="mb-6 flex justify-center shrink-0">
                       <button
@@ -1766,107 +2136,89 @@ export default function App() {
                           )}
                         </button>
                       </div>
-
-                      {/* Error Message */}
-                      <AnimatePresence>
-                        {error && (
-                          <motion.div
-                            initial={{ opacity: 0, y: -5 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0 }}
-                            className="mt-3 p-2.5 bg-red-950/40 border border-red-500/30 rounded text-[11px] text-red-400 flex flex-col gap-2 font-mono"
-                          >
-                            <div className="flex items-start gap-1.5">
-                              <ShieldAlert className="w-4.5 h-4.5 shrink-0 text-red-500 mt-0.5" />
-                              <span>{error}</span>
-                            </div>
-                            {error.includes("браузере") && (
-                              <button
-                                type="button"
-                                onClick={handleStartDemo}
-                                className="magnetic-target mt-1 w-full bg-cyber-purple/20 border border-cyber-purple/45 text-cyber-purple hover:bg-cyber-purple/35 hover:text-white font-bold rounded py-1.5 px-2.5 transition-all text-[10px] cursor-none"
-                              >
-                                ЗАПУСТИТЬ ДЕМО-РЕЖИМ
-                              </button>
-                            )}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-
-                      {/* Connection Success Tag */}
-                      {connected && !error && (
-                        <div className="mt-3 p-1.5 bg-cyber-green/10 border border-cyber-green/30 rounded text-[11px] text-cyber-green flex items-center gap-1.5 font-mono">
-                          <Check className="w-3.5 h-3.5 shrink-0" />
-                          <span>CONNECTED SECURELY</span>
-                        </div>
-                      )}
                     </form>
                   )
                 )}
               </div>
-
-              {/* Footer */}
-              {sidebarCollapsed ? (
-                <div className="mt-4 pt-4 border-t border-cyber-purple/10 flex flex-col items-center justify-center gap-2 w-full">
-                  <div 
-                    onMouseEnter={(e) => showGlobalTooltip(e, "СОЕДИНЕНИЕ ЗАЩИЩЕНО (SECURE LINK)", "green")}
-                    onMouseLeave={hideGlobalTooltip}
-                    className="relative group flex items-center justify-center w-6 h-6"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-cyber-green animate-pulse shadow-[0_0_8px_#00ff66]" />
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-4 pt-4 border-t border-cyber-purple/10 text-[10px] text-gray-500 font-mono flex justify-between items-center w-full">
-                  <span className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyber-green animate-pulse" />
-                    SECURE LINK
-                  </span>
-                  <span>V1.0.0</span>
-                </div>
-              )}
             </aside>
 
             {/* Main Workspace Preview Pane */}
             <main className="flex-1 flex flex-col h-full relative z-0">
               {/* Workspace Top Header Bar */}
-              <header className="h-16 border-b border-cyber-purple/20 bg-cyber-sidebar/65 backdrop-blur-md flex items-center justify-between px-8 z-10 relative">
-                <div className="flex items-center gap-2 font-mono text-sm">
-                  <span className="text-cyber-purple">workspace:</span>
-                  <span className="text-gray-400">/local-vault</span>
-                  {selectedFile && (
-                    <>
-                      <span className="text-cyber-purple">/</span>
-                      <span className="text-cyber-green font-bold">{selectedFile}</span>
-                    </>
-                  )}
-                </div>
+              <header className={`h-16 border-b bg-cyber-sidebar/65 backdrop-blur-md flex items-center justify-between px-8 z-10 relative transition-colors ${
+                activeMode === "game_manager" ? "border-cyber-yellow/20" : "border-cyber-purple/20"
+              }`}>
+                {activeMode === "game_manager" ? (
+                  <div className="flex items-center gap-2 font-mono text-sm text-cyber-yellow">
+                    <span className="text-cyber-yellow/60">system_mode:</span>
+                    <span className="text-white font-bold tracking-widest uppercase">GAME MANAGER / LAUNCHER</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 font-mono text-sm">
+                    <span className="text-cyber-purple">workspace:</span>
+                    <span className="text-gray-400">/local-vault</span>
+                    {selectedFile && (
+                      <>
+                        <span className="text-cyber-purple">/</span>
+                        <span className="text-cyber-green font-bold">{selectedFile}</span>
+                      </>
+                    )}
+                  </div>
+                )}
+                
                 <div className="flex items-center gap-3">
+                  {/* System Mode Switcher */}
+                  <button
+                    onClick={() => setMenuOpen(true)}
+                    className={`magnetic-target flex items-center gap-1.5 text-xs px-2.5 py-1 rounded font-mono transition-all cursor-none border ${
+                      activeMode === "game_manager"
+                        ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10 hover:border-cyber-yellow/50 shadow-[0_0_8px_rgba(255,183,0,0.1)]"
+                        : "text-cyber-purple bg-cyber-purple/5 border-cyber-purple/20 hover:bg-cyber-purple/10 hover:border-cyber-purple/50 shadow-[0_0_8px_rgba(176,38,255,0.1)]"
+                    }`}
+                  >
+                    {activeMode === "game_manager" ? <Gamepad2 className="w-3.5 h-3.5" /> : <ObsidianIcon className="w-3.5 h-3.5 text-cyber-purple" />}
+                    <span>РЕЖИМ: {activeMode === "game_manager" ? "ИГРЫ" : "БЛОКНОТ"}</span>
+                  </button>
+
                   <button
                     onClick={() => setShowOnboarding(true)}
-                    className="magnetic-target flex items-center gap-1.5 text-xs text-cyber-green bg-cyber-green/5 border border-cyber-green/20 hover:bg-cyber-green/10 hover:border-cyber-green/50 px-2.5 py-1 rounded font-mono transition-all cursor-none"
+                    className={`magnetic-target flex items-center gap-1.5 text-xs font-mono transition-all cursor-none px-2.5 py-1 rounded border ${
+                      activeMode === "game_manager"
+                        ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10 hover:border-cyber-yellow/50"
+                        : "text-cyber-green bg-cyber-green/5 border-cyber-green/20 hover:bg-cyber-green/10 hover:border-cyber-green/50"
+                    }`}
                   >
                     <HelpCircle className="w-3.5 h-3.5" />
                     СПРАВКА
                   </button>
                   
-                  <div className="flex items-center gap-1.5 text-xs text-cyber-purple bg-cyber-purple/5 border border-cyber-purple/20 px-2.5 py-1 rounded font-mono">
+                  <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded font-mono border ${
+                    activeMode === "game_manager"
+                      ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20"
+                      : "text-cyber-purple bg-cyber-purple/5 border-cyber-purple/20"
+                  }`}>
                     <Layers className="w-3.5 h-3.5" />
                     STAGE 1 RUNTIME
                   </div>
-
+ 
                   {/* System Control Widget */}
-                  <div className="flex items-center gap-1 bg-[#06040c]/50 border border-cyber-purple/25 p-1 rounded font-mono shadow-[0_0_10px_rgba(176,38,255,0.1)]">
+                  <div className={`flex items-center gap-1 bg-[#06040c]/50 p-1 rounded font-mono border shadow-[0_0_10px_rgba(0,0,0,0.3)] ${
+                    activeMode === "game_manager" ? "border-cyber-yellow/25" : "border-cyber-purple/25"
+                  }`}>
                     <button
                       type="button"
                       onClick={() => setIsSleeping(true)}
-                      className="magnetic-target p-1.5 text-xs text-cyber-purple hover:text-white hover:bg-cyber-purple/20 border border-transparent hover:border-cyber-purple/35 rounded transition-all cursor-none flex items-center gap-1"
+                      className={`magnetic-target p-1.5 text-xs rounded transition-all cursor-none flex items-center gap-1 border border-transparent ${
+                        activeMode === "game_manager"
+                          ? "text-cyber-yellow hover:text-white hover:bg-cyber-yellow/20 hover:border-cyber-yellow/35"
+                          : "text-cyber-purple hover:text-white hover:bg-cyber-purple/20 hover:border-cyber-purple/35"
+                      }`}
                       title="Войти в спящий режим"
                     >
                       <Moon className="w-3.5 h-3.5" />
                       <span className="text-[9px] uppercase tracking-wider hidden md:inline">SLEEP</span>
                     </button>
-                    <div className="w-[1px] h-4 bg-cyber-purple/20" />
+                    <div className={`w-[1px] h-4 ${activeMode === "game_manager" ? "bg-cyber-yellow/20" : "bg-cyber-purple/20"}`} />
                     <button
                       type="button"
                       onClick={handleExitApp}
@@ -1882,134 +2234,431 @@ export default function App() {
 
               {/* Workspace Content Viewport */}
               <div className="flex-1 overflow-auto p-8 flex items-center justify-center">
-                {selectedFile ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    key={selectedFile}
-                    className="w-full max-w-3xl h-full flex flex-col bg-cyber-sidebar/65 border border-cyber-purple/20 rounded-lg p-6 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-md relative overflow-hidden z-10"
-                  >
-                    {/* Corner Glowing Accents */}
-                    <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-cyber-green" />
-                    <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-cyber-green" />
-                    <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-cyber-green" />
-                    <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-cyber-green" />
-
-                    <div className="flex items-center justify-between border-b border-cyber-purple/10 pb-3 mb-4 font-mono">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-cyber-green">FILENAME:</span>
-                          <span className="text-sm font-bold text-gray-100">{selectedFile.split('/').pop()}</span>
+                <AnimatePresence mode="wait">
+                  {menuOpen ? (
+                    // Arknights Endfield Mode Selection Overlay
+                    <motion.div
+                      key="mode-select-menu"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.25, ease: "easeInOut" }}
+                      className="w-full max-w-5xl p-8 rounded-2xl bg-[#06040c]/90 border border-cyber-purple/35 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.85)] relative flex flex-col lg:flex-row gap-8 items-center justify-between z-20 min-h-[500px] text-left"
+                    >
+                      {/* Left: Mode Cards */}
+                      <div className="flex flex-col gap-5 w-full lg:w-1/3 select-none">
+                        <div className="text-[10px] text-cyber-purple font-mono uppercase tracking-[0.2em] mb-2">// SELECT RUNTIME PROTOCOL</div>
+                        
+                        {/* Notebook Card */}
+                        <div
+                          onMouseEnter={() => setHoveredMode("notebook")}
+                          onMouseLeave={() => setHoveredMode(null)}
+                          onClick={() => {
+                            setActiveMode("notebook");
+                            setMenuOpen(false);
+                          }}
+                          className={`magnetic-target border rounded-xl p-5 cursor-none transition-all duration-300 flex items-center gap-4 ${
+                            activeMode === "notebook" 
+                              ? "bg-cyber-purple/15 border-cyber-purple text-white shadow-[0_0_15px_rgba(176,38,255,0.25)]" 
+                              : "bg-[#0c0817]/40 border-cyber-purple/20 text-gray-400 hover:border-cyber-purple/60 hover:text-white hover:bg-cyber-purple/5"
+                          }`}
+                        >
+                          <div className="w-12 h-12 rounded-lg bg-cyber-purple/10 flex items-center justify-center shrink-0 border border-cyber-purple/35">
+                            <ObsidianIcon className="w-8 h-8 text-cyber-purple" />
+                          </div>
+                          <div className="text-left">
+                            <div className="font-mono text-xs text-cyber-purple font-bold tracking-widest">[01] SYSTEM ENGINE</div>
+                            <div className="font-black tracking-wide text-sm mt-0.5">БЛОКНОТ / OBSIDIAN</div>
+                            <div className="text-[10px] text-gray-500 font-mono mt-1">Редактор заметок Markdown</div>
+                          </div>
                         </div>
-                        {/* Sync status badge */}
-                        <div className={`flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border transition-all ${
-                          savingState === "saving" 
-                            ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/10" 
-                            : savingState === "saved"
-                              ? "text-cyber-green border-cyber-green/30 bg-cyber-green/10 shadow-[0_0_8px_rgba(0,255,102,0.15)]"
-                              : "text-red-400 border-red-500/30 bg-red-950/20"
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            savingState === "saving" 
-                              ? "bg-cyber-purple animate-pulse" 
-                              : savingState === "saved"
-                                ? "bg-cyber-green"
-                                : "bg-red-500"
-                          }`} />
-                          {savingState}
+
+                        {/* Game Launcher Card */}
+                        <div
+                          onMouseEnter={() => setHoveredMode("game_manager")}
+                          onMouseLeave={() => setHoveredMode(null)}
+                          onClick={() => {
+                            setActiveMode("game_manager");
+                            setMenuOpen(false);
+                          }}
+                          className={`magnetic-target border rounded-xl p-5 cursor-none transition-all duration-300 flex items-center gap-4 ${
+                            activeMode === "game_manager" 
+                              ? "bg-cyber-yellow/15 border-cyber-yellow text-white shadow-[0_0_15px_rgba(255,183,0,0.25)]" 
+                              : "bg-[#0c0817]/40 border-cyber-yellow/20 text-gray-400 hover:border-cyber-yellow/60 hover:text-white hover:bg-cyber-yellow/5"
+                          }`}
+                        >
+                          <div className="w-12 h-12 rounded-lg bg-cyber-yellow/10 flex items-center justify-center shrink-0 border border-cyber-yellow/35">
+                            <Gamepad2 className="w-6 h-6 text-cyber-yellow" />
+                          </div>
+                          <div className="text-left">
+                            <div className="font-mono text-xs text-cyber-yellow font-bold tracking-widest">[02] LAUNCHER ENGINE</div>
+                            <div className="font-black tracking-wide text-sm mt-0.5">ИГРОВОЙ МЕНЕДЖЕР</div>
+                            <div className="text-[10px] text-gray-500 font-mono mt-1">Локальный запуск процессов</div>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Tab Toggles: EDIT vs PREVIEW */}
-                      <div className="flex items-center gap-3">
-                        <div className="flex bg-[#06040c]/60 border border-cyber-purple/20 p-0.5 rounded font-mono">
-                          <button
-                            type="button"
-                            onClick={() => setEditMode("edit")}
-                            className={`magnetic-target px-2.5 py-1 text-[10px] rounded transition-all cursor-none ${
-                              editMode === "edit"
-                                ? "bg-cyber-green/10 border border-cyber-green/30 text-cyber-green shadow-[0_0_8px_rgba(0,255,102,0.2)] font-bold"
-                                : "border border-transparent text-gray-400 hover:text-white"
-                            }`}
-                          >
-                            EDIT
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditMode("preview")}
-                            className={`magnetic-target px-2.5 py-1 text-[10px] rounded transition-all cursor-none ${
-                              editMode === "preview"
-                                ? "bg-cyber-purple/15 border border-cyber-purple/30 text-cyber-purple shadow-[0_0_8px_rgba(176,38,255,0.2)] font-bold"
-                                : "border border-transparent text-gray-400 hover:text-white"
-                            }`}
-                          >
-                            PREVIEW
-                          </button>
+                      {/* Center: Hologram HUD */}
+                      <div className="flex flex-col items-center justify-center w-full lg:w-1/3 relative py-6">
+                        <div className="relative w-64 h-64 flex items-center justify-center">
+                          {/* Rotating concentric rings */}
+                          <div className="absolute inset-0 rounded-full border border-dashed border-gray-600/35 animate-spin" style={{ animationDuration: '30s' }} />
+                          <div className={`absolute inset-4 rounded-full border border-double animate-spin transition-colors duration-300 ${
+                            (hoveredMode || activeMode) === "game_manager" ? "border-cyber-yellow/30" : "border-cyber-purple/30"
+                          }`} style={{ animationDuration: '20s', animationDirection: 'reverse' }} />
+                          <div className={`absolute inset-10 rounded-full border border-dashed animate-spin transition-colors duration-300 ${
+                            (hoveredMode || activeMode) === "game_manager" ? "border-cyber-yellow/50" : "border-cyber-purple/50"
+                          }`} style={{ animationDuration: '10s' }} />
+                          
+                          {/* Inner glowing core */}
+                          <div className={`absolute inset-16 rounded-full bg-[#050308]/90 border flex flex-col items-center justify-center transition-all duration-500 ${
+                            (hoveredMode || activeMode) === "game_manager" 
+                              ? "border-cyber-yellow shadow-[0_0_35px_rgba(255,183,0,0.3)] text-cyber-yellow" 
+                              : "border-cyber-purple shadow-[0_0_35px_rgba(176,38,255,0.3)] text-cyber-purple"
+                          }`}>
+                            {(hoveredMode || activeMode) === "game_manager" ? (
+                              <GameModeIcon className="w-16 h-16 animate-pulse" />
+                            ) : (
+                              <ObsidianIcon className="w-16 h-16 animate-pulse" />
+                            )}
+                          </div>
                         </div>
-                        <div className="text-[10px] text-gray-500 font-mono hidden md:inline">
-                          PATH: {selectedFile}
+                        
+                        <div className="text-center mt-6">
+                          <h3 className={`font-mono text-xs font-black tracking-[0.2em] transition-colors uppercase ${
+                            (hoveredMode || activeMode) === "game_manager" ? "text-cyber-yellow" : "text-cyber-purple"
+                          }`}>
+                            {(hoveredMode || activeMode) === "game_manager" ? "Launcher Protocol Active" : "Notebook Workspace Active"}
+                          </h3>
+                          <p className="text-[10px] text-gray-500 font-mono mt-1 tracking-wider">
+                            {(hoveredMode || activeMode) === "game_manager" ? "SECTOR: ENDFIELD_INDUSTRIES" : "SECTOR: LOCAL_VAULT_INDEXER"}
+                          </p>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Cyberpunk Text Editor View / Preview View */}
-                    <div className="flex-1 flex flex-col font-mono text-sm text-gray-300 overflow-hidden relative">
-                      {editMode === "edit" ? (
-                        <>
-                          <div className="absolute top-2 right-4 flex gap-1.5 pointer-events-none opacity-40 z-20">
-                            <span className="text-[9px] text-cyber-purple uppercase tracking-widest font-mono">
-                              UTF-8 Markdown Editor
+                      {/* Right: Diagnostics & Telemetry */}
+                      <div className="w-full lg:w-1/3 flex flex-col gap-6 font-mono text-[10px] select-none text-left">
+                        <div className="bg-[#050308]/60 border border-cyber-purple/20 rounded-xl p-5 space-y-3">
+                          <div className="text-cyber-purple font-bold">// MODULE TELEMETRY</div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">T-SYNC STATUS:</span>
+                            <span className="text-cyber-green font-bold">100% SECURE</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">SYSTEM CORES:</span>
+                            <span className="text-white">STAGE 2 COMPILED</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">UI RENDERING:</span>
+                            <span className="text-white">TAURI-REACT RUNTIME</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">ACTIVE MODE:</span>
+                            <span className={`font-bold uppercase ${activeMode === "game_manager" ? "text-cyber-yellow" : "text-cyber-purple"}`}>
+                              {activeMode === "game_manager" ? "Game Manager" : "Notebook"}
                             </span>
                           </div>
-                          <textarea
-                            ref={textareaRef}
-                            value={selectedFileContent}
-                            onChange={(e) => handleContentChange(e.target.value)}
-                            onKeyDown={handleEditorKeyDown}
-                            className="flex-1 w-full bg-[#050308]/65 border border-cyber-purple/20 focus:border-cyber-green/55 focus:ring-1 focus:ring-cyber-green/20 rounded-md p-5 text-xs font-mono text-gray-200 focus:outline-none resize-none overflow-y-auto leading-relaxed shadow-[inset_0_2px_12px_rgba(0,0,0,0.9)] cursor-text select-text z-10"
-                            placeholder="Start typing your notes here in Markdown format..."
-                          />
-                        </>
-                      ) : (
-                        <div className="flex-1 w-full bg-[#050308]/40 border border-cyber-purple/10 rounded-md p-5 text-xs text-gray-300 overflow-y-auto leading-relaxed shadow-[inset_0_2px_12px_rgba(0,0,0,0.7)] z-10 selection:bg-cyber-purple/25 font-sans">
-                          {parseMarkdown(selectedFileContent)}
                         </div>
-                      )}
-                    </div>
-                  </motion.div>
-                ) : (
-                  <div className="flex flex-col xl:flex-row gap-8 items-center justify-center max-w-5xl w-full z-10">
-                    {/* Awaiting Connection Dashboard */}
-                    <div className="text-center max-w-sm p-8 rounded-2xl bg-[#0e091a]/40 border border-cyber-purple/20 backdrop-blur-md shadow-[0_15px_35px_rgba(0,0,0,0.4)] flex-shrink-0">
-                      <motion.div
-                        animate={{
-                          scale: [1, 1.03, 1],
-                          rotateY: [0, 6, 0],
-                        }}
-                        transition={{
-                          duration: 6,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                        }}
-                        className="w-40 h-40 mx-auto mb-6 relative"
-                      >
-                        <div className="absolute inset-0 rounded-full border border-cyber-purple/40 animate-spin" style={{ animationDuration: '12s' }} />
-                        <div className="absolute inset-2.5 rounded-full border border-dashed border-cyber-green/45 animate-spin" style={{ animationDuration: '18s', animationDirection: 'reverse' }} />
-                        <div className="absolute inset-7 rounded-full bg-cyber-sidebar/85 border border-cyber-purple/45 flex items-center justify-center shadow-[0_0_40px_rgba(176,38,255,0.3)]">
-                          <Cpu className="w-12 h-12 text-cyber-purple animate-pulse filter drop-shadow-[0_0_10px_rgba(176,38,255,0.6)]" />
-                        </div>
-                      </motion.div>
-                      <h2 className="text-xl font-black tracking-widest text-cyber-purple font-mono uppercase mb-2 neon-text-purple">
-                        Awaiting Connection
-                      </h2>
-                      <p className="text-[11px] text-gray-400 font-mono leading-relaxed px-2">
-                        Enter your Obsidian Vault local folder path in the sidebar and press Connect to initialize the workspace indexer.
-                      </p>
-                    </div>
 
-                    {/* Onboarding Wizard Widget moved to root of active-ui */}
-                  </div>
-                )}
+                        {/* Close button */}
+                        <button
+                          onClick={() => setMenuOpen(false)}
+                          className="magnetic-target w-full border border-red-500/40 bg-red-950/10 hover:bg-red-500/20 hover:border-red-500 rounded-xl py-3 text-center text-red-400 font-bold uppercase tracking-widest cursor-none transition-all shadow-[0_0_10px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]"
+                        >
+                          CLOSE PROTOCOL (ВЕРНУТЬСЯ)
+                        </button>
+                      </div>
+                    </motion.div>
+                  ) : activeMode === "game_manager" ? (
+                    // Game Manager View
+                    <motion.div
+                      key="game-manager-view"
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -15 }}
+                      transition={{ duration: 0.25 }}
+                      className="w-full h-full flex flex-col lg:flex-row gap-6 max-w-6xl z-10 select-none text-left"
+                    >
+                      {/* Left: Games Grid */}
+                      <div className="flex-1 flex flex-col gap-4 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <div className="font-mono text-xs text-cyber-yellow uppercase tracking-widest flex items-center gap-2">
+                            <Sparkles className="w-3.5 h-3.5 text-cyber-yellow animate-pulse" />
+                            AVAILABLE SOFTWARE SYSTEMS
+                          </div>
+                          <div className="text-[10px] text-gray-500 font-mono">
+                            COUNT: {games.length} UNITS
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 overflow-y-auto max-h-[520px] pr-1">
+                          {games.map(game => (
+                            <div
+                              key={game.id}
+                              onClick={() => handleLaunchGame(game)}
+                              onContextMenu={(e) => handleGameContextMenu(e, game)}
+                              className={`magnetic-target group border rounded-xl p-4 bg-[#0a0614]/50 border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-[#ffb700]/5 transition-all duration-300 relative flex flex-col justify-between min-h-[140px] cursor-none shadow-[0_4px_12px_rgba(0,0,0,0.4)] ${
+                                game.coverTheme === "purple" 
+                                  ? "hover:border-cyber-purple hover:bg-cyber-purple/5" 
+                                  : game.coverTheme === "green"
+                                    ? "hover:border-cyber-green hover:bg-cyber-green/5"
+                                    : ""
+                              }`}
+                            >
+                              <div className="space-y-1">
+                                <span className={`text-[9px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded border inline-block ${
+                                  game.coverTheme === "purple"
+                                    ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/5"
+                                    : game.coverTheme === "green"
+                                      ? "text-cyber-green border-cyber-green/30 bg-cyber-green/5"
+                                      : "text-cyber-yellow border-cyber-yellow/30 bg-cyber-yellow/5"
+                                }`}>
+                                  {game.category}
+                                </span>
+                                <h4 className="text-base font-black text-gray-100 tracking-wide mt-1.5 group-hover:text-white truncate">
+                                  {game.name}
+                                </h4>
+                              </div>
+
+                              <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
+                                <div className="flex items-center gap-1.5 font-mono text-[9px] text-gray-500">
+                                  <Clock className="w-3.5 h-3.5" />
+                                  <span>{game.playTime} ч.</span>
+                                </div>
+                                <div className="text-[9px] font-mono text-gray-500 text-right">
+                                  СЕАНС: {game.lastPlayed}
+                                </div>
+                              </div>
+
+                              {/* launch hover overlay arrow */}
+                              <div className={`absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] font-mono ${
+                                game.coverTheme === "purple" ? "text-cyber-purple" : game.coverTheme === "green" ? "text-cyber-green" : "text-cyber-yellow"
+                              }`}>
+                                <Play className="w-3 h-3 fill-current" />
+                                <span>LAUNCH</span>
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Predefined Add Game Button in Grid */}
+                          <div
+                            onClick={handleAddGameOpenClick}
+                            className="magnetic-target border border-dashed rounded-xl p-4 bg-transparent border-cyber-yellow/15 hover:border-cyber-yellow hover:bg-cyber-yellow/5 transition-all duration-300 flex flex-col items-center justify-center gap-2.5 min-h-[140px] cursor-none group shadow-lg"
+                          >
+                            <div className="w-10 h-10 rounded-full border border-dashed border-cyber-yellow/45 flex items-center justify-center text-gray-500 group-hover:text-cyber-yellow group-hover:border-cyber-yellow transition-all">
+                              <Plus className="w-5 h-5" />
+                            </div>
+                            <span className="font-mono text-xs font-bold text-gray-500 group-hover:text-cyber-yellow transition-all uppercase tracking-wider">
+                              ADD SYSTEM SOFTWARE
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Selected Game Details / Terminal Launcher */}
+                      <div className="w-full lg:w-80 shrink-0 flex flex-col gap-4">
+                        <div className="font-mono text-xs text-cyber-yellow uppercase tracking-widest">// TELEMETRY CONSOLE</div>
+                        
+                        <div className="flex-1 bg-[#06040c]/60 border border-cyber-yellow/20 rounded-xl p-5 flex flex-col justify-between relative overflow-hidden shadow-2xl min-h-[300px]">
+                          {/* Top diagnostic design */}
+                          <div className="space-y-4">
+                            {/* Revolving Hologram circle */}
+                            <div className="w-24 h-24 mx-auto relative flex items-center justify-center my-4">
+                              <div className="absolute inset-0 rounded-full border border-dashed border-cyber-yellow/25 animate-spin" style={{ animationDuration: '15s' }} />
+                              <div className="absolute inset-2 rounded-full border border-double border-cyber-yellow/40 animate-spin" style={{ animationDuration: '8s', animationDirection: 'reverse' }} />
+                              <div className="absolute inset-5 rounded-full bg-cyber-yellow/10 border border-cyber-yellow/30 flex items-center justify-center shadow-[0_0_20px_rgba(255,183,0,0.25)]">
+                                <Gamepad2 className="w-8 h-8 text-cyber-yellow animate-pulse animate-duration-2000" />
+                              </div>
+                            </div>
+
+                            <div className="text-center font-mono">
+                              <div className="text-[9px] text-gray-500 uppercase tracking-widest">SELECTED MODULE</div>
+                              <h3 className="text-lg font-black text-white mt-1 neon-text-yellow truncate max-w-[240px]" title="Launcher Software">
+                                {games.length > 0 ? games[0].name.toUpperCase() : "NO GAMES ADDED"}
+                              </h3>
+                            </div>
+
+                            <div className="border-t border-cyber-yellow/10 pt-4 space-y-2.5 font-mono text-[9px]">
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">DIAGNOSTIC STATUS:</span>
+                                <span className="text-cyber-green font-bold">READY</span>
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <span className="text-gray-500">LAUNCH PATH TARGET:</span>
+                                <span className="text-white break-all bg-[#050308] p-1.5 rounded border border-white/5 select-text text-[8px] leading-normal font-mono cursor-text">
+                                  {games.length > 0 ? games[0].path : "No path configured"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3 pt-4 border-t border-cyber-yellow/10">
+                            {/* Fake stats */}
+                            <div className="flex justify-between font-mono text-[9px]">
+                              <span className="text-gray-500">HOST INTEGRITY:</span>
+                              <span className="text-cyber-green font-bold">100% ONLINE</span>
+                            </div>
+                            
+                            <button
+                              onClick={() => {
+                                if (games.length > 0) {
+                                  handleLaunchGame(games[0]);
+                                } else {
+                                  handleAddGameOpenClick();
+                                }
+                              }}
+                              className="magnetic-target w-full border border-cyber-yellow bg-cyber-yellow/10 hover:bg-cyber-yellow hover:text-[#06040c] rounded-xl py-3 font-mono font-bold text-xs text-cyber-yellow tracking-widest cursor-none transition-all shadow-[0_0_12px_rgba(255,183,0,0.2)] hover:shadow-[0_0_22px_rgba(255,183,0,0.5)] flex items-center justify-center gap-2"
+                            >
+                              <Play className="w-4 h-4 fill-current animate-pulse" />
+                              LAUNCH TARGET ENGINE
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ) : selectedFile ? (
+                    // Cyberpunk Text Editor View (Original Notebook Editor)
+                    <motion.div
+                      key="notebook-editor"
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -12 }}
+                      transition={{ duration: 0.25 }}
+                      className="w-full max-w-3xl h-full flex flex-col bg-cyber-sidebar/65 border border-cyber-purple/20 rounded-lg p-6 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-md relative overflow-hidden z-10 text-left"
+                    >
+                      {/* Corner Glowing Accents */}
+                      <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-cyber-green" />
+                      <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-cyber-green" />
+                      <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-cyber-green" />
+                      <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-cyber-green" />
+
+                      <div className="flex items-center justify-between border-b border-cyber-purple/10 pb-3 mb-4 font-mono select-none">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-cyber-green">FILENAME:</span>
+                            <span className="text-sm font-bold text-gray-100">{selectedFile.split('/').pop()}</span>
+                          </div>
+                          {/* Sync status badge */}
+                          <div className={`flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border transition-all ${
+                            savingState === "saving" 
+                              ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/10" 
+                              : savingState === "saved"
+                                ? "text-cyber-green border-cyber-green/30 bg-cyber-green/10 shadow-[0_0_8px_rgba(0,255,102,0.15)]"
+                                : "text-red-400 border-red-500/30 bg-red-950/20"
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              savingState === "saving" 
+                                ? "bg-cyber-purple animate-pulse" 
+                                : savingState === "saved"
+                                  ? "bg-cyber-green"
+                                  : "bg-red-500"
+                            }`} />
+                            {savingState}
+                          </div>
+                        </div>
+
+                        {/* Tab Toggles: EDIT vs PREVIEW */}
+                        <div className="flex items-center gap-3">
+                          <div className="flex bg-[#06040c]/60 border border-cyber-purple/20 p-0.5 rounded font-mono">
+                            <button
+                              type="button"
+                              onClick={() => setEditMode("edit")}
+                              className={`magnetic-target px-2.5 py-1 text-[10px] rounded transition-all cursor-none ${
+                                editMode === "edit"
+                                  ? "bg-cyber-green/10 border border-cyber-green/30 text-cyber-green shadow-[0_0_8px_rgba(0,255,102,0.2)] font-bold"
+                                  : "border border-transparent text-gray-400 hover:text-white"
+                              }`}
+                            >
+                              EDIT
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditMode("preview")}
+                              className={`magnetic-target px-2.5 py-1 text-[10px] rounded transition-all cursor-none ${
+                                editMode === "preview"
+                                  ? "bg-cyber-purple/15 border border-cyber-purple/30 text-cyber-purple shadow-[0_0_8px_rgba(176,38,255,0.2)] font-bold"
+                                  : "border border-transparent text-gray-400 hover:text-white"
+                              }`}
+                            >
+                              PREVIEW
+                            </button>
+                          </div>
+                          <div className="text-[10px] text-gray-500 font-mono hidden md:inline">
+                            PATH: {selectedFile}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Cyberpunk Text Editor View / Preview View */}
+                      <div className="flex-1 flex flex-col font-mono text-sm text-gray-300 overflow-hidden relative">
+                        {editMode === "edit" ? (
+                          <>
+                            <div className="absolute top-2 right-4 flex gap-1.5 pointer-events-none opacity-40 z-20">
+                              <span className="text-[9px] text-cyber-purple uppercase tracking-widest font-mono select-none">
+                                UTF-8 Markdown Editor
+                              </span>
+                            </div>
+                            <textarea
+                              ref={textareaRef}
+                              value={selectedFileContent}
+                              onChange={(e) => handleContentChange(e.target.value)}
+                              onKeyDown={handleEditorKeyDown}
+                              className="flex-1 w-full bg-[#050308]/65 border border-cyber-purple/20 focus:border-cyber-green/55 focus:ring-1 focus:ring-cyber-green/20 rounded-md p-5 text-xs font-mono text-gray-200 focus:outline-none resize-none overflow-y-auto leading-relaxed shadow-[inset_0_2px_12px_rgba(0,0,0,0.9)] cursor-text select-text z-10"
+                              placeholder="Start typing your notes here in Markdown format..."
+                            />
+                          </>
+                        ) : (
+                          <div className="flex-1 w-full bg-[#050308]/40 border border-cyber-purple/10 rounded-md p-5 text-xs text-gray-300 overflow-y-auto leading-relaxed shadow-[inset_0_2px_12px_rgba(0,0,0,0.7)] z-10 selection:bg-cyber-purple/25 font-sans select-text cursor-default">
+                            {parseMarkdown(selectedFileContent)}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ) : (
+                    // Original Notebook Awaiting Connection Dashboard
+                    <motion.div
+                      key="notebook-awaiting"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.25 }}
+                      className="flex flex-col xl:flex-row gap-8 items-center justify-center max-w-5xl w-full z-10"
+                    >
+                      <div 
+                        onClick={() => setMenuOpen(true)}
+                        className="text-center max-w-sm p-8 rounded-2xl bg-[#0e091a]/40 border border-cyber-purple/20 hover:border-cyber-purple/55 hover:bg-[#0c0817]/65 backdrop-blur-md shadow-[0_15px_35px_rgba(0,0,0,0.4)] flex-shrink-0 cursor-none group transition-all duration-300 select-none"
+                      >
+                        <motion.div
+                          animate={{
+                            scale: [1, 1.03, 1],
+                            rotateY: [0, 6, 0],
+                          }}
+                          transition={{
+                            duration: 6,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                          }}
+                          className="w-40 h-40 mx-auto mb-6 relative group-hover:shadow-[0_0_35px_rgba(176,38,255,0.25)] rounded-full transition-all duration-300"
+                        >
+                          <div className="absolute inset-0 rounded-full border border-cyber-purple/40 group-hover:border-cyber-purple/70 animate-spin" style={{ animationDuration: '12s' }} />
+                          <div className="absolute inset-2.5 rounded-full border border-dashed border-cyber-green/45 group-hover:border-cyber-green/75 animate-spin" style={{ animationDuration: '18s', animationDirection: 'reverse' }} />
+                          <div className="absolute inset-7 rounded-full bg-cyber-sidebar/85 border border-cyber-purple/45 flex items-center justify-center shadow-[0_0_40px_rgba(176,38,255,0.3)] group-hover:bg-[#150f26] transition-all">
+                            <ObsidianIcon className="w-16 h-16 text-cyber-purple animate-pulse filter drop-shadow-[0_0_10px_rgba(176,38,255,0.6)]" />
+                          </div>
+                        </motion.div>
+                        <h2 className="text-xl font-black tracking-widest text-cyber-purple font-mono uppercase mb-2 neon-text-purple">
+                          Awaiting Connection
+                        </h2>
+                        <p className="text-[11px] text-gray-400 font-mono leading-relaxed px-2 mb-5">
+                          Enter your Obsidian Vault local folder path in the sidebar and press Connect to initialize the workspace indexer.
+                        </p>
+                        <div className="text-[9px] font-mono text-cyber-purple/70 border border-cyber-purple/35 py-1.5 px-3 rounded bg-cyber-purple/5 inline-block animate-pulse tracking-widest uppercase shadow-[0_0_10px_rgba(176,38,255,0.1)]">
+                          [ Click to Select System Mode ]
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </main>
 
@@ -2019,6 +2668,148 @@ export default function App() {
               )}
             </AnimatePresence>
           </motion.div>
+
+          {/* Game Manager Launch Console Overlay */}
+          <AnimatePresence>
+            {launchingGame && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-[#06040c]/95 z-[99999] flex items-center justify-center p-6 font-mono select-none"
+              >
+                <div className="w-full max-w-xl bg-[#0a0614] border border-cyber-yellow/40 rounded-2xl p-6 shadow-[0_0_50px_rgba(255,183,0,0.3)] relative overflow-hidden">
+                  {/* Scanline overlay */}
+                  <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_4px,6px_100%] pointer-events-none" />
+                  
+                  <div className="flex items-center gap-2 border-b border-cyber-yellow/20 pb-3 mb-4 text-cyber-yellow">
+                    <Terminal className="w-5 h-5 animate-pulse" />
+                    <span className="text-xs font-bold uppercase tracking-widest">SYSTEM LAUNCH PROTOCOL ACTIVE</span>
+                  </div>
+                  
+                  <div className="space-y-2.5 text-[11px] text-gray-300 text-left min-h-[160px] max-h-[220px] overflow-y-auto font-mono leading-relaxed">
+                    {launchLogs.map((log, i) => (
+                      <div key={i} className={log.startsWith("SUCCESS") ? "text-cyber-green" : log.startsWith("CRITICAL") ? "text-red-500" : "text-cyber-yellow/90"}>
+                        {log.startsWith("SUCCESS") || log.startsWith("CRITICAL") ? "" : "> "}{log}
+                      </div>
+                    ))}
+                    <div className="w-1.5 h-3.5 bg-cyber-yellow/75 inline-block animate-pulse ml-0.5" />
+                  </div>
+                  
+                  <div className="border-t border-cyber-yellow/10 pt-4 flex justify-between items-center text-[9px] text-gray-500">
+                    <span>SECTOR: CENTER_CONTROL</span>
+                    <span className="animate-pulse text-cyber-yellow">T-LAUNCH MODULE V2.1</span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Add Game Cyber Modal */}
+          <AnimatePresence>
+            {addGameOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/85 backdrop-blur-md z-[99998] flex items-center justify-center p-6 select-none font-mono"
+              >
+                <motion.div
+                  initial={{ scale: 0.95, y: 15 }}
+                  animate={{ scale: 1, y: 0 }}
+                  exit={{ scale: 0.95, y: 15 }}
+                  className="w-full max-w-md bg-cyber-sidebar border border-cyber-yellow/45 rounded-2xl p-6 shadow-[0_15px_40px_rgba(0,0,0,0.7)] relative text-left"
+                >
+                  <div className="flex items-center justify-between border-b border-cyber-yellow/20 pb-3 mb-4">
+                    <span className="text-xs font-black text-cyber-yellow tracking-widest flex items-center gap-1.5">
+                      <Gamepad className="w-4.5 h-4.5" />
+                      {editingGameId ? "EDIT SOFTWARE RUNTIME" : "ADD SOFTWARE RUNTIME"}
+                    </span>
+                    <button
+                      onClick={() => setAddGameOpen(false)}
+                      className="magnetic-target text-gray-500 hover:text-white text-xs cursor-none"
+                    >
+                      [ ESC ]
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleAddGame} className="space-y-4 text-xs">
+                    <div className="space-y-1.5">
+                      <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">GAME TITLE (ИМЯ ИГРЫ):</label>
+                      <input
+                        type="text"
+                        required
+                        value={newGameName}
+                        onChange={(e) => setNewGameName(e.target.value)}
+                        placeholder="Arknights: Endfield"
+                        className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">EXECUTABLE PATH (.EXE PATH):</label>
+                      <input
+                        type="text"
+                        required
+                        value={newGamePath}
+                        onChange={(e) => setNewGamePath(e.target.value)}
+                        placeholder="C:\Games\Endfield\Endfield.exe"
+                        className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">CATEGORY (ЖАНР):</label>
+                        <select
+                          value={newGameCategory}
+                          onChange={(e) => setNewGameCategory(e.target.value)}
+                          className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
+                        >
+                          <option value="RPG / Strategy">RPG / Strategy</option>
+                          <option value="Action RPG">Action RPG</option>
+                          <option value="Shooter">Shooter</option>
+                          <option value="Simulation">Simulation</option>
+                          <option value="Action / Adventure">Action / Adventure</option>
+                          <option value="System Tool">System Tool</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">COLOR ACCENT (ЦВЕТ):</label>
+                        <select
+                          value={newGameTheme}
+                          onChange={(e) => setNewGameTheme(e.target.value)}
+                          className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
+                        >
+                          <option value="yellow">Yellow (Желтый)</option>
+                          <option value="purple">Purple (Фиолетовый)</option>
+                          <option value="green">Green (Зеленый)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setAddGameOpen(false)}
+                        className="magnetic-target flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase cursor-none transition-all"
+                      >
+                        CANCEL
+                      </button>
+                      <button
+                        type="submit"
+                        className="magnetic-target flex-1 bg-cyber-yellow border border-cyber-yellow text-[#06040c] hover:bg-[#ffc800] rounded-xl py-2.5 text-center font-bold uppercase cursor-none transition-all shadow-[0_0_12px_rgba(255,183,0,0.2)]"
+                      >
+                        {editingGameId ? "SAVE CHANGES" : "ADD SOFTWARE"}
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          </>
         ) : (
           <motion.div
             key="sleep-screen"
@@ -2071,7 +2862,7 @@ export default function App() {
 
       {/* Custom Context Menu */}
       <AnimatePresence>
-        {contextMenu.visible && (
+        {contextMenu.visible && !contextMenu.isGame && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -2188,6 +2979,43 @@ export default function App() {
             >
               <Trash2 className="w-3.5 h-3.5 text-red-500" />
               <span>Удалить</span>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Game Context Menu */}
+      <AnimatePresence>
+        {contextMenu.visible && contextMenu.isGame && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.1 }}
+            className="fixed bg-[#0e091a]/95 border border-cyber-yellow/45 text-xs text-gray-300 py-1.5 px-1 rounded-md shadow-[0_10px_30px_rgba(0,0,0,0.7)] z-[9999] min-w-[180px] backdrop-blur-md select-none font-mono"
+            style={{
+              left: contextMenu.x,
+              top: contextMenu.y,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <div className="px-3 py-1 text-[9px] text-gray-500 uppercase tracking-wider border-b border-cyber-yellow/15 mb-1.5 select-none">
+              Управление ПО
+            </div>
+            <button
+              onClick={() => handleGameContextAction("edit")}
+              className="magnetic-target w-full text-left py-2 px-3 hover:bg-cyber-yellow/10 hover:text-cyber-yellow rounded flex items-center gap-2 cursor-none transition-colors"
+            >
+              <Settings className="w-3.5 h-3.5 text-cyber-yellow" />
+              <span>Изменить параметры</span>
+            </button>
+            <button
+              onClick={() => handleGameContextAction("delete")}
+              className="magnetic-target w-full text-left py-2 px-3 hover:bg-red-500/10 text-red-400 hover:text-red-300 rounded flex items-center gap-2 cursor-none transition-colors font-semibold"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+              <span>Удалить программу</span>
             </button>
           </motion.div>
         )}

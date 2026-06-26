@@ -267,6 +267,32 @@ async fn create_directory(vault_path: String, rel_path: String) -> Result<Vec<St
 }
 
 #[tauri::command]
+fn launch_game(path: String) -> Result<(), String> {
+    let path = std::path::Path::new(&path);
+    if !path.exists() {
+        return Err("Указанный файл не существует. Пожалуйста, проверьте путь.".to_string());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+        let parent_dir = path.parent().unwrap_or(path);
+        Command::new("cmd")
+            .args(&["/C", "start", "", path.to_str().unwrap_or("")])
+            .current_dir(parent_dir)
+            .spawn()
+            .map_err(|e| format!("Ошибка запуска процесса: {}", e))?;
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        return Err("Запуск приложений поддерживается только на ОС Windows.".to_string());
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
 fn exit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
@@ -287,7 +313,8 @@ pub fn run() {
             delete_file,
             rename_file,
             show_in_explorer,
-            create_directory
+            create_directory,
+            launch_game
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
