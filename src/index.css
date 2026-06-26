@@ -1,0 +1,171 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cyber-green: #00ff66;
+  --color-cyber-purple: #b026ff;
+  --color-cyber-bg: #06040c;
+  --color-cyber-sidebar: #0e091a;
+  
+  --animate-float-slow: float-slow 24s ease-in-out infinite;
+  --animate-float-medium: float-medium 18s ease-in-out infinite;
+  --animate-float-fast: float-fast 14s ease-in-out infinite;
+}
+
+@layer base {
+  html, body, #root {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #06040c;
+    color: #f3f4f6;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+    cursor: none !important;
+  }
+
+  /* Make sure all interactive elements don't show the standard cursor */
+  a, button, input, textarea, select, [role="button"] {
+    cursor: none !important;
+  }
+}
+
+@utility neon-border-purple {
+  border: 1px solid rgba(176, 38, 255, 0.35);
+  box-shadow: 0 0 10px rgba(176, 38, 255, 0.25), inset 0 0 10px rgba(176, 38, 255, 0.25);
+}
+
+@utility neon-border-green {
+  border: 1px solid rgba(0, 255, 102, 0.35);
+  box-shadow: 0 0 10px rgba(0, 255, 102, 0.25), inset 0 0 10px rgba(0, 255, 102, 0.25);
+}
+
+@utility neon-text-green {
+  color: #00ff66;
+  text-shadow: 0 0 4px rgba(0, 255, 102, 0.6), 0 0 12px rgba(0, 255, 102, 0.3);
+}
+
+@utility neon-text-purple {
+  color: #b026ff;
+  text-shadow: 0 0 4px rgba(176, 38, 255, 0.6), 0 0 12px rgba(176, 38, 255, 0.3);
+}
+
+@utility neon-glow-hover {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  
+  &:hover {
+    border-color: #00ff66;
+    box-shadow: 0 0 15px rgba(0, 255, 102, 0.5), 0 0 30px rgba(176, 38, 255, 0.4), inset 0 0 8px rgba(0, 255, 102, 0.2);
+    text-shadow: 0 0 8px rgba(0, 255, 102, 0.8);
+  }
+}
+
+@utility magnetic-target {
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(176, 38, 255, 0.25) 0%, rgba(0, 255, 102, 0.1) 40%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+    z-index: 0;
+    animation: spin-gradient 4s linear infinite;
+  }
+  
+  &:hover::before {
+    opacity: 1;
+  }
+  
+  & > * {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+@keyframes spin-gradient {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate(8%, 12%) scale(1.08) rotate(40deg);
+  }
+  66% {
+    transform: translate(-8%, 6%) scale(0.94) rotate(-30deg);
+  }
+}
+
+@keyframes float-medium {
+  0%, 100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate(-10%, -8%) scale(0.92) rotate(-50deg);
+  }
+  66% {
+    transform: translate(6%, -12%) scale(1.06) rotate(45deg);
+  }
+}
+
+@keyframes float-fast {
+  0%, 100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translate(12%, -6%) scale(1.08) rotate(90deg);
+  }
+}
+
+/* Custom scrollbar to match cyberpunk aesthetic */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #06040c;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #0e091a;
+  border: 1px solid rgba(176, 38, 255, 0.35);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #b026ff;
+  box-shadow: 0 0 8px #b026ff;
+}
+
+@keyframes cursor-wave {
+  0% {
+    border-radius: 50% 50% 50% 50% / 50% 50% 50% 50%;
+  }
+  25% {
+    border-radius: 65% 35% 55% 45% / 45% 60% 40% 55%;
+  }
+  50% {
+    border-radius: 45% 55% 35% 65% / 55% 40% 60% 45%;
+  }
+  75% {
+    border-radius: 60% 40% 60% 40% / 40% 55% 45% 60%;
+  }
+  100% {
+    border-radius: 50% 50% 50% 50% / 50% 50% 50% 50%;
+  }
+}
+
+@utility animate-cursor-wave {
+  animation: cursor-wave 3.5s ease-in-out infinite;
+}
