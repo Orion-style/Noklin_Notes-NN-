@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Plus, Folder, FolderOpen, FileText, Cpu, Terminal, Layers, Link, ShieldAlert, Check, HelpCircle, ChevronLeft, ChevronRight, Moon, LogOut, Bold, Italic, Highlighter, Heading1, Heading2, CheckSquare, Code, FilePlus, FolderPlus, Compass, Database, Copy, CornerUpRight, Search, Bookmark, Clipboard, Eye, Edit2, Trash2, Gamepad2, Swords, Play, Sparkles, Clock, Gamepad, Settings, Mail, Bell, Activity, HardDrive } from "lucide-react";
+import { Plus, Folder, FolderOpen, FileText, Cpu, Terminal, Layers, Link, ShieldAlert, Check, HelpCircle, ChevronLeft, ChevronRight, Moon, LogOut, Bold, Italic, Highlighter, Heading1, Heading2, CheckSquare, Code, FilePlus, FolderPlus, Compass, Database, Copy, CornerUpRight, Search, Bookmark, Clipboard, Eye, Edit2, Trash2, Gamepad2, Swords, Play, Sparkles, Clock, Gamepad, Settings, Mail, Bell, Activity, HardDrive, Crop } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import CustomCursor from "./components/CustomCursor";
 import InteractiveBackground from "./components/InteractiveBackground";
@@ -242,6 +242,34 @@ export default function App() {
     const saved = localStorage.getItem("cyber_zoom");
     return saved ? parseInt(saved) : 100;
   });
+
+  // Update Tauri window size programmatically when zoom level changes
+  React.useEffect(() => {
+    const updateWindowSize = async () => {
+      const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
+      if (isTauri) {
+        try {
+          const { getCurrentWindow, LogicalSize } = await import("@tauri-apps/api/window");
+          const appWindow = getCurrentWindow();
+          
+          // Base window dimensions configured in tauri.conf.json
+          const baseW = 800;
+          const baseH = 600;
+          
+          // Scale size proportionally to zoomPercent
+          const scale = zoomPercent / 100;
+          const newW = Math.round(baseW * scale);
+          const newH = Math.round(baseH * scale);
+          
+          await appWindow.setSize(new LogicalSize(newW, newH));
+        } catch (err) {
+          console.error("Failed to resize Tauri window:", err);
+        }
+      }
+    };
+    updateWindowSize();
+  }, [zoomPercent]);
+
   const [contextMenu, setContextMenu] = useState({
     visible: false,
     x: 0,
@@ -303,6 +331,115 @@ export default function App() {
   const [newGamePath, setNewGamePath] = useState("");
   const [newGameCategory, setNewGameCategory] = useState("RPG / Action");
   const [newGameTheme, setNewGameTheme] = useState("yellow");
+  const [newGameIcon, setNewGameIcon] = useState(null);
+  const [selectedGameActions, setSelectedGameActions] = useState(null);
+  const [activeModalTab, setActiveModalTab] = useState("parameters");
+  const [newGameUrls, setNewGameUrls] = useState([]);
+
+  // Launch action selections
+  const [executeLaunchGame, setExecuteLaunchGame] = useState(true);
+  const [executeUrls, setExecuteUrls] = useState({});
+  const [gameToDelete, setGameToDelete] = useState(null);
+
+  React.useEffect(() => {
+    if (selectedGameActions) {
+      setExecuteLaunchGame(true);
+      const urlChecks = {};
+      if (selectedGameActions.urls) {
+        selectedGameActions.urls.forEach((_, idx) => {
+          urlChecks[idx] = true;
+        });
+      }
+      setExecuteUrls(urlChecks);
+    }
+  }, [selectedGameActions]);
+
+  // Icon cropping states
+  const [cropSrc, setCropSrc] = useState(null);
+  const [imageAspect, setImageAspect] = useState(1);
+  const [zoom, setZoom] = useState(1);
+  const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [startDrag, setStartDrag] = useState({ x: 0, y: 0 });
+
+  React.useEffect(() => {
+    if (cropSrc) {
+      const img = new Image();
+      img.src = cropSrc;
+      img.onload = () => {
+        setImageAspect(img.width / img.height);
+        setZoom(1);
+        setDragPos({ x: 0, y: 0 });
+      };
+    }
+  }, [cropSrc]);
+
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    setStartDrag({ x: e.clientX - dragPos.x, y: e.clientY - dragPos.y });
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    setDragPos({
+      x: e.clientX - startDrag.x,
+      y: e.clientY - startDrag.y
+    });
+  };
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      setStartDrag({ x: e.touches[0].clientX - dragPos.x, y: e.touches[0].clientY - dragPos.y });
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    setDragPos({
+      x: e.touches[0].clientX - startDrag.x,
+      y: e.touches[0].clientY - startDrag.y
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleCropSave = () => {
+    const img = new Image();
+    img.src = cropSrc;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+
+      let renderW, renderH;
+      const aspect = img.width / img.height;
+      if (aspect > 1) {
+        renderH = 160;
+        renderW = 160 * aspect;
+      } else {
+        renderW = 160;
+        renderH = 160 / aspect;
+      }
+
+      // Keep background transparent instead of black fill
+      ctx.clearRect(0, 0, 256, 256);
+
+      ctx.translate(128, 128);
+      const scale = 256 / 160;
+      ctx.translate(dragPos.x * scale, dragPos.y * scale);
+      ctx.scale(zoom * scale, zoom * scale);
+      
+      ctx.drawImage(img, -renderW / 2, -renderH / 2, renderW, renderH);
+
+      const croppedBase64 = canvas.toDataURL("image/png");
+      setNewGameIcon(croppedBase64);
+      setCropSrc(null);
+    };
+  };
 
   const [launchingGame, setLaunchingGame] = useState(null);
   const [launchLogs, setLaunchLogs] = useState([]);
@@ -315,9 +452,124 @@ export default function App() {
     localStorage.setItem("cyber_active_mode", activeMode);
   }, [activeMode]);
 
-  const handleAddGame = (e) => {
+  // Active game playtime trackers
+  const activeTrackers = React.useRef({});
+
+  // Start tracking playtime for a specific game
+  const startTracking = React.useCallback((game) => {
+    if (activeTrackers.current[game.id]) return;
+
+    const intervalTime = 10000; // Check every 10 seconds
+    const incrementHours = intervalTime / (3600 * 1000); // 10 seconds in hours
+
+    const intervalId = setInterval(async () => {
+      try {
+        const running = await invoke("is_game_running", { path: game.path });
+        if (running) {
+          setGames(prev => prev.map(g => {
+            if (g.id === game.id) {
+              const currentPlayTime = typeof g.playTime === 'number' ? g.playTime : 0;
+              return {
+                ...g,
+                playTime: Number((currentPlayTime + incrementHours).toFixed(5))
+              };
+            }
+            return g;
+          }));
+        } else {
+          // Game stopped running, clear tracker
+          clearInterval(intervalId);
+          delete activeTrackers.current[game.id];
+        }
+      } catch (e) {
+        console.error("Error during game tracking:", e);
+        clearInterval(intervalId);
+        delete activeTrackers.current[game.id];
+      }
+    }, intervalTime);
+
+    activeTrackers.current[game.id] = intervalId;
+  }, []);
+
+  // Periodic check to auto-detect launched games
+  React.useEffect(() => {
+    const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
+    if (!isTauri) return;
+
+    const checkAllGames = async () => {
+      for (const game of games) {
+        if (activeTrackers.current[game.id]) continue;
+        try {
+          const running = await invoke("is_game_running", { path: game.path });
+          if (running) {
+            startTracking(game);
+          }
+        } catch (e) {
+          console.error("Error auto-detecting game status:", e);
+        }
+      }
+    };
+
+    // Run immediately on mount
+    checkAllGames();
+
+    // Check every 30 seconds for untracked games
+    const checkInterval = setInterval(checkAllGames, 30000);
+
+    return () => {
+      clearInterval(checkInterval);
+      // Clean up all trackers on unmount
+      Object.values(activeTrackers.current).forEach(clearInterval);
+    };
+  }, [games, startTracking]);
+
+  // Fetch missing icons for existing games on mount
+  React.useEffect(() => {
+    const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
+    if (!isTauri) return;
+
+    const fetchMissingIcons = async () => {
+      setGames(prev => {
+        const hasMissing = prev.some(g => !g.icon && g.path);
+        if (!hasMissing) return prev;
+
+        Promise.all(prev.map(async (game) => {
+          if (!game.icon && game.path) {
+            try {
+              const iconData = await invoke("get_game_icon", { path: game.path });
+              return { ...game, icon: iconData };
+            } catch (e) {
+              console.error(`Failed to fetch icon for ${game.name}:`, e);
+            }
+          }
+          return game;
+        })).then(newGames => {
+          const changed = newGames.some((g, i) => g.icon !== prev[i].icon);
+          if (changed) {
+            setGames(newGames);
+          }
+        });
+
+        return prev;
+      });
+    };
+
+    fetchMissingIcons();
+  }, []);
+
+  const handleAddGame = async (e) => {
     e.preventDefault();
     if (!newGameName || !newGamePath) return;
+
+    let iconData = newGameIcon;
+    const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
+    if (!iconData && isTauri) {
+      try {
+        iconData = await invoke("get_game_icon", { path: newGamePath });
+      } catch (err) {
+        console.error("Error getting game icon:", err);
+      }
+    }
     
     if (editingGameId) {
       setGames(prev => prev.map(g => {
@@ -327,7 +579,9 @@ export default function App() {
             name: newGameName,
             path: newGamePath,
             category: newGameCategory,
-            coverTheme: newGameTheme
+            coverTheme: newGameTheme,
+            icon: iconData || g.icon,
+            urls: newGameUrls
           };
         }
         return g;
@@ -341,7 +595,9 @@ export default function App() {
         category: newGameCategory,
         playTime: 0,
         lastPlayed: "Ни разу",
-        coverTheme: newGameTheme
+        coverTheme: newGameTheme,
+        icon: iconData,
+        urls: newGameUrls
       };
       setGames(prev => [...prev, newGame]);
     }
@@ -350,6 +606,9 @@ export default function App() {
     setNewGamePath("");
     setNewGameCategory("RPG / Strategy");
     setNewGameTheme("yellow");
+    setNewGameIcon(null);
+    setNewGameUrls([]);
+    setActiveModalTab("parameters");
     setAddGameOpen(false);
   };
 
@@ -364,6 +623,9 @@ export default function App() {
     setNewGamePath("");
     setNewGameCategory("RPG / Strategy");
     setNewGameTheme("yellow");
+    setNewGameIcon(null);
+    setNewGameUrls([]);
+    setActiveModalTab("parameters");
     setAddGameOpen(true);
   };
 
@@ -373,6 +635,9 @@ export default function App() {
     setNewGamePath(game.path);
     setNewGameCategory(game.category);
     setNewGameTheme(game.coverTheme || "yellow");
+    setNewGameIcon(game.icon || null);
+    setNewGameUrls(game.urls || []);
+    setActiveModalTab("parameters");
     setAddGameOpen(true);
     setContextMenu(prev => ({ ...prev, visible: false }));
   };
@@ -408,18 +673,18 @@ export default function App() {
     if (!game) return;
     
     if (action === "delete") {
-      handleDeleteGame(game.id);
+      setGameToDelete(game);
     } else if (action === "edit") {
       handleEditGameClick(game);
     }
   };
 
-  const handleLaunchGame = async (game) => {
+  const handleLaunchGame = async (game, runExecutable = true, urlsToOpen = []) => {
     setLaunchingGame(game);
     setLaunchLogs([
       "INITIALIZING SYSTEM PROTOCOLS...",
       `CONNECTING TO APPLICATION: ${game.name.toUpperCase()}`,
-      `EXECUTABLE TARGET: ${game.path}`,
+      runExecutable ? `EXECUTABLE TARGET: ${game.path}` : "EXECUTABLE LAUNCH DESELECTED BY USER.",
     ]);
 
     const delay = (ms) => new Promise(res => setTimeout(res, ms));
@@ -429,25 +694,53 @@ export default function App() {
     await delay(600);
     setLaunchLogs(prev => [...prev, "BYPASSING SECURITY SANDBOX... STATUS: OK"]);
     await delay(500);
-    setLaunchLogs(prev => [...prev, "EXECUTING RUN PROCESS..."]);
+    
+    if (runExecutable) {
+      setLaunchLogs(prev => [...prev, "EXECUTING RUN PROCESS..."]);
+    } else {
+      setLaunchLogs(prev => [...prev, "SKIPPING RUN PROCESS (WEB ONLY MODE)..."]);
+    }
     
     const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
     
     if (isTauri) {
       try {
-        await invoke("launch_game", { path: game.path });
-        setLaunchLogs(prev => [...prev, "SUCCESS: ENGINE LAUNCHED SECURELY."]);
-        
-        setGames(prev => prev.map(g => {
-          if (g.id === game.id) {
-            return {
-              ...g,
-              playTime: g.playTime + 1,
-              lastPlayed: new Date().toISOString().split('T')[0]
-            };
+        if (runExecutable) {
+          await invoke("launch_game", { path: game.path });
+          setLaunchLogs(prev => [...prev, "SUCCESS: ENGINE LAUNCHED SECURELY."]);
+        }
+
+        // Open selected URLs
+        if (urlsToOpen.length > 0) {
+          setLaunchLogs(prev => [...prev, "OPENING CONFIGURED WEB RESOURCES..."]);
+          for (const url of urlsToOpen) {
+            if (url && url.trim() !== "") {
+              try {
+                await invoke("open_url", { url });
+                setLaunchLogs(prev => [...prev, `OPENED: ${url}`]);
+              } catch (e) {
+                console.error("Failed to open URL:", e);
+                setLaunchLogs(prev => [...prev, `ERROR OPENING URL: ${url}`]);
+              }
+            }
           }
-          return g;
-        }));
+        }
+        
+        if (runExecutable) {
+          setGames(prev => prev.map(g => {
+            if (g.id === game.id) {
+              return {
+                ...g,
+                lastPlayed: new Date().toISOString().split('T')[0]
+              };
+            }
+            return g;
+          }));
+
+          setTimeout(() => {
+            startTracking(game);
+          }, 5000);
+        }
         
         await delay(1000);
         setLaunchingGame(null);
@@ -460,20 +753,43 @@ export default function App() {
       setLaunchLogs(prev => [
         ...prev,
         "[DEMO FALLBACK] TAURI RUNTIME NOT DETECTED.",
-        `[DEMO MODE] SPAWNED EMULATED PROCESS IN BACKGROUND.`,
-        "SUCCESS: SIMULATED ENGINE LAUNCH COMPLETED."
+        runExecutable ? `[DEMO MODE] SPAWNED EMULATED PROCESS IN BACKGROUND.` : `[DEMO MODE] SKIPPED EMULATED PROCESS.`,
+        "SUCCESS: SIMULATED LAUNCH PROTOCOLS COMPLETED."
       ]);
+
+      if (urlsToOpen.length > 0) {
+        setLaunchLogs(prev => [
+          ...prev,
+          "[DEMO MODE] SIMULATING OPENING WEB RESOURCES...",
+          ...urlsToOpen.map(url => `[DEMO] OPENED: ${url}`)
+        ]);
+      }
       
-      setGames(prev => prev.map(g => {
-        if (g.id === game.id) {
-          return {
-            ...g,
-            playTime: g.playTime + 1,
-            lastPlayed: new Date().toISOString().split('T')[0]
-          };
-        }
-        return g;
-      }));
+      if (runExecutable) {
+        setGames(prev => prev.map(g => {
+          if (g.id === game.id) {
+            return {
+              ...g,
+              lastPlayed: new Date().toISOString().split('T')[0]
+            };
+          }
+          return g;
+        }));
+
+        // In demo mode, simulate adding 0.05 hours after 5 seconds
+        setTimeout(() => {
+          setGames(prev => prev.map(g => {
+            if (g.id === game.id) {
+              const currentPlayTime = typeof g.playTime === 'number' ? g.playTime : 0;
+              return {
+                ...g,
+                playTime: Number((currentPlayTime + 0.05).toFixed(5))
+              };
+            }
+            return g;
+          }));
+        }, 5000);
+      }
       
       await delay(1800);
       setLaunchingGame(null);
@@ -1201,8 +1517,34 @@ export default function App() {
         }
       }
     };
+
+    const handleWheel = (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        if (e.deltaY < 0) {
+          // Zoom in
+          setZoomPercent(prev => {
+            const next = Math.min(prev + 5, 200);
+            localStorage.setItem("cyber_zoom", next);
+            return next;
+          });
+        } else if (e.deltaY > 0) {
+          // Zoom out
+          setZoomPercent(prev => {
+            const next = Math.max(prev - 5, 70);
+            localStorage.setItem("cyber_zoom", next);
+            return next;
+          });
+        }
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("wheel", handleWheel);
+    };
   }, [isSleeping]);
 
   React.useEffect(() => {
@@ -1734,9 +2076,16 @@ export default function App() {
                             onClick={() => handleLaunchGame(game)}
                             onMouseEnter={(e) => showGlobalTooltip(e, `ЗАПУСТИТЬ: ${game.name}`, "yellow")}
                             onMouseLeave={hideGlobalTooltip}
-                            className="magnetic-target w-8 h-8 rounded border border-cyber-yellow/20 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 flex items-center justify-center text-cyber-yellow cursor-none transition-all duration-300 relative group shrink-0"
+                            className="magnetic-target w-8 h-8 rounded border border-cyber-yellow/20 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 flex items-center justify-center text-cyber-yellow cursor-none transition-all duration-300 relative group shrink-0 overflow-hidden"
                           >
-                            <Play className="w-3.5 h-3.5" />
+                            {game.icon ? (
+                              <>
+                                <img src={game.icon} alt="" className="w-5 h-5 object-contain rounded group-hover:scale-0 transition-transform duration-250 absolute" />
+                                <Play className="w-3.5 h-3.5 scale-0 group-hover:scale-100 transition-transform duration-250 absolute" />
+                              </>
+                            ) : (
+                              <Play className="w-3.5 h-3.5" />
+                            )}
                           </button>
                         ))}
                         <button
@@ -1774,7 +2123,7 @@ export default function App() {
                         <div className="h-[1px] bg-cyber-yellow/10 w-full" />
                         <div className="flex justify-between">
                           <span className="text-gray-500">TOTAL HOURS:</span>
-                          <span className="text-white font-bold">{games.reduce((acc, g) => acc + g.playTime, 0)}h</span>
+                          <span className="text-white font-bold">{(games.reduce((acc, g) => acc + (typeof g.playTime === 'number' ? g.playTime : 0), 0)).toFixed(1).replace(/\.0$/, "")}h</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">SECTOR STATUS:</span>
@@ -1800,9 +2149,16 @@ export default function App() {
                               onContextMenu={(e) => handleGameContextMenu(e, game)}
                               className="border border-cyber-yellow/15 bg-[#ffb700]/5 rounded p-2.5 flex items-center justify-between hover:border-cyber-yellow/45 transition-colors group cursor-none"
                             >
-                              <div className="flex flex-col min-w-0">
-                                <span className="font-mono text-xs font-bold text-gray-200 truncate">{game.name}</span>
-                                <span className="text-[9px] text-gray-500 font-mono mt-0.5 uppercase tracking-wider">{game.category}</span>
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                {game.icon ? (
+                                  <img src={game.icon} alt="" className="w-5 h-5 object-contain rounded shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.3)]" />
+                                ) : (
+                                  <Gamepad className="w-5 h-5 text-cyber-yellow/60 shrink-0" />
+                                )}
+                                <div className="flex flex-col min-w-0">
+                                  <span className="font-mono text-xs font-bold text-gray-200 truncate">{game.name}</span>
+                                  <span className="text-[9px] text-gray-500 font-mono mt-0.5 uppercase tracking-wider">{game.category}</span>
+                                </div>
                               </div>
                               <button
                                 onClick={() => handleLaunchGame(game)}
@@ -2395,9 +2751,9 @@ export default function App() {
                           {games.map(game => (
                             <div
                               key={game.id}
-                              onClick={() => handleLaunchGame(game)}
+                              onClick={() => setSelectedGameActions(game)}
                               onContextMenu={(e) => handleGameContextMenu(e, game)}
-                              className={`magnetic-target group border rounded-xl p-4 bg-[#0a0614]/50 border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-[#ffb700]/5 transition-all duration-300 relative flex flex-col justify-between min-h-[140px] cursor-none shadow-[0_4px_12px_rgba(0,0,0,0.4)] ${
+                              className={`magnetic-target group border rounded-xl p-5 bg-[#0a0614]/50 border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-[#ffb700]/5 transition-all duration-300 relative flex flex-col items-center justify-between min-h-[220px] cursor-none shadow-[0_4px_12px_rgba(0,0,0,0.4)] ${
                                 game.coverTheme === "purple" 
                                   ? "hover:border-cyber-purple hover:bg-cyber-purple/5" 
                                   : game.coverTheme === "green"
@@ -2405,8 +2761,9 @@ export default function App() {
                                     : ""
                               }`}
                             >
-                              <div className="space-y-1">
-                                <span className={`text-[9px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded border inline-block ${
+                              {/* Category Badge on top */}
+                              <div className="w-full flex justify-center">
+                                <span className={`text-[8px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border inline-block ${
                                   game.coverTheme === "purple"
                                     ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/5"
                                     : game.coverTheme === "green"
@@ -2415,27 +2772,45 @@ export default function App() {
                                 }`}>
                                   {game.category}
                                 </span>
-                                <h4 className="text-base font-black text-gray-100 tracking-wide mt-1.5 group-hover:text-white truncate">
+                              </div>
+
+                              {/* Center-aligned Game Icon (larger and slightly above center) */}
+                              <div className="flex-1 flex flex-col items-center justify-center mt-3.5 mb-1.5 gap-1.5 w-full">
+                                {game.icon ? (
+                                  <img 
+                                    src={game.icon} 
+                                    alt="" 
+                                    className="w-24 h-24 object-cover rounded-2xl shadow-[0_0_20px_rgba(0,0,0,0.6)] group-hover:scale-105 transition-all duration-300 block" 
+                                    style={{
+                                      boxShadow: game.coverTheme === "purple" 
+                                        ? "0 0 20px rgba(188,19,254,0.15)" 
+                                        : game.coverTheme === "green" 
+                                          ? "0 0 20px rgba(0,255,102,0.15)" 
+                                          : "0 0 20px rgba(255,183,0,0.15)"
+                                    }}
+                                  />
+                                ) : (
+                                  <div className={`w-24 h-24 rounded-2xl border flex items-center justify-center bg-white/5 border-white/10 text-gray-400 transition-all ${
+                                    game.coverTheme === "purple" 
+                                      ? "group-hover:text-cyber-purple group-hover:border-cyber-purple/30 group-hover:shadow-[0_0_20px_rgba(188,19,254,0.15)]" 
+                                      : game.coverTheme === "green" 
+                                        ? "group-hover:text-cyber-green group-hover:border-cyber-green/30 group-hover:shadow-[0_0_20px_rgba(0,255,102,0.15)]" 
+                                        : "group-hover:text-cyber-yellow group-hover:border-cyber-yellow/30 group-hover:shadow-[0_0_20px_rgba(255,183,0,0.15)]"
+                                  }`}>
+                                    <Gamepad2 className="w-10 h-10" />
+                                  </div>
+                                )}
+                                <h4 className="text-base font-black text-gray-100 tracking-wide text-center group-hover:text-white truncate max-w-[150px] mt-0.5">
                                   {game.name}
                                 </h4>
                               </div>
 
-                              <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5">
-                                <div className="flex items-center gap-1.5 font-mono text-[9px] text-gray-500">
+                              {/* Footer: Playtime only */}
+                              <div className="w-full flex justify-center pt-2.5 border-t border-white/5 font-mono text-[9px] text-gray-500">
+                                <div className="flex items-center gap-1.5">
                                   <Clock className="w-3.5 h-3.5" />
-                                  <span>{game.playTime} ч.</span>
+                                  <span>{typeof game.playTime === 'number' ? game.playTime.toFixed(1).replace(/\.0$/, "") : game.playTime} ч.</span>
                                 </div>
-                                <div className="text-[9px] font-mono text-gray-500 text-right">
-                                  СЕАНС: {game.lastPlayed}
-                                </div>
-                              </div>
-
-                              {/* launch hover overlay arrow */}
-                              <div className={`absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] font-mono ${
-                                game.coverTheme === "purple" ? "text-cyber-purple" : game.coverTheme === "green" ? "text-cyber-green" : "text-cyber-yellow"
-                              }`}>
-                                <Play className="w-3 h-3 fill-current" />
-                                <span>LAUNCH</span>
                               </div>
                             </div>
                           ))}
@@ -2669,6 +3044,153 @@ export default function App() {
             </AnimatePresence>
           </motion.div>
 
+          {/* Game Action Selection Modal */}
+          <AnimatePresence>
+            {selectedGameActions && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/85 backdrop-blur-md z-[99997] flex items-center justify-center p-6 select-none font-mono"
+              >
+                <motion.div
+                  initial={{ scale: 0.95, y: 15 }}
+                  animate={{ scale: 1, y: 0 }}
+                  exit={{ scale: 0.95, y: 15 }}
+                  className="w-full max-w-sm bg-cyber-sidebar border border-cyber-yellow/45 rounded-2xl p-6 shadow-[0_15px_40px_rgba(0,0,0,0.7)] relative text-left"
+                  style={{
+                    borderColor: selectedGameActions.coverTheme === "purple" 
+                      ? "rgba(188,19,254,0.45)" 
+                      : selectedGameActions.coverTheme === "green" 
+                        ? "rgba(0,255,102,0.45)" 
+                        : "rgba(255,183,0,0.45)"
+                  }}
+                >
+                  <div className="flex flex-col items-center text-center gap-4 py-2">
+                    {selectedGameActions.icon ? (
+                      <img 
+                        src={selectedGameActions.icon} 
+                        alt="" 
+                        className="w-20 h-20 object-contain rounded-2xl shadow-[0_0_25px_rgba(0,0,0,0.5)] border border-white/5" 
+                      />
+                    ) : (
+                      <div className={`w-20 h-20 rounded-2xl border flex items-center justify-center bg-white/5 border-white/10 text-gray-400 ${
+                        selectedGameActions.coverTheme === "purple" ? "text-cyber-purple border-cyber-purple/30" : selectedGameActions.coverTheme === "green" ? "text-cyber-green border-cyber-green/30" : "text-cyber-yellow border-cyber-yellow/30"
+                      }`}>
+                        <Gamepad2 className="w-10 h-10" />
+                      </div>
+                    )}
+                    
+                    <div className="space-y-1">
+                      <span className={`text-[8px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border inline-block ${
+                        selectedGameActions.coverTheme === "purple"
+                          ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/5"
+                          : selectedGameActions.coverTheme === "green"
+                            ? "text-cyber-green border-cyber-green/30 bg-cyber-green/5"
+                            : "text-cyber-yellow border-cyber-yellow/30 bg-cyber-yellow/5"
+                      }`}>
+                        {selectedGameActions.category}
+                      </span>
+                      <h3 className="text-xl font-black text-white mt-1 uppercase tracking-wide truncate max-w-[280px]">
+                        {selectedGameActions.name}
+                      </h3>
+                      <div className="text-[10px] text-gray-500 font-mono flex items-center justify-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        <span>PLAYED: {typeof selectedGameActions.playTime === 'number' ? selectedGameActions.playTime.toFixed(1).replace(/\.0$/, "") : selectedGameActions.playTime} HOURS</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions checklist */}
+                  <div className="mt-4 border-t border-b border-white/5 py-3.5 space-y-3 font-mono">
+                    <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">
+                      Выбор действий (Select Actions):
+                    </div>
+                    
+                    {/* Launch Executable option */}
+                    <label className="flex items-center gap-3.5 cursor-none text-gray-300 hover:text-white select-none text-xs font-bold">
+                      <input 
+                        type="checkbox"
+                        checked={executeLaunchGame}
+                        onChange={(e) => setExecuteLaunchGame(e.target.checked)}
+                        className={`rounded border-white/10 bg-black/40 focus:ring-0 focus:ring-offset-0 w-5 h-5 cursor-none ${
+                          selectedGameActions.coverTheme === "purple" 
+                            ? "text-cyber-purple accent-cyber-purple" 
+                            : selectedGameActions.coverTheme === "green" 
+                              ? "text-cyber-green accent-cyber-green" 
+                              : "text-cyber-yellow accent-cyber-yellow"
+                        }`}
+                      />
+                      <span>Запустить игру ({selectedGameActions.name})</span>
+                    </label>
+
+                    {/* URLs auto-open options */}
+                    {selectedGameActions.urls && selectedGameActions.urls.map((url, index) => {
+                      // Get clean domain for label
+                      let domain = url;
+                      try {
+                        domain = new URL(url).hostname.replace("www.", "");
+                      } catch(_) {}
+                      return (
+                        <label key={index} className="flex items-center gap-3.5 cursor-none text-gray-300 hover:text-white select-none text-xs font-bold">
+                          <input 
+                            type="checkbox"
+                            checked={!!executeUrls[index]}
+                            onChange={(e) => {
+                              setExecuteUrls(prev => ({
+                                ...prev,
+                                [index]: e.target.checked
+                              }));
+                            }}
+                            className={`rounded border-white/10 bg-black/40 focus:ring-0 focus:ring-offset-0 w-5 h-5 cursor-none ${
+                              selectedGameActions.coverTheme === "purple" 
+                                ? "text-cyber-purple accent-cyber-purple" 
+                                : selectedGameActions.coverTheme === "green" 
+                                  ? "text-cyber-green accent-cyber-green" 
+                                  : "text-cyber-yellow accent-cyber-yellow"
+                            }`}
+                          />
+                          <span className="truncate max-w-[280px]">Открыть сайт: {domain}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-6 space-y-3">
+                    <button
+                      disabled={!executeLaunchGame && !Object.values(executeUrls).some(Boolean)}
+                      onClick={() => {
+                        const game = selectedGameActions;
+                        const urlsToOpen = (game.urls || []).filter((_, idx) => executeUrls[idx]);
+                        setSelectedGameActions(null);
+                        handleLaunchGame(game, executeLaunchGame, urlsToOpen);
+                      }}
+                      className={`magnetic-target w-full rounded-xl py-3 text-center font-black uppercase tracking-widest cursor-none transition-all flex items-center justify-center gap-2 border ${
+                        (!executeLaunchGame && !Object.values(executeUrls).some(Boolean))
+                          ? "bg-gray-800/10 border-white/5 text-gray-600 cursor-not-allowed opacity-50"
+                          : selectedGameActions.coverTheme === "purple"
+                            ? "bg-cyber-purple/10 border-cyber-purple/40 text-cyber-purple hover:bg-cyber-purple/20 hover:border-cyber-purple shadow-[0_0_15px_rgba(188,19,254,0.15)] hover:shadow-[0_0_25px_rgba(188,19,254,0.3)]"
+                            : selectedGameActions.coverTheme === "green"
+                              ? "bg-cyber-green/10 border-cyber-green/40 text-cyber-green hover:bg-cyber-green/20 hover:border-cyber-green shadow-[0_0_15px_rgba(0,255,102,0.15)] hover:shadow-[0_0_25px_rgba(0,255,102,0.3)]"
+                              : "bg-cyber-yellow/10 border-cyber-yellow/40 text-cyber-yellow hover:bg-cyber-yellow/20 hover:border-cyber-yellow shadow-[0_0_15px_rgba(255,183,0,0.15)] hover:shadow-[0_0_25px_rgba(255,183,0,0.3)]"
+                      }`}
+                    >
+                      <Play className="w-4 h-4 fill-current" />
+                      START (СТАРТ)
+                    </button>
+
+                    <button
+                      onClick={() => setSelectedGameActions(null)}
+                      className="magnetic-target w-full border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase cursor-none transition-all text-xs"
+                    >
+                      CLOSE (ЗАКРЫТЬ)
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Game Manager Launch Console Overlay */}
           <AnimatePresence>
             {launchingGame && (
@@ -2733,78 +3255,285 @@ export default function App() {
                     </button>
                   </div>
 
-                  <form onSubmit={handleAddGame} className="space-y-4 text-xs">
-                    <div className="space-y-1.5">
-                      <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">GAME TITLE (ИМЯ ИГРЫ):</label>
-                      <input
-                        type="text"
-                        required
-                        value={newGameName}
-                        onChange={(e) => setNewGameName(e.target.value)}
-                        placeholder="Arknights: Endfield"
-                        className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">EXECUTABLE PATH (.EXE PATH):</label>
-                      <input
-                        type="text"
-                        required
-                        value={newGamePath}
-                        onChange={(e) => setNewGamePath(e.target.value)}
-                        placeholder="C:\Games\Endfield\Endfield.exe"
-                        className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">CATEGORY (ЖАНР):</label>
-                        <select
-                          value={newGameCategory}
-                          onChange={(e) => setNewGameCategory(e.target.value)}
-                          className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
-                        >
-                          <option value="RPG / Strategy">RPG / Strategy</option>
-                          <option value="Action RPG">Action RPG</option>
-                          <option value="Shooter">Shooter</option>
-                          <option value="Simulation">Simulation</option>
-                          <option value="Action / Adventure">Action / Adventure</option>
-                          <option value="System Tool">System Tool</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">COLOR ACCENT (ЦВЕТ):</label>
-                        <select
-                          value={newGameTheme}
-                          onChange={(e) => setNewGameTheme(e.target.value)}
-                          className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
-                        >
-                          <option value="yellow">Yellow (Желтый)</option>
-                          <option value="purple">Purple (Фиолетовый)</option>
-                          <option value="green">Green (Зеленый)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="pt-4 flex gap-3">
+                  {/* Tab Header */}
+                  {!cropSrc && (
+                    <div className="flex border-b border-white/5 mb-4 font-mono text-xs">
                       <button
                         type="button"
-                        onClick={() => setAddGameOpen(false)}
-                        className="magnetic-target flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase cursor-none transition-all"
+                        onClick={() => setActiveModalTab("parameters")}
+                        className={`flex-1 pb-2 border-b-2 font-bold transition-all text-center uppercase tracking-widest cursor-none ${
+                          activeModalTab === "parameters" 
+                            ? "border-cyber-yellow text-cyber-yellow font-black" 
+                            : "border-transparent text-gray-500 hover:text-gray-300"
+                        }`}
                       >
-                        CANCEL
+                        Параметры
                       </button>
                       <button
-                        type="submit"
-                        className="magnetic-target flex-1 bg-cyber-yellow border border-cyber-yellow text-[#06040c] hover:bg-[#ffc800] rounded-xl py-2.5 text-center font-bold uppercase cursor-none transition-all shadow-[0_0_12px_rgba(255,183,0,0.2)]"
+                        type="button"
+                        onClick={() => setActiveModalTab("functions")}
+                        className={`flex-1 pb-2 border-b-2 font-bold transition-all text-center uppercase tracking-widest cursor-none ${
+                          activeModalTab === "functions" 
+                            ? "border-cyber-yellow text-cyber-yellow font-black" 
+                            : "border-transparent text-gray-500 hover:text-gray-300"
+                        }`}
                       >
-                        {editingGameId ? "SAVE CHANGES" : "ADD SOFTWARE"}
+                        Функции
                       </button>
                     </div>
-                  </form>
+                  )}
+
+                  {cropSrc ? (
+                    // Crop Interface inside the modal
+                    <div className="space-y-5 text-center flex flex-col items-center py-2">
+                      <div className="border-b border-cyber-yellow/20 pb-3 mb-2 w-full flex items-center justify-between">
+                        <span className="text-xs font-black text-cyber-yellow tracking-widest flex items-center gap-1.5 uppercase">
+                          <Crop className="w-4.5 h-4.5 animate-pulse" />
+                          CROP GAME ICON (ОБРЕЗКА ИКОНКИ)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setCropSrc(null)}
+                          className="magnetic-target text-gray-500 hover:text-white text-xs cursor-none"
+                        >
+                          [ ESC ]
+                        </button>
+                      </div>
+
+                      <div 
+                        className="relative w-40 h-40 overflow-hidden border border-cyber-yellow/45 rounded-2xl bg-black/40 select-none cursor-move shadow-[0_0_20px_rgba(255,183,0,0.15)] flex items-center justify-center"
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleMouseUp}
+                      >
+                        <img 
+                          src={cropSrc} 
+                          alt="Crop Preview" 
+                          draggable={false}
+                          style={{
+                            position: 'absolute',
+                            left: '50%',
+                            top: '50%',
+                            width: imageAspect > 1 ? 'auto' : '100%',
+                            height: imageAspect > 1 ? '100%' : 'auto',
+                            maxWidth: 'none',
+                            transform: `translate(-50%, -50%) translate(${dragPos.x}px, ${dragPos.y}px) scale(${zoom})`,
+                            pointerEvents: 'none'
+                          }}
+                        />
+                        {/* Rounded-Square crop boundary overlay */}
+                        <div className="absolute inset-2 border-2 border-dashed border-cyber-yellow rounded-xl pointer-events-none opacity-50 shadow-[0_0_0_9999px_rgba(6,4,12,0.6)]" />
+                      </div>
+
+                      <div className="w-full space-y-1.5 px-4">
+                        <div className="flex justify-between text-[10px] text-gray-500 font-mono">
+                          <span>ZOOM (МАСШТАБ):</span>
+                          <span>{Math.round(zoom * 100)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="1"
+                          max="4"
+                          step="0.05"
+                          value={zoom}
+                          onChange={(e) => setZoom(parseFloat(e.target.value))}
+                          className="w-full h-1 bg-[#050308] border border-cyber-yellow/20 rounded-lg appearance-none cursor-none accent-cyber-yellow"
+                        />
+                      </div>
+
+                      <div className="pt-2 flex gap-3 w-full">
+                        <button
+                          type="button"
+                          onClick={() => setCropSrc(null)}
+                          className="magnetic-target flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase cursor-none transition-all text-xs"
+                        >
+                          CANCEL
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCropSave}
+                          className="magnetic-target flex-1 bg-cyber-yellow border border-cyber-yellow text-[#06040c] hover:bg-[#ffc800] rounded-xl py-2.5 text-center font-bold uppercase cursor-none transition-all text-xs shadow-[0_0_12px_rgba(255,183,0,0.2)]"
+                        >
+                          APPLY (ПРИМЕНИТЬ)
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleAddGame} className="space-y-4 text-xs">
+                      {activeModalTab === "parameters" ? (
+                        /* Parameters Tab */
+                        <div className="space-y-4">
+                          <div className="space-y-1.5">
+                            <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">GAME TITLE (ИМЯ ИГРЫ):</label>
+                            <input
+                              type="text"
+                              required
+                              value={newGameName}
+                              onChange={(e) => setNewGameName(e.target.value)}
+                              placeholder="Arknights: Endfield"
+                              className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">EXECUTABLE PATH (.EXE PATH):</label>
+                            <input
+                              type="text"
+                              required
+                              value={newGamePath}
+                              onChange={(e) => setNewGamePath(e.target.value)}
+                              placeholder="C:\Games\Endfield\Endfield.exe"
+                              className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">CUSTOM ICON (СВОЯ ИКОНКА):</label>
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                      setCropSrc(reader.result);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                                id="custom-icon-upload"
+                                className="hidden"
+                              />
+                              <label
+                                htmlFor="custom-icon-upload"
+                                className="magnetic-target border border-dashed border-cyber-yellow/45 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 rounded px-4 py-2 cursor-none text-[10px] font-bold text-cyber-yellow uppercase tracking-wider transition-all flex-1 text-center"
+                              >
+                                {newGameIcon ? "Change Icon (Сменить)" : "Upload Image (Загрузить)"}
+                              </label>
+                              {newGameIcon && (
+                                <div className="relative">
+                                  <img src={newGameIcon} alt="Preview" className="w-9 h-9 object-contain rounded-lg border border-cyber-yellow/25 bg-[#050308]" />
+                                  <button
+                                    type="button"
+                                    onClick={() => setNewGameIcon(null)}
+                                    className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-[9px] font-bold hover:bg-red-600"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">CATEGORY (ЖАНР):</label>
+                              <select
+                                value={newGameCategory}
+                                onChange={(e) => setNewGameCategory(e.target.value)}
+                                className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
+                              >
+                                <option value="RPG / Strategy">RPG / Strategy</option>
+                                <option value="Action RPG">Action RPG</option>
+                                <option value="Shooter">Shooter</option>
+                                <option value="Simulation">Simulation</option>
+                                <option value="Action / Adventure">Action / Adventure</option>
+                                <option value="System Tool">System Tool</option>
+                              </select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">COLOR ACCENT (ЦВЕТ):</label>
+                              <select
+                                value={newGameTheme}
+                                onChange={(e) => setNewGameTheme(e.target.value)}
+                                className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
+                              >
+                                <option value="yellow">Yellow (Желтый)</option>
+                                <option value="purple">Purple (Фиолетовый)</option>
+                                <option value="green">Green (Зеленый)</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Functions Tab */
+                        <div className="space-y-4">
+                          <div className="space-y-1 font-mono">
+                            <span className="block text-[10px] text-cyber-yellow uppercase tracking-wider font-bold">// AUTO-RUN ACTIONS (АВТОЗАПУСК ДЕЙСТВИЙ)</span>
+                            <p className="text-[9px] text-gray-500 leading-normal">
+                              Укажите URL-ссылки. При запуске игры Noklin Notes автоматически откроет каждую из них в вашем браузере по умолчанию.
+                            </p>
+                          </div>
+
+                          <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
+                            {newGameUrls.length === 0 ? (
+                              <div className="border border-dashed border-cyber-yellow/15 rounded-xl p-5 text-center text-gray-500 font-mono text-[10px]">
+                                Нет настроенных автодействий
+                              </div>
+                            ) : (
+                              newGameUrls.map((url, index) => (
+                                <div key={index} className="flex items-center gap-2">
+                                  <input
+                                    type="url"
+                                    required
+                                    value={url}
+                                    onChange={(e) => {
+                                      const updatedUrls = [...newGameUrls];
+                                      updatedUrls[index] = e.target.value;
+                                      setNewGameUrls(updatedUrls);
+                                    }}
+                                    placeholder="https://map.hoyolab.com/"
+                                    className="flex-1 bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setNewGameUrls(prev => prev.filter((_, i) => i !== index));
+                                    }}
+                                    className="magnetic-target w-8 h-8 rounded border border-red-500/25 bg-red-950/5 hover:bg-red-500/10 text-red-400 hover:text-red-300 hover:border-red-500 flex items-center justify-center cursor-none transition-all shrink-0 font-bold"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setNewGameUrls(prev => [...prev, ""])}
+                            className="magnetic-target w-full border border-dashed border-cyber-yellow/30 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 rounded-xl py-2 cursor-none text-[10px] font-bold text-cyber-yellow uppercase tracking-wider transition-all text-center flex items-center justify-center gap-1.5"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Добавить ссылку (Add URL)
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="pt-4 border-t border-white/5 flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setAddGameOpen(false)}
+                          className="magnetic-target flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase cursor-none transition-all"
+                        >
+                          CANCEL
+                        </button>
+                        <button
+                          type="submit"
+                          className="magnetic-target flex-1 bg-cyber-yellow border border-cyber-yellow text-[#06040c] hover:bg-[#ffc800] rounded-xl py-2.5 text-center font-bold uppercase cursor-none transition-all shadow-[0_0_12px_rgba(255,183,0,0.2)]"
+                        >
+                          {editingGameId ? "SAVE CHANGES" : "ADD SOFTWARE"}
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </motion.div>
               </motion.div>
             )}
@@ -2992,7 +3721,7 @@ export default function App() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.1 }}
-            className="fixed bg-[#0e091a]/95 border border-cyber-yellow/45 text-xs text-gray-300 py-1.5 px-1 rounded-md shadow-[0_10px_30px_rgba(0,0,0,0.7)] z-[9999] min-w-[180px] backdrop-blur-md select-none font-mono"
+            className="fixed bg-[#0e091a]/95 border border-cyber-yellow/45 text-xs text-gray-300 py-2 px-1.5 rounded-md shadow-[0_10px_30px_rgba(0,0,0,0.7)] z-[9999] min-w-[210px] backdrop-blur-md select-none font-mono"
             style={{
               left: contextMenu.x,
               top: contextMenu.y,
@@ -3000,23 +3729,78 @@ export default function App() {
             onClick={(e) => e.stopPropagation()}
             onContextMenu={(e) => e.preventDefault()}
           >
-            <div className="px-3 py-1 text-[9px] text-gray-500 uppercase tracking-wider border-b border-cyber-yellow/15 mb-1.5 select-none">
+            <div className="px-3.5 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-cyber-yellow/15 mb-2 select-none">
               Управление ПО
             </div>
             <button
               onClick={() => handleGameContextAction("edit")}
-              className="magnetic-target w-full text-left py-2 px-3 hover:bg-cyber-yellow/10 hover:text-cyber-yellow rounded flex items-center gap-2 cursor-none transition-colors"
+              className="magnetic-target w-full text-left py-3 px-4 hover:bg-cyber-yellow/10 hover:text-cyber-yellow rounded flex items-center gap-3 cursor-none transition-colors font-bold"
             >
-              <Settings className="w-3.5 h-3.5 text-cyber-yellow" />
+              <Settings className="w-4.5 h-4.5 text-cyber-yellow" />
               <span>Изменить параметры</span>
             </button>
             <button
               onClick={() => handleGameContextAction("delete")}
-              className="magnetic-target w-full text-left py-2 px-3 hover:bg-red-500/10 text-red-400 hover:text-red-300 rounded flex items-center gap-2 cursor-none transition-colors font-semibold"
+              className="magnetic-target w-full text-left py-3 px-4 hover:bg-red-500/10 text-red-400 hover:text-red-300 rounded flex items-center gap-3 cursor-none transition-colors font-black"
             >
-              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+              <Trash2 className="w-4.5 h-4.5 text-red-500" />
               <span>Удалить программу</span>
             </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Deletion Confirmation Modal */}
+      <AnimatePresence>
+        {gameToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-md z-[99999] flex items-center justify-center p-6 select-none font-mono"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="w-full max-w-sm bg-cyber-sidebar border border-red-500/50 rounded-2xl p-6 shadow-[0_15px_40px_rgba(239,68,68,0.15)] relative text-left"
+            >
+              <div className="flex items-center gap-2 border-b border-red-500/20 pb-3 mb-4 text-red-500">
+                <ShieldAlert className="w-5 h-5 text-red-500 animate-pulse" />
+                <span className="text-xs font-black uppercase tracking-widest">
+                  ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ
+                </span>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  Вы действительно хотите удалить <span className="text-white font-bold">{gameToDelete.name}</span> из лаунчера? 
+                </p>
+                <p className="text-[10px] text-gray-500 leading-normal border-l-2 border-red-500/30 pl-3">
+                  Вся статистика запущенных сессий и общее время игры ({typeof gameToDelete.playTime === 'number' ? gameToDelete.playTime.toFixed(1).replace(/\.0$/, "") : gameToDelete.playTime} ч.) будут безвозвратно удалены.
+                </p>
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setGameToDelete(null)}
+                  className="magnetic-target flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase cursor-none transition-all text-xs"
+                >
+                  ОТМЕНА
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDeleteGame(gameToDelete.id);
+                    setGameToDelete(null);
+                  }}
+                  className="magnetic-target flex-1 bg-red-950/20 border border-red-500/50 text-red-400 hover:bg-red-500/20 hover:border-red-500 rounded-xl py-2.5 text-center font-bold uppercase cursor-none transition-all text-xs shadow-[0_0_15px_rgba(239,68,68,0.15)]"
+                >
+                  УДАЛИТЬ
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

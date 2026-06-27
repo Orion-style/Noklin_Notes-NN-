@@ -293,8 +293,100 @@ fn launch_game(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn is_game_running(path: String) -> bool {
+    let path_buf = std::path::PathBuf::from(&path);
+    let exe_name = match path_buf.file_name().and_then(|n| n.to_str()) {
+        Some(name) => name,
+        None => return false,
+    };
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+        let output = Command::new("tasklist")
+            .args(&["/NH", "/FI", &format!("IMAGENAME eq {}", exe_name)])
+            .output();
+        if let Ok(out) = output {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            stdout.contains(exe_name)
+        } else {
+            false
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        false
+    }
+}
+
+#[tauri::command]
+fn get_game_icon(path: String) -> Result<String, String> {
+    let path_buf = std::path::Path::new(&path);
+    if !path_buf.exists() {
+        return Err("Указанный файл не существует.".to_string());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+        
+        let script = format!(
+            "Add-Type -AssemblyName System.Drawing; \
+             $icon = [System.Drawing.Icon]::ExtractAssociatedIcon('{}'); \
+             $bmp = $icon.ToBitmap(); \
+             $ms = New-Object System.IO.MemoryStream; \
+             $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png); \
+             $bytes = $ms.ToArray(); \
+             $b64 = [Convert]::ToBase64String($bytes); \
+             Write-Host -NoNewline $b64",
+            path_buf.to_str().unwrap_or("").replace('\'', "''")
+        );
+
+        let output = Command::new("powershell")
+            .args(&["-NoProfile", "-Command", &script])
+            .output()
+            .map_err(|e| format!("Ошибка запуска PowerShell: {}", e))?;
+
+        if output.status.success() {
+            let base64_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if base64_str.is_empty() {
+                return Err("Не удалось получить иконку приложения (пустой вывод).".to_string());
+            }
+            Ok(format!("data:image/png;base64,{}", base64_str))
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            Err(format!("Ошибка PowerShell: {}", stderr))
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err("Получение иконки поддерживается только на ОС Windows.".to_string())
+    }
+}
+
+#[tauri::command]
 fn exit_app(app: tauri::AppHandle) {
     app.exit(0);
+}
+
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+        Command::new("cmd")
+            .args(&["/C", "start", "", &url])
+            .spawn()
+            .map_err(|e| format!("Ошибка запуска процесса: {}", e))?;
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        return Err("Открытие ссылок поддерживается только на ОС Windows.".to_string());
+    }
+
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -314,7 +406,10 @@ pub fn run() {
             rename_file,
             show_in_explorer,
             create_directory,
-            launch_game
+            launch_game,
+            is_game_running,
+            get_game_icon,
+            open_url
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
