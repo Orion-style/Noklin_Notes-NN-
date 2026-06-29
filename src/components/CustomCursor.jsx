@@ -135,7 +135,7 @@ export default function CustomCursor({ isSleeping = false }) {
 
       // Check if current snapped element is still in DOM and visible
       const snapped = magneticTargetRef.current;
-      if (snapped) {
+      if (snapped && snapped.element) {
         const isConnected = document.body.contains(snapped.element);
         const rect = isConnected ? snapped.element.getBoundingClientRect() : null;
         let isVisible = false;
@@ -175,6 +175,9 @@ export default function CustomCursor({ isSleeping = false }) {
           rafId = requestAnimationFrame(updatePhysics);
           return;
         }
+      } else if (snapped) {
+        magneticTargetRef.current = null;
+        setMagneticTarget(null);
       }
 
       // Calculate position delta
@@ -308,10 +311,10 @@ export default function CustomCursor({ isSleeping = false }) {
 
     const handleScroll = () => {
       const snapped = magneticTargetRef.current;
-      if (snapped) {
+      if (snapped && snapped.element) {
         const rect = snapped.element.getBoundingClientRect();
         setMagneticTarget(prev => {
-          if (!prev) return null;
+          if (!prev || !prev.element) return null;
           const next = { ...prev, rect };
           magneticTargetRef.current = next;
           return next;

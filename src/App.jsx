@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Plus, Folder, FolderOpen, FileText, Cpu, Terminal, Layers, Link, ShieldAlert, Check, HelpCircle, ChevronLeft, ChevronRight, Moon, LogOut, Bold, Italic, Highlighter, Heading1, Heading2, CheckSquare, Code, FilePlus, FolderPlus, Compass, Database, Copy, CornerUpRight, Search, Bookmark, Clipboard, Eye, Edit2, Trash2, Gamepad2, Swords, Play, Sparkles, Clock, Gamepad, Settings, Mail, Bell, Activity, HardDrive, Crop } from "lucide-react";
+import { X, RefreshCw, BarChart2, Grid, Plus, Folder, FolderOpen, FileText, Cpu, Terminal, Layers, Link, ShieldAlert, Check, HelpCircle, ChevronLeft, ChevronRight, Moon, LogOut, Bold, Italic, Highlighter, Heading1, Heading2, CheckSquare, Code, FilePlus, FolderPlus, Compass, Database, Copy, CornerUpRight, Search, Bookmark, Clipboard, Eye, Edit2, Trash2, Gamepad2, Swords, Play, Sparkles, Clock, Gamepad, Settings, Mail, Bell, Activity, HardDrive, Crop } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import CustomCursor from "./components/CustomCursor";
 import InteractiveBackground from "./components/InteractiveBackground";
@@ -335,6 +335,263 @@ export default function App() {
   const [selectedGameActions, setSelectedGameActions] = useState(null);
   const [activeModalTab, setActiveModalTab] = useState("parameters");
   const [newGameUrls, setNewGameUrls] = useState([]);
+
+  // Activity tracking and custom news states
+  const [selectedGameId, setSelectedGameId] = useState(null);
+  const [gameActivities, setGameActivities] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cyber_game_activities");
+      return saved ? JSON.parse(saved) : {};
+    } catch (_) {
+      return {};
+    }
+  });
+  const [gameNews, setGameNews] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cyber_game_news");
+      return saved ? JSON.parse(saved) : {};
+    } catch (_) {
+      return {};
+    }
+  });
+
+  const [obsidianNewsPath, setObsidianNewsPath] = useState(() => {
+    return localStorage.getItem("obsidian_news_path") || "";
+  });
+  const [isNewsPathPromptOpen, setIsNewsPathPromptOpen] = useState(false);
+  const [selectedNewsPost, setSelectedNewsPost] = useState(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const [chartType, setChartType] = useState(() => {
+    return localStorage.getItem("cyber_chart_type") || "bar";
+  });
+  const [chartPeriod, setChartPeriod] = useState(() => {
+    return localStorage.getItem("cyber_chart_period") || "week";
+  });
+
+  const [newActHours, setNewActHours] = useState("");
+  const [newActNotes, setNewActNotes] = useState("");
+  const [newActDate, setNewActDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  React.useEffect(() => {
+    localStorage.setItem("cyber_game_activities", JSON.stringify(gameActivities));
+  }, [gameActivities]);
+
+  React.useEffect(() => {
+    localStorage.setItem("cyber_game_news", JSON.stringify(gameNews));
+  }, [gameNews]);
+
+  React.useEffect(() => {
+    localStorage.setItem("obsidian_news_path", obsidianNewsPath);
+  }, [obsidianNewsPath]);
+
+  React.useEffect(() => {
+    localStorage.setItem("cyber_chart_type", chartType);
+  }, [chartType]);
+
+  React.useEffect(() => {
+    localStorage.setItem("cyber_chart_period", chartPeriod);
+  }, [chartPeriod]);
+
+  React.useEffect(() => {
+    if (selectedGameId && !games.some(g => g.id === selectedGameId)) {
+      setSelectedGameId(null);
+    }
+    setSelectedNewsPost(null);
+  }, [games, selectedGameId]);
+
+  const handleOpenObsidian = () => {
+    if (!obsidianNewsPath.trim()) {
+      setIsNewsPathPromptOpen(true);
+    } else {
+      const pathParam = obsidianNewsPath ? `?path=${encodeURIComponent(obsidianNewsPath)}` : "";
+      invoke("open_url", { url: `obsidian://open${pathParam}` })
+        .catch(err => console.error("Failed to open Obsidian:", err));
+    }
+  };
+
+  const handleSyncObsidianNews = async () => {
+    if (!obsidianNewsPath || !selectedGameId) return;
+    setIsSyncing(true);
+    try {
+      const filesList = await invoke("read_vault_files", { path: obsidianNewsPath });
+      const newPosts = [];
+      
+      for (const relPath of filesList) {
+        if (relPath.endsWith(".md")) {
+          try {
+            const content = await invoke("read_file_content", {
+              vaultPath: obsidianNewsPath,
+              relPath: relPath
+            });
+            
+            const parts = relPath.split('/');
+            const fileName = parts[parts.length - 1].replace(/\.md$/i, "");
+            
+            let title = fileName;
+            let body = content;
+            
+            const lines = content.split("\n");
+            if (lines.length > 0 && lines[0].startsWith("# ")) {
+              title = lines[0].replace(/^#\s+/, "").trim();
+              body = lines.slice(1).join("\n").trim();
+            }
+
+            newPosts.push({
+              id: relPath,
+              title: title,
+              text: body,
+              imageUrl: "",
+              date: "OBSIDIAN NOTE"
+            });
+          } catch (err) {
+            console.error("Failed to read file:", relPath, err);
+          }
+        }
+      }
+
+      setGameNews(prev => {
+        const current = prev[selectedGameId] || [];
+        const manualPosts = current.filter(p => !p.id.endsWith(".md"));
+        return {
+          ...prev,
+          [selectedGameId]: [...newPosts, ...manualPosts]
+        };
+      });
+    } catch (err) {
+      console.error("Failed to scan Obsidian files:", err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const getChartData = () => {
+    const logs = gameActivities[selectedGameId] || [];
+    const hoursByDate = {};
+    logs.forEach(log => {
+      const d = log.date;
+      hoursByDate[d] = (hoursByDate[d] || 0) + log.hours;
+    });
+
+    const now = new Date();
+
+    if (chartPeriod === "week") {
+      const data = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(now.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        const label = d.toLocaleDateString("ru-RU", { weekday: "short" });
+        data.push({
+          date: dateStr,
+          label: label.toUpperCase(),
+          hours: hoursByDate[dateStr] || 0
+        });
+      }
+      return data;
+    } else if (chartPeriod === "month") {
+      const data = [];
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(now.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        const label = d.toLocaleDateString("ru-RU", { day: "numeric", month: "numeric" });
+        data.push({
+          date: dateStr,
+          label: label,
+          hours: hoursByDate[dateStr] || 0
+        });
+      }
+      return data;
+    } else {
+      if (chartType === "github") {
+        const data = [];
+        for (let i = 364; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(now.getDate() - i);
+          const dateStr = d.toISOString().split('T')[0];
+          data.push({
+            date: dateStr,
+            hours: hoursByDate[dateStr] || 0
+          });
+        }
+        return data;
+      } else {
+        const data = [];
+        for (let i = 11; i >= 0; i--) {
+          const d = new Date();
+          d.setMonth(now.getMonth() - i);
+          const year = d.getFullYear();
+          const month = d.getMonth();
+          const label = d.toLocaleDateString("ru-RU", { month: "short" }).toUpperCase();
+          
+          let monthHours = 0;
+          logs.forEach(log => {
+             const logDate = new Date(log.date);
+             if (logDate.getFullYear() === year && logDate.getMonth() === month) {
+               monthHours += log.hours;
+             }
+          });
+
+          data.push({
+            label: label,
+            hours: monthHours
+          });
+        }
+        return data;
+      }
+    }
+  };
+
+  // Automatic news scanning from Obsidian folder path
+  React.useEffect(() => {
+    handleSyncObsidianNews();
+  }, [selectedGameId, obsidianNewsPath]);
+
+  // Effect to scan all news posts and resolve images using obsidianNewsPath
+  React.useEffect(() => {
+    if (!selectedGameId || !obsidianNewsPath) return;
+    const posts = gameNews[selectedGameId] || [];
+    const imagesToResolve = [];
+    const regex = /!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g;
+    
+    posts.forEach(post => {
+      let match;
+      while ((match = regex.exec(post.text)) !== null) {
+        const imageName = match[1].trim();
+        if (!resolvedRef.current[imageName] && !imagesToResolve.includes(imageName)) {
+          imagesToResolve.push(imageName);
+        }
+      }
+    });
+
+    if (imagesToResolve.length === 0) return;
+
+    const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
+    if (isTauri) {
+      const resolveImages = async () => {
+        for (const imgName of imagesToResolve) {
+          try {
+            const dataUrl = await invoke("read_image_base64", {
+              vaultPath: obsidianNewsPath,
+              filename: imgName
+            });
+            setResolvedImageUrls(prev => ({
+              ...prev,
+              [imgName]: dataUrl
+            }));
+          } catch (err) {
+            console.error(`Failed to resolve news image ${imgName}:`, err);
+            setResolvedImageUrls(prev => ({
+              ...prev,
+              [imgName]: "failed"
+          }));
+          }
+        }
+      };
+      resolveImages();
+    }
+  }, [gameNews, selectedGameId, obsidianNewsPath]);
 
   // Launch action selections
   const [executeLaunchGame, setExecuteLaunchGame] = useState(true);
@@ -2028,7 +2285,7 @@ export default function App() {
                 <div 
                   onMouseEnter={(e) => showGlobalTooltip(e, activeMode === "game_manager" ? "CYBER-GAMES TERMINAL" : "CYBER-NOTES TERMINAL", activeMode === "game_manager" ? "yellow" : "green")}
                   onMouseLeave={hideGlobalTooltip}
-                  className={`flex items-center gap-3 mb-8 shrink-0 ${sidebarCollapsed ? "justify-center" : ""}`}
+                  onClick={() => { if (activeMode === "game_manager") { setSelectedGameId(null); } }} className={`flex items-center gap-3 mb-8 shrink-0 cursor-pointer ${sidebarCollapsed ? "justify-center" : ""}`}
                 >
                   <div className={`w-10 h-10 rounded border flex items-center justify-center shrink-0 transition-all ${
                     activeMode === "game_manager" 
@@ -2070,21 +2327,38 @@ export default function App() {
                       </div>
                       
                       <div className="flex-1 w-full overflow-y-auto space-y-3 flex flex-col items-center pl-2 pr-1 pb-2">
+                        {/* Overview switcher button */}
+                        <button
+                          onClick={() => setSelectedGameId(null)}
+                          onMouseEnter={(e) => showGlobalTooltip(e, "ОБЗОР (ВСЕ ИГРЫ)", "yellow")}
+                          onMouseLeave={hideGlobalTooltip}
+                          className={`magnetic-target w-8 h-8 rounded border flex items-center justify-center cursor-none transition-all duration-300 shrink-0 ${
+                            selectedGameId === null
+                              ? "border-cyber-yellow bg-cyber-yellow/15 shadow-[0_0_8px_rgba(255,183,0,0.3)] text-cyber-yellow"
+                              : "border-cyber-yellow/20 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 text-cyber-yellow"
+                          }`}
+                        >
+                          <Compass className="w-4 h-4" />
+                        </button>
+                        
+                        <div className="w-6 h-[1px] bg-cyber-yellow/20 my-1 shrink-0" />
+
                         {games.map(game => (
                           <button
                             key={game.id}
-                            onClick={() => handleLaunchGame(game)}
-                            onMouseEnter={(e) => showGlobalTooltip(e, `ЗАПУСТИТЬ: ${game.name}`, "yellow")}
+                            onClick={() => setSelectedGameId(selectedGameId === game.id ? null : game.id)}
+                            onMouseEnter={(e) => showGlobalTooltip(e, `ОТКРЫТЬ: ${game.name}`, "yellow")}
                             onMouseLeave={hideGlobalTooltip}
-                            className="magnetic-target w-8 h-8 rounded border border-cyber-yellow/20 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 flex items-center justify-center text-cyber-yellow cursor-none transition-all duration-300 relative group shrink-0 overflow-hidden"
+                            className={`magnetic-target w-8 h-8 rounded border flex items-center justify-center cursor-none transition-all duration-300 relative group shrink-0 overflow-hidden ${
+                              selectedGameId === game.id
+                                ? "border-cyber-yellow bg-cyber-yellow/15 shadow-[0_0_8px_rgba(255,183,0,0.3)] text-cyber-yellow"
+                                : "border-cyber-yellow/20 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 text-cyber-yellow"
+                            }`}
                           >
                             {game.icon ? (
-                              <>
-                                <img src={game.icon} alt="" className="w-5 h-5 object-contain rounded group-hover:scale-0 transition-transform duration-250 absolute" />
-                                <Play className="w-3.5 h-3.5 scale-0 group-hover:scale-100 transition-transform duration-250 absolute" />
-                              </>
+                              <img src={game.icon} alt="" className="w-5 h-5 object-contain rounded" />
                             ) : (
-                              <Play className="w-3.5 h-3.5" />
+                              <Gamepad2 className="w-4 h-4" />
                             )}
                           </button>
                         ))}
@@ -2127,7 +2401,7 @@ export default function App() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">SECTOR STATUS:</span>
-                          <span className="text-cyber-green font-bold">SECURED (100%)</span>
+                          <span className="text-cyber-green font-bold">TRACKING ACTIVE</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">T-ENGINE:</span>
@@ -2137,6 +2411,22 @@ export default function App() {
 
                       {/* Games list in sidebar */}
                       <div className="flex-1 overflow-y-auto space-y-2 pr-1 pb-2">
+                        {/* Overview selector */}
+                        <div
+                          onClick={() => setSelectedGameId(null)}
+                          className={`border rounded p-2 flex items-center gap-2.5 transition-colors group cursor-none ${
+                            selectedGameId === null
+                              ? "border-cyber-yellow bg-[#ffb700]/10 shadow-[0_0_10px_rgba(255,183,0,0.15)] text-white"
+                              : "border-cyber-yellow/15 bg-transparent hover:border-cyber-yellow/45 text-gray-400 hover:text-white"
+                          }`}
+                        >
+                          <Compass className="w-4 h-4 text-cyber-yellow shrink-0" />
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-mono text-xs font-bold truncate">ОБЗОР ВСЕХ ИГР</span>
+                            <span className="text-[9px] text-gray-500 font-mono mt-0.5 uppercase tracking-wider">Все модули</span>
+                          </div>
+                        </div>
+
                         {games.length === 0 ? (
                           <div className="h-32 border border-dashed border-cyber-yellow/10 rounded flex flex-col items-center justify-center text-center p-4">
                             <Gamepad className="w-8 h-8 text-gray-600 mb-2" />
@@ -2146,8 +2436,13 @@ export default function App() {
                           games.map(game => (
                             <div 
                               key={game.id}
+                              onClick={() => setSelectedGameId(selectedGameId === game.id ? null : game.id)}
                               onContextMenu={(e) => handleGameContextMenu(e, game)}
-                              className="border border-cyber-yellow/15 bg-[#ffb700]/5 rounded p-2.5 flex items-center justify-between hover:border-cyber-yellow/45 transition-colors group cursor-none"
+                              className={`border rounded p-2 flex items-center justify-between transition-colors group cursor-none ${
+                                selectedGameId === game.id
+                                  ? "border-cyber-yellow bg-[#ffb700]/10 shadow-[0_0_10px_rgba(255,183,0,0.15)]"
+                                  : "border-cyber-yellow/15 bg-[#ffb700]/5 hover:border-cyber-yellow/45"
+                              }`}
                             >
                               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                 {game.icon ? (
@@ -2160,13 +2455,7 @@ export default function App() {
                                   <span className="text-[9px] text-gray-500 font-mono mt-0.5 uppercase tracking-wider">{game.category}</span>
                                 </div>
                               </div>
-                              <button
-                                onClick={() => handleLaunchGame(game)}
-                                className="magnetic-target w-7 h-7 rounded border border-cyber-yellow/30 bg-cyber-yellow/10 text-cyber-yellow hover:text-white hover:bg-cyber-yellow hover:border-cyber-yellow/65 flex items-center justify-center shrink-0 cursor-none transition-all shadow-[0_0_6px_rgba(255,183,0,0.15)]"
-                                title={`Запустить ${game.name}`}
-                              >
-                                <Play className="w-3.5 h-3.5 fill-current" />
-                              </button>
+                              <ChevronRight className="w-4 h-4 text-cyber-yellow/40 group-hover:text-cyber-yellow group-hover:translate-x-0.5 transition-all shrink-0" />
                             </div>
                           ))
                         )}
@@ -2726,171 +3015,714 @@ export default function App() {
                       </div>
                     </motion.div>
                   ) : activeMode === "game_manager" ? (
-                    // Game Manager View
-                    <motion.div
-                      key="game-manager-view"
-                      initial={{ opacity: 0, y: 15 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -15 }}
-                      transition={{ duration: 0.25 }}
-                      className="w-full h-full flex flex-col lg:flex-row gap-6 max-w-6xl z-10 select-none text-left"
-                    >
-                      {/* Left: Games Grid */}
-                      <div className="flex-1 flex flex-col gap-4 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <div className="font-mono text-xs text-cyber-yellow uppercase tracking-widest flex items-center gap-2">
-                            <Sparkles className="w-3.5 h-3.5 text-cyber-yellow animate-pulse" />
-                            AVAILABLE SOFTWARE SYSTEMS
+                    selectedGameId !== null ? (
+                      (() => {
+                        const activeGame = games.find(g => g.id === selectedGameId);
+                        if (!activeGame) return null;
+
+                        const themeColor = activeGame.coverTheme === "purple"
+                          ? "text-cyber-purple"
+                          : activeGame.coverTheme === "green"
+                            ? "text-cyber-green"
+                            : "text-cyber-yellow";
+
+                        const themeBorder = activeGame.coverTheme === "purple"
+                          ? "border-cyber-purple/20"
+                          : activeGame.coverTheme === "green"
+                            ? "border-cyber-green/20"
+                            : "border-cyber-yellow/20";
+
+                        const themeGlow = activeGame.coverTheme === "purple"
+                          ? "shadow-[0_0_15px_rgba(188,19,254,0.15)] border-cyber-purple/45"
+                          : activeGame.coverTheme === "green"
+                            ? "shadow-[0_0_15px_rgba(0,255,102,0.15)] border-cyber-green/45"
+                            : "shadow-[0_0_15px_rgba(255,183,0,0.15)] border-cyber-yellow/45";
+
+                        const themeBadge = activeGame.coverTheme === "purple"
+                          ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/5"
+                          : activeGame.coverTheme === "green"
+                            ? "text-cyber-green border-cyber-green/30 bg-cyber-green/5"
+                            : "text-cyber-yellow border-cyber-yellow/30 bg-cyber-yellow/5";
+
+                        const gameLogs = gameActivities[selectedGameId] || [];
+                        const gamePosts = gameNews[selectedGameId] || [];
+
+                        return (
+                          <motion.div
+                            key={`game-detail-${selectedGameId}`}
+                            initial={{ opacity: 0, y: 15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -15 }}
+                            transition={{ duration: 0.25 }}
+                            className="w-full h-full flex flex-col gap-5 max-w-6xl z-10 text-left overflow-y-auto pr-1 font-mono pb-8"
+                          >
+                            {/* Header Section */}
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4 shrink-0">
+                              <div className="flex items-center gap-4">
+                                <button
+                                  onClick={() => setSelectedGameId(null)}
+                                  className="magnetic-target flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:border-cyber-yellow hover:text-cyber-yellow bg-white/5 hover:bg-cyber-yellow/5 transition-all text-xs cursor-none"
+                                >
+                                  <ChevronLeft className="w-4 h-4" />
+                                  <span>НАЗАД К СПИСКУ</span>
+                                </button>
+                                
+                                <div className="h-6 w-[1px] bg-white/10" />
+
+                                <div className="flex items-center gap-3">
+                                  {activeGame.icon ? (
+                                    <img src={activeGame.icon} alt="" className="w-10 h-10 object-contain rounded-lg border border-white/10" />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-500">
+                                      <Gamepad2 className="w-6 h-6" />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <h2 className="text-xl font-black text-white uppercase tracking-wide truncate max-w-[280px]">
+                                        {activeGame.name}
+                                      </h2>
+                                      <span className={`text-[8px] uppercase tracking-wider px-2 py-0.5 rounded border inline-block ${themeBadge}`}>
+                                        {activeGame.category}
+                                      </span>
+                                    </div>
+                                    <p className="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">
+                                      DIAGNOSTIC STATUS: <span className="text-cyber-green font-bold">ACTIVE</span> // SYSTEM ID: {activeGame.id}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2.5">
+                                <button
+                                  onClick={() => handleEditGameClick(activeGame)}
+                                  className="magnetic-target flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-cyber-yellow/10 text-cyber-yellow transition-all text-xs cursor-none"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                  <span>ИЗМЕНИТЬ</span>
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setGameToDelete(activeGame);
+                                  }}
+                                  className="magnetic-target flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/20 hover:border-red-500 hover:bg-red-500/10 text-red-400 transition-all text-xs cursor-none"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>УДАЛИТЬ</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* In Development Warning Banner */}
+                            <div className="bg-[#ff0055]/5 border border-red-500/20 rounded-xl p-3.5 flex items-center gap-4 relative overflow-hidden select-none shrink-0">
+                              {/* Glowing corner overlay */}
+                              <div className="absolute top-0 right-0 w-16 h-16 bg-red-500/5 blur-xl rounded-full" />
+                              <div className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/35 flex items-center justify-center text-red-500 shrink-0 animate-pulse">
+                                <ShieldAlert className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-black text-red-400 uppercase tracking-wider">
+                                  MODULE STATUS: DEVELOPMENT IN PROGRESS // В РАЗРАБОТКЕ
+                                </h4>
+                                <p className="text-[10px] text-gray-500 mt-0.5 uppercase tracking-wide leading-relaxed">
+                                  Запуск процессов временно перенаправлен на внутренние системы логирования. Данный сектор функционирует в режиме отладки и накопления данных.
+                                </p>
+                              </div>
+                            </div>
+
+                            {selectedNewsPost ? (
+                              /* News Post Full Tab View (вкладка) */
+                              <motion.div
+                                key={`news-detail-${selectedNewsPost.id}`}
+                                initial={{ opacity: 0, y: 15 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -15 }}
+                                transition={{ duration: 0.25 }}
+                                className="bg-[#06040c]/60 border border-cyber-yellow/20 rounded-xl p-6 flex flex-col gap-4 shrink-0 min-h-[400px]"
+                              >
+                                <div className="flex justify-between items-center border-b border-cyber-yellow/20 pb-3 select-none">
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => setSelectedNewsPost(null)}
+                                      className="magnetic-target flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:border-cyber-yellow hover:text-cyber-yellow bg-white/5 hover:bg-cyber-yellow/5 transition-all text-xs cursor-none"
+                                    >
+                                      <ChevronLeft className="w-4 h-4" />
+                                      <span>НАЗАД К СПИСКУ</span>
+                                    </button>
+                                    <div className="h-6 w-[1px] bg-white/10 mx-1" />
+                                    <span className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">{selectedNewsPost.date}</span>
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      setGameNews(prev => {
+                                        const current = prev[selectedGameId] || [];
+                                        return {
+                                          ...prev,
+                                          [selectedGameId]: current.filter(item => item.id !== selectedNewsPost.id)
+                                        };
+                                      });
+                                      setSelectedNewsPost(null);
+                                    }}
+                                    className="magnetic-target text-red-500 hover:text-red-400 p-1.5 border border-transparent hover:border-red-500/20 hover:bg-red-500/10 rounded-lg cursor-none transition-all flex items-center justify-center shrink-0"
+                                    title="Удалить запись"
+                                  >
+                                    <Trash2 className="w-4.5 h-4.5" />
+                                  </button>
+                                </div>
+
+                                <div className="overflow-y-auto space-y-4 pr-1 select-text h-[350px]">
+                                  <h2 className="text-lg font-black text-white uppercase tracking-wider">{selectedNewsPost.title}</h2>
+                                  
+                                  <div className="text-xs text-gray-300 leading-relaxed font-sans mt-2 pr-1">
+                                    {parseMarkdown(selectedNewsPost.text)}
+                                  </div>
+
+                                  {selectedNewsPost.imageUrl && (
+                                    <div className="border border-white/5 rounded-lg overflow-hidden bg-black/50 max-w-2xl mt-4">
+                                      <img
+                                        src={selectedNewsPost.imageUrl}
+                                        alt="Broadcast content"
+                                        className="w-full max-h-[350px] object-contain block select-all cursor-zoom-in"
+                                        title="Полный размер"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            ) : (
+                              /* Two Column Workspace Layout */
+                              <div className="flex flex-col lg:flex-row gap-5 shrink-0">
+                                {/* Left: Activity Tracker (Convenient Tracker) */}
+                                <div className="w-full lg:w-[40%] flex flex-col gap-4 h-[520px] shrink-0">
+                                  <div className="bg-[#06040c]/60 border border-white/5 rounded-xl p-4 flex flex-col gap-3 shrink-0">
+                                    <div className="text-xs uppercase tracking-widest text-cyber-yellow border-b border-white/5 pb-1.5 font-bold">// ACTIVITY MONITOR</div>
+                                    
+                                    {/* Playtime stats display */}
+                                    <div className="flex items-center justify-between bg-black/40 border border-white/5 rounded-lg p-2.5">
+                                      <div className="flex flex-col">
+                                        <span className="text-[9px] text-gray-500 uppercase tracking-wider">Общее время трекера:</span>
+                                        <span className="text-xl font-black text-white tracking-wider mt-0.5">
+                                          {(typeof activeGame.playTime === 'number' ? activeGame.playTime : 0).toFixed(1).replace(/\.0$/, "")}h
+                                        </span>
+                                      </div>
+                                      <div className="w-9 h-9 rounded-full bg-cyber-yellow/10 border border-cyber-yellow/20 flex items-center justify-center text-cyber-yellow animate-spin" style={{ animationDuration: '30s' }}>
+                                        <Clock className="w-4 h-4" />
+                                      </div>
+                                    </div>
+
+                                    {/* Log session inline form */}
+                                    <div className="space-y-2.5">
+                                      <div className="grid grid-cols-2 gap-2">
+                                        <div className="flex flex-col gap-1">
+                                          <span className="text-[8px] text-gray-500 font-mono">ВРЕМЯ (ЧАСЫ):</span>
+                                          <div className="relative flex items-center w-full">
+                                            <input
+                                              type="number"
+                                              step="0.1"
+                                              placeholder="Напр. 1.5"
+                                              value={newActHours}
+                                              onChange={(e) => setNewActHours(e.target.value)}
+                                              className="bg-black/50 border border-white/10 rounded px-2.5 py-1 pr-7 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-cyber-yellow transition-colors cursor-text w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            />
+                                            <div className="absolute right-1.5 flex flex-col select-none">
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  const val = parseFloat(newActHours) || 0;
+                                                  setNewActHours((val + 0.1).toFixed(1).replace(/\.0$/, ""));
+                                                }}
+                                                className="magnetic-target p-0.5 text-gray-500 hover:text-cyber-yellow transition-colors hover:bg-white/5 rounded cursor-none flex items-center justify-center"
+                                              >
+                                                <ChevronUp className="w-2.5 h-2.5" />
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  const val = parseFloat(newActHours) || 0;
+                                                  setNewActHours(Math.max(0, val - 0.1).toFixed(1).replace(/\.0$/, ""));
+                                                }}
+                                                className="magnetic-target p-0.5 text-gray-500 hover:text-cyber-yellow transition-colors hover:bg-white/5 rounded cursor-none flex items-center justify-center"
+                                              >
+                                                <ChevronDown className="w-2.5 h-2.5" />
+                                              </button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                          <span className="text-[8px] text-gray-500 font-mono">ДАТА:</span>
+                                          <input
+                                            type="date"
+                                            value={newActDate}
+                                            onChange={(e) => setNewActDate(e.target.value)}
+                                            className="bg-black/50 border border-white/10 rounded px-2 py-0.5 text-[9px] text-white focus:outline-none focus:border-cyber-yellow transition-colors cursor-text"
+                                          />
+                                        </div>
+                                      </div>
+                                      <div className="flex flex-col gap-1">
+                                        <span className="text-[8px] text-gray-500 font-mono">ЗАМЕТКА:</span>
+                                        <input
+                                          type="text"
+                                          placeholder="Прошел босса, качал лвл"
+                                          value={newActNotes}
+                                          onChange={(e) => setNewActNotes(e.target.value)}
+                                          className="bg-black/50 border border-white/10 rounded px-2.5 py-1 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-cyber-yellow transition-colors cursor-text"
+                                        />
+                                      </div>
+                                      <button
+                                        onClick={() => {
+                                          const hours = parseFloat(newActHours);
+                                          if (isNaN(hours) || hours <= 0) return;
+                                          
+                                          const newSession = {
+                                            id: Date.now().toString(),
+                                            hours: hours,
+                                            notes: newActNotes || "Игровая сессия",
+                                            date: newActDate || new Date().toISOString().split('T')[0]
+                                          };
+
+                                          // Update logs
+                                          setGameActivities(prev => {
+                                            const current = prev[selectedGameId] || [];
+                                            return {
+                                              ...prev,
+                                              [selectedGameId]: [newSession, ...current]
+                                            };
+                                          });
+
+                                          // Update total playtime in games state
+                                          setGames(prev => prev.map(g => {
+                                            if (g.id === selectedGameId) {
+                                              const oldTime = typeof g.playTime === 'number' ? g.playTime : 0;
+                                              return {
+                                                ...g,
+                                                playTime: oldTime + hours,
+                                                lastPlayed: newSession.date
+                                              };
+                                            }
+                                            return g;
+                                          }));
+
+                                          setNewActHours("");
+                                          setNewActNotes("");
+                                        }}
+                                        className="magnetic-target w-full border border-cyber-yellow/40 bg-cyber-yellow/5 hover:bg-cyber-yellow hover:text-black rounded-lg py-1.5 text-xs font-bold text-cyber-yellow transition-all uppercase tracking-wider cursor-none flex items-center justify-center gap-1.5"
+                                      >
+                                        <Activity className="w-3.5 h-3.5" />
+                                        Зарегистрировать сессию
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Sessions List */}
+                                  <div className="bg-[#06040c]/60 border border-white/5 rounded-xl p-4 flex-1 flex flex-col gap-2.5 min-h-0">
+                                    <div className="text-[9px] uppercase tracking-widest text-gray-400 border-b border-white/5 pb-1 font-bold">ИСТОРИЯ АКТИВНОСТИ</div>
+                                    <div className="overflow-y-auto space-y-2 pr-1 h-full scrollbar-thin">
+                                      {gameLogs.length === 0 ? (
+                                        <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                                          <Activity className="w-6 h-6 text-gray-700 mb-1" />
+                                          <p className="text-[10px] text-gray-500">История сессий пуста.</p>
+                                        </div>
+                                      ) : (
+                                        gameLogs.map(log => (
+                                          <div key={log.id} className="border border-white/5 bg-black/30 rounded p-2 flex items-center justify-between gap-3 hover:border-white/10 transition-colors">
+                                            <div className="min-w-0 flex-1">
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-[10px] font-bold text-cyber-yellow">{log.hours} ч.</span>
+                                                <span className="text-[8px] text-gray-500">{log.date}</span>
+                                              </div>
+                                              <p className="text-[10px] text-gray-300 truncate mt-0.5">{log.notes}</p>
+                                            </div>
+                                            <button
+                                              onClick={() => {
+                                                // Remove from logs
+                                                setGameActivities(prev => {
+                                                  const current = prev[selectedGameId] || [];
+                                                  return {
+                                                    ...prev,
+                                                    [selectedGameId]: current.filter(item => item.id !== log.id)
+                                                  };
+                                                });
+
+                                                // Revert total playtime
+                                                setGames(prev => prev.map(g => {
+                                                  if (g.id === selectedGameId) {
+                                                    const oldTime = typeof g.playTime === 'number' ? g.playTime : 0;
+                                                    return {
+                                                      ...g,
+                                                      playTime: Math.max(0, oldTime - log.hours)
+                                                    };
+                                                  }
+                                                  return g;
+                                                }));
+                                              }}
+                                              className="magnetic-target text-red-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 cursor-none transition-colors"
+                                              title="Удалить запись"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                          </div>
+                                        ))
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Right: My News Feed (лента новостей) */}
+                                <div className="flex-1 flex flex-col">
+                                  {/* News feed list */}
+                                  <div className="bg-[#06040c]/60 border border-white/5 rounded-xl p-4 flex flex-col gap-3 overflow-hidden h-[520px] shrink-0">
+                                    <div className="text-xs uppercase tracking-widest text-cyber-yellow border-b border-white/5 pb-2 font-bold flex justify-between items-center select-none shrink-0">
+                                      <span>// NEWS FEED // ЛЕНТА НОВОСТЕЙ</span>
+                                      <button
+                                        onClick={handleOpenObsidian}
+                                        className="magnetic-target flex items-center gap-1.5 px-3 py-1 rounded-lg border border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-cyber-yellow/10 text-cyber-yellow transition-all text-[10px] tracking-wider cursor-none"
+                                      >
+                                        <CornerUpRight className="w-3.5 h-3.5" />
+                                        <span>ОТКРЫТЬ OBSIDIAN</span>
+                                      </button>
+                                    </div>
+
+                                    {/* Sync storage button block */}
+                                    <div className="flex justify-start shrink-0 mb-1">
+                                      <button
+                                        onClick={handleSyncObsidianNews}
+                                        className={`magnetic-target flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyber-green/20 hover:border-cyber-green hover:bg-cyber-green/10 text-cyber-green transition-all text-[10px] tracking-wider cursor-none font-bold uppercase shadow-[0_0_10px_rgba(0,255,102,0.02)] hover:shadow-[0_0_15px_rgba(0,255,102,0.2)] ${
+                                          isSyncing ? "opacity-75" : ""
+                                        }`}
+                                      >
+                                        <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+                                        <span>СИНХРОНИЗИРОВАТЬ ХРАНИЛИЩЕ</span>
+                                      </button>
+                                    </div>
+                                    
+                                    <div className="overflow-y-auto space-y-2 pr-1 select-none font-mono h-full scrollbar-thin">
+                                      {gamePosts.length === 0 ? (
+                                        <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                                          <FileText className="w-8 h-8 text-gray-700 mb-2" />
+                                          <p className="text-[10px] text-gray-500 font-mono">В каталоге пока нет новостей. Создайте файл в Obsidian!</p>
+                                        </div>
+                                      ) : (
+                                        gamePosts.map(post => (
+                                          <button
+                                            key={post.id}
+                                            onClick={() => setSelectedNewsPost(post)}
+                                            className={`magnetic-target w-full text-left border rounded-lg p-3 transition-all cursor-none flex items-center justify-between group ${
+                                              selectedNewsPost?.id === post.id
+                                                ? "border-cyber-yellow bg-cyber-yellow/10 text-white"
+                                                : "border-cyber-yellow/15 bg-[#ffb700]/5 hover:border-cyber-yellow/45 text-gray-300 hover:text-white"
+                                            }`}
+                                          >
+                                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                              <FileText className="w-4 h-4 text-cyber-yellow/70 shrink-0" />
+                                              <span className="font-mono text-xs font-bold truncate">{post.title}</span>
+                                            </div>
+                                            <ChevronRight className="w-3.5 h-3.5 text-cyber-yellow/40 group-hover:text-cyber-yellow group-hover:translate-x-0.5 transition-all shrink-0" />
+                                          </button>
+                                        ))
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Activity Chart Section at the bottom */}
+                            <div className="bg-[#06040c]/60 border border-white/5 rounded-xl p-4 shrink-0 flex flex-col gap-3 h-[180px] min-h-0">
+                              <div className="flex items-center justify-between border-b border-white/5 pb-2 shrink-0 select-none">
+                                <div className="text-[10px] uppercase tracking-widest text-cyber-yellow font-bold flex items-center gap-1.5">
+                                  <BarChart2 className="w-3.5 h-3.5 text-cyber-yellow" />
+                                  <span>// ACTIVITY ANALYTICS // АНАЛИТИКА АКТИВНОСТИ</span>
+                                </div>
+                                
+                                <div className="flex items-center gap-3">
+                                  {/* Period selector */}
+                                  <div className="flex items-center bg-black/40 border border-white/10 rounded-lg p-0.5 font-mono">
+                                    {["week", "month", "year"].map((period) => (
+                                      <button
+                                        key={period}
+                                        onClick={() => setChartPeriod(period)}
+                                        className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider cursor-none transition-all ${
+                                          chartPeriod === period
+                                            ? "bg-cyber-yellow text-black shadow-[0_0_8px_rgba(255,183,0,0.2)]"
+                                            : "text-gray-400 hover:text-white"
+                                        }`}
+                                      >
+                                        {period === "week" ? "Неделя" : period === "month" ? "Месяц" : "Год"}
+                                      </button>
+                                    ))}
+                                  </div>
+
+                                  {/* Chart Type selector */}
+                                  <div className="flex items-center bg-black/40 border border-white/10 rounded-lg p-0.5 font-mono">
+                                    <button
+                                      onClick={() => setChartType("bar")}
+                                      className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider cursor-none transition-all flex items-center gap-1 ${
+                                        chartType === "bar"
+                                          ? "bg-cyber-yellow text-black shadow-[0_0_8px_rgba(255,183,0,0.2)]"
+                                          : "text-gray-400 hover:text-white"
+                                      }`}
+                                    >
+                                      <span>ДИАГРАММА</span>
+                                    </button>
+                                    <button
+                                      onClick={() => setChartType("github")}
+                                      className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider cursor-none transition-all flex items-center gap-1 ${
+                                        chartType === "github"
+                                          ? "bg-cyber-yellow text-black shadow-[0_0_8px_rgba(255,183,0,0.2)]"
+                                          : "text-gray-400 hover:text-white"
+                                      }`}
+                                    >
+                                      <span>СЕТКА</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Chart Render Area */}
+                              <div className="flex-1 min-h-0 flex items-center justify-center relative overflow-hidden">
+                                {(() => {
+                                  const chartData = getChartData();
+                                  if (chartData.length === 0) {
+                                    return (
+                                      <div className="text-[10px] text-gray-500 uppercase tracking-widest font-mono">
+                                        Нет данных для построения графика
+                                      </div>
+                                    );
+                                  }
+
+                                  if (chartType === "github") {
+                                    // GitHub Contribution Grid
+                                    return (
+                                      <div className="w-full h-full flex flex-col justify-center overflow-x-auto pr-2 scrollbar-thin select-none">
+                                        <div className="grid grid-flow-col grid-rows-7 gap-[3px] mx-auto py-1">
+                                          {chartData.map((day, idx) => {
+                                            const level = day.hours === 0 ? 0 : day.hours <= 1 ? 1 : day.hours <= 3 ? 2 : 3;
+                                            const colorClass = level === 0 
+                                              ? "bg-white/5 border border-white/5" 
+                                              : level === 1 
+                                                ? "bg-cyber-yellow/20 border border-cyber-yellow/30 shadow-[0_0_4px_rgba(255,183,0,0.15)]" 
+                                                : level === 2 
+                                                  ? "bg-cyber-yellow/50 border border-cyber-yellow/60 shadow-[0_0_8px_rgba(255,183,0,0.35)]" 
+                                                  : "bg-cyber-yellow border border-cyber-yellow shadow-[0_0_12px_rgba(255,183,0,0.6)]";
+                                            
+                                            return (
+                                              <div 
+                                                key={idx} 
+                                                className={`w-[11px] h-[11px] rounded-[2px] transition-all duration-200 hover:scale-125 hover:z-10 ${colorClass}`}
+                                                title={`${day.date || "Дата"}: ${day.hours.toFixed(1)}ч.`}
+                                              />
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
+                                  } else {
+                                    // Vertical Bar Chart
+                                    const maxHours = Math.max(...chartData.map(d => d.hours), 1);
+                                    return (
+                                      <div className="w-full h-full flex items-end justify-between gap-1.5 px-2 pb-1 pt-4">
+                                        {chartData.map((item, idx) => {
+                                          const percent = (item.hours / maxHours) * 100;
+                                          return (
+                                            <div key={idx} className="flex-1 flex flex-col items-center group h-full justify-end min-w-0 relative">
+                                              {/* Tooltip on hover */}
+                                              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black border border-cyber-yellow/50 text-[8px] text-cyber-yellow px-1.5 py-0.5 rounded -top-4 absolute pointer-events-none font-mono whitespace-nowrap z-30 shadow-[0_0_10px_rgba(0,0,0,0.8)]">
+                                                {item.hours.toFixed(1)}ч.
+                                              </div>
+                                              
+                                              {/* Bar */}
+                                              <div 
+                                                className="w-full max-w-[20px] rounded-t bg-gradient-to-t from-cyber-yellow/10 to-cyber-yellow/70 group-hover:to-cyber-yellow transition-all duration-300 relative"
+                                                style={{ 
+                                                  height: `${Math.max(percent, 4)}%`,
+                                                  boxShadow: item.hours > 0 ? "0 0 8px rgba(255,183,0,0.15)" : undefined 
+                                                }}
+                                              />
+                                              
+                                              {/* Label */}
+                                              <span className="text-[7px] text-gray-500 font-mono mt-1 truncate max-w-full uppercase select-none">
+                                                {item.label}
+                                              </span>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    );
+                                  }
+                                })()}
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })()
+                    ) : (
+                      // Games Grid View (Original grid)
+                      <motion.div
+                        key="game-manager-view"
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -15 }}
+                        transition={{ duration: 0.25 }}
+                        className="w-full h-full flex flex-col lg:flex-row gap-6 max-w-6xl z-10 select-none text-left"
+                      >
+                        {/* Left: Games Grid */}
+                        <div className="flex-1 flex flex-col gap-4 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <div className="font-mono text-xs text-cyber-yellow uppercase tracking-widest flex items-center gap-2">
+                              <Sparkles className="w-3.5 h-3.5 text-cyber-yellow animate-pulse" />
+                              AVAILABLE SOFTWARE SYSTEMS
+                            </div>
+                            <div className="text-[10px] text-gray-500 font-mono">
+                              COUNT: {games.length} UNITS
+                            </div>
                           </div>
-                          <div className="text-[10px] text-gray-500 font-mono">
-                            COUNT: {games.length} UNITS
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 overflow-y-auto max-h-[520px] pr-1">
+                            {games.map(game => (
+                              <div
+                                key={game.id}
+                                onClick={() => setSelectedGameId(game.id)}
+                                onContextMenu={(e) => handleGameContextMenu(e, game)}
+                                className={`magnetic-target group border rounded-xl p-5 bg-[#0a0614]/50 border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-[#ffb700]/5 transition-all duration-300 relative flex flex-col items-center justify-between min-h-[220px] cursor-none shadow-[0_4px_12px_rgba(0,0,0,0.4)] ${
+                                  game.coverTheme === "purple" 
+                                    ? "hover:border-cyber-purple hover:bg-cyber-purple/5" 
+                                    : game.coverTheme === "green"
+                                      ? "hover:border-cyber-green hover:bg-cyber-green/5"
+                                      : ""
+                                }`}
+                              >
+                                {/* Category Badge on top */}
+                                <div className="w-full flex justify-center">
+                                  <span className={`text-[8px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border inline-block ${
+                                    game.coverTheme === "purple"
+                                      ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/5"
+                                      : game.coverTheme === "green"
+                                        ? "text-cyber-green border-cyber-green/30 bg-cyber-green/5"
+                                        : "text-cyber-yellow border-cyber-yellow/30 bg-cyber-yellow/5"
+                                  }`}>
+                                    {game.category}
+                                  </span>
+                                </div>
+
+                                {/* Center-aligned Game Icon (larger and slightly above center) */}
+                                <div className="flex-1 flex flex-col items-center justify-center mt-3.5 mb-1.5 gap-1.5 w-full">
+                                  {game.icon ? (
+                                    <img 
+                                      src={game.icon} 
+                                      alt="" 
+                                      className="w-24 h-24 object-cover rounded-2xl shadow-[0_0_20px_rgba(0,0,0,0.6)] group-hover:scale-105 transition-all duration-300 block" 
+                                      style={{
+                                        boxShadow: game.coverTheme === "purple" 
+                                          ? "0 0 20px rgba(188,19,254,0.15)" 
+                                          : game.coverTheme === "green" 
+                                            ? "0 0 20px rgba(0,255,102,0.15)" 
+                                            : "0 0 20px rgba(255,183,0,0.15)"
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className={`w-24 h-24 rounded-2xl border flex items-center justify-center bg-white/5 border-white/10 text-gray-400 transition-all ${
+                                      game.coverTheme === "purple" 
+                                        ? "group-hover:text-cyber-purple group-hover:border-cyber-purple/30 group-hover:shadow-[0_0_20px_rgba(188,19,254,0.15)]" 
+                                        : game.coverTheme === "green" 
+                                          ? "group-hover:text-cyber-green group-hover:border-cyber-green/30 group-hover:shadow-[0_0_20px_rgba(0,255,102,0.15)]" 
+                                          : "group-hover:text-cyber-yellow group-hover:border-cyber-yellow/30 group-hover:shadow-[0_0_20px_rgba(255,183,0,0.15)]"
+                                    }`}>
+                                      <Gamepad2 className="w-10 h-10" />
+                                    </div>
+                                  )}
+                                  <h4 className="text-base font-black text-gray-100 tracking-wide text-center group-hover:text-white truncate max-w-[150px] mt-0.5">
+                                    {game.name}
+                                  </h4>
+                                </div>
+
+                                {/* Footer: Playtime only */}
+                                <div className="w-full flex justify-center pt-2.5 border-t border-white/5 font-mono text-[9px] text-gray-500">
+                                  <div className="flex items-center gap-1.5">
+                                    <Clock className="w-3.5 h-3.5" />
+                                    <span>{typeof game.playTime === 'number' ? game.playTime.toFixed(1).replace(/\.0$/, "") : game.playTime} ч.</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+
+                            {/* Predefined Add Game Button in Grid */}
+                            <div
+                              onClick={handleAddGameOpenClick}
+                              className="magnetic-target border border-dashed rounded-xl p-4 bg-transparent border-cyber-yellow/15 hover:border-cyber-yellow hover:bg-cyber-yellow/5 transition-all duration-300 flex flex-col items-center justify-center gap-2.5 min-h-[140px] cursor-none group shadow-lg"
+                            >
+                              <div className="w-10 h-10 rounded-full border border-dashed border-cyber-yellow/45 flex items-center justify-center text-gray-500 group-hover:text-cyber-yellow group-hover:border-cyber-yellow transition-all">
+                                <Plus className="w-5 h-5" />
+                              </div>
+                              <span className="font-mono text-xs font-bold text-gray-500 group-hover:text-cyber-yellow transition-all uppercase tracking-wider">
+                                ADD SYSTEM SOFTWARE
+                              </span>
+                            </div>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 overflow-y-auto max-h-[520px] pr-1">
-                          {games.map(game => (
-                            <div
-                              key={game.id}
-                              onClick={() => setSelectedGameActions(game)}
-                              onContextMenu={(e) => handleGameContextMenu(e, game)}
-                              className={`magnetic-target group border rounded-xl p-5 bg-[#0a0614]/50 border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-[#ffb700]/5 transition-all duration-300 relative flex flex-col items-center justify-between min-h-[220px] cursor-none shadow-[0_4px_12px_rgba(0,0,0,0.4)] ${
-                                game.coverTheme === "purple" 
-                                  ? "hover:border-cyber-purple hover:bg-cyber-purple/5" 
-                                  : game.coverTheme === "green"
-                                    ? "hover:border-cyber-green hover:bg-cyber-green/5"
-                                    : ""
-                              }`}
-                            >
-                              {/* Category Badge on top */}
-                              <div className="w-full flex justify-center">
-                                <span className={`text-[8px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border inline-block ${
-                                  game.coverTheme === "purple"
-                                    ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/5"
-                                    : game.coverTheme === "green"
-                                      ? "text-cyber-green border-cyber-green/30 bg-cyber-green/5"
-                                      : "text-cyber-yellow border-cyber-yellow/30 bg-cyber-yellow/5"
-                                }`}>
-                                  {game.category}
-                                </span>
+                        {/* Right: Selected Game Details / Terminal Launcher */}
+                        <div className="w-full lg:w-80 shrink-0 flex flex-col gap-4">
+                          <div className="font-mono text-xs text-cyber-yellow uppercase tracking-widest">// TELEMETRY CONSOLE</div>
+                          
+                          <div className="flex-1 bg-[#06040c]/60 border border-cyber-yellow/20 rounded-xl p-5 flex flex-col justify-between relative overflow-hidden shadow-2xl min-h-[300px]">
+                            {/* Top diagnostic design */}
+                            <div className="space-y-4">
+                              {/* Revolving Hologram circle */}
+                              <div className="w-24 h-24 mx-auto relative flex items-center justify-center my-4">
+                                <div className="absolute inset-0 rounded-full border border-dashed border-cyber-yellow/25 animate-spin" style={{ animationDuration: '15s' }} />
+                                <div className="absolute inset-2 rounded-full border border-double border-cyber-yellow/40 animate-spin" style={{ animationDuration: '8s', animationDirection: 'reverse' }} />
+                                <div className="absolute inset-5 rounded-full bg-cyber-yellow/10 border border-cyber-yellow/30 flex items-center justify-center shadow-[0_0_20px_rgba(255,183,0,0.25)]">
+                                  <Gamepad2 className="w-8 h-8 text-cyber-yellow animate-pulse animate-duration-2000" />
+                                </div>
                               </div>
 
-                              {/* Center-aligned Game Icon (larger and slightly above center) */}
-                              <div className="flex-1 flex flex-col items-center justify-center mt-3.5 mb-1.5 gap-1.5 w-full">
-                                {game.icon ? (
-                                  <img 
-                                    src={game.icon} 
-                                    alt="" 
-                                    className="w-24 h-24 object-cover rounded-2xl shadow-[0_0_20px_rgba(0,0,0,0.6)] group-hover:scale-105 transition-all duration-300 block" 
-                                    style={{
-                                      boxShadow: game.coverTheme === "purple" 
-                                        ? "0 0 20px rgba(188,19,254,0.15)" 
-                                        : game.coverTheme === "green" 
-                                          ? "0 0 20px rgba(0,255,102,0.15)" 
-                                          : "0 0 20px rgba(255,183,0,0.15)"
-                                    }}
-                                  />
-                                ) : (
-                                  <div className={`w-24 h-24 rounded-2xl border flex items-center justify-center bg-white/5 border-white/10 text-gray-400 transition-all ${
-                                    game.coverTheme === "purple" 
-                                      ? "group-hover:text-cyber-purple group-hover:border-cyber-purple/30 group-hover:shadow-[0_0_20px_rgba(188,19,254,0.15)]" 
-                                      : game.coverTheme === "green" 
-                                        ? "group-hover:text-cyber-green group-hover:border-cyber-green/30 group-hover:shadow-[0_0_20px_rgba(0,255,102,0.15)]" 
-                                        : "group-hover:text-cyber-yellow group-hover:border-cyber-yellow/30 group-hover:shadow-[0_0_20px_rgba(255,183,0,0.15)]"
-                                  }`}>
-                                    <Gamepad2 className="w-10 h-10" />
-                                  </div>
-                                )}
-                                <h4 className="text-base font-black text-gray-100 tracking-wide text-center group-hover:text-white truncate max-w-[150px] mt-0.5">
-                                  {game.name}
-                                </h4>
+                              <div className="text-center font-mono">
+                                <div className="text-[9px] text-gray-500 uppercase tracking-widest">SELECTED MODULE</div>
+                                <h3 className="text-lg font-black text-white mt-1 neon-text-yellow truncate max-w-[240px]" title="Launcher Software">
+                                  {games.length > 0 ? games[0].name.toUpperCase() : "NO GAMES ADDED"}
+                                </h3>
                               </div>
 
-                              {/* Footer: Playtime only */}
-                              <div className="w-full flex justify-center pt-2.5 border-t border-white/5 font-mono text-[9px] text-gray-500">
-                                <div className="flex items-center gap-1.5">
-                                  <Clock className="w-3.5 h-3.5" />
-                                  <span>{typeof game.playTime === 'number' ? game.playTime.toFixed(1).replace(/\.0$/, "") : game.playTime} ч.</span>
+                              <div className="border-t border-cyber-yellow/10 pt-4 space-y-2.5 font-mono text-[9px]">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">DIAGNOSTIC STATUS:</span>
+                                  <span className="text-cyber-green font-bold">READY</span>
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-gray-500">LAUNCH PATH TARGET:</span>
+                                  <span className="text-white break-all bg-[#050308] p-1.5 rounded border border-white/5 select-text text-[8px] leading-normal font-mono cursor-text">
+                                    {games.length > 0 ? games[0].path : "No path configured"}
+                                  </span>
                                 </div>
                               </div>
                             </div>
-                          ))}
 
-                          {/* Predefined Add Game Button in Grid */}
-                          <div
-                            onClick={handleAddGameOpenClick}
-                            className="magnetic-target border border-dashed rounded-xl p-4 bg-transparent border-cyber-yellow/15 hover:border-cyber-yellow hover:bg-cyber-yellow/5 transition-all duration-300 flex flex-col items-center justify-center gap-2.5 min-h-[140px] cursor-none group shadow-lg"
-                          >
-                            <div className="w-10 h-10 rounded-full border border-dashed border-cyber-yellow/45 flex items-center justify-center text-gray-500 group-hover:text-cyber-yellow group-hover:border-cyber-yellow transition-all">
-                              <Plus className="w-5 h-5" />
+                            <div className="space-y-3 pt-4 border-t border-cyber-yellow/10">
+                              {/* Fake stats */}
+                              <div className="flex justify-between font-mono text-[9px]">
+                                <span className="text-gray-500">HOST INTEGRITY:</span>
+                                <span className="text-cyber-green font-bold">100% ONLINE</span>
+                              </div>
+                              
+                              <button
+                                onClick={() => {
+                                  if (games.length > 0) {
+                                    setSelectedGameId(games[0].id);
+                                  } else {
+                                    handleAddGameOpenClick();
+                                  }
+                                }}
+                                className="magnetic-target w-full border border-cyber-yellow bg-cyber-yellow/10 hover:bg-cyber-yellow hover:text-[#06040c] rounded-xl py-3 font-mono font-bold text-xs text-cyber-yellow tracking-widest cursor-none transition-all shadow-[0_0_12px_rgba(255,183,0,0.2)] hover:shadow-[0_0_22px_rgba(255,183,0,0.5)] flex items-center justify-center gap-2"
+                              >
+                                <Eye className="w-4 h-4 text-cyber-yellow group-hover:text-black transition-colors" />
+                                OPEN MODULE INTERFACE
+                              </button>
                             </div>
-                            <span className="font-mono text-xs font-bold text-gray-500 group-hover:text-cyber-yellow transition-all uppercase tracking-wider">
-                              ADD SYSTEM SOFTWARE
-                            </span>
                           </div>
                         </div>
-                      </div>
-
-                      {/* Right: Selected Game Details / Terminal Launcher */}
-                      <div className="w-full lg:w-80 shrink-0 flex flex-col gap-4">
-                        <div className="font-mono text-xs text-cyber-yellow uppercase tracking-widest">// TELEMETRY CONSOLE</div>
-                        
-                        <div className="flex-1 bg-[#06040c]/60 border border-cyber-yellow/20 rounded-xl p-5 flex flex-col justify-between relative overflow-hidden shadow-2xl min-h-[300px]">
-                          {/* Top diagnostic design */}
-                          <div className="space-y-4">
-                            {/* Revolving Hologram circle */}
-                            <div className="w-24 h-24 mx-auto relative flex items-center justify-center my-4">
-                              <div className="absolute inset-0 rounded-full border border-dashed border-cyber-yellow/25 animate-spin" style={{ animationDuration: '15s' }} />
-                              <div className="absolute inset-2 rounded-full border border-double border-cyber-yellow/40 animate-spin" style={{ animationDuration: '8s', animationDirection: 'reverse' }} />
-                              <div className="absolute inset-5 rounded-full bg-cyber-yellow/10 border border-cyber-yellow/30 flex items-center justify-center shadow-[0_0_20px_rgba(255,183,0,0.25)]">
-                                <Gamepad2 className="w-8 h-8 text-cyber-yellow animate-pulse animate-duration-2000" />
-                              </div>
-                            </div>
-
-                            <div className="text-center font-mono">
-                              <div className="text-[9px] text-gray-500 uppercase tracking-widest">SELECTED MODULE</div>
-                              <h3 className="text-lg font-black text-white mt-1 neon-text-yellow truncate max-w-[240px]" title="Launcher Software">
-                                {games.length > 0 ? games[0].name.toUpperCase() : "NO GAMES ADDED"}
-                              </h3>
-                            </div>
-
-                            <div className="border-t border-cyber-yellow/10 pt-4 space-y-2.5 font-mono text-[9px]">
-                              <div className="flex justify-between">
-                                <span className="text-gray-500">DIAGNOSTIC STATUS:</span>
-                                <span className="text-cyber-green font-bold">READY</span>
-                              </div>
-                              <div className="flex flex-col gap-1">
-                                <span className="text-gray-500">LAUNCH PATH TARGET:</span>
-                                <span className="text-white break-all bg-[#050308] p-1.5 rounded border border-white/5 select-text text-[8px] leading-normal font-mono cursor-text">
-                                  {games.length > 0 ? games[0].path : "No path configured"}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="space-y-3 pt-4 border-t border-cyber-yellow/10">
-                            {/* Fake stats */}
-                            <div className="flex justify-between font-mono text-[9px]">
-                              <span className="text-gray-500">HOST INTEGRITY:</span>
-                              <span className="text-cyber-green font-bold">100% ONLINE</span>
-                            </div>
-                            
-                            <button
-                              onClick={() => {
-                                if (games.length > 0) {
-                                  handleLaunchGame(games[0]);
-                                } else {
-                                  handleAddGameOpenClick();
-                                }
-                              }}
-                              className="magnetic-target w-full border border-cyber-yellow bg-cyber-yellow/10 hover:bg-cyber-yellow hover:text-[#06040c] rounded-xl py-3 font-mono font-bold text-xs text-cyber-yellow tracking-widest cursor-none transition-all shadow-[0_0_12px_rgba(255,183,0,0.2)] hover:shadow-[0_0_22px_rgba(255,183,0,0.5)] flex items-center justify-center gap-2"
-                            >
-                              <Play className="w-4 h-4 fill-current animate-pulse" />
-                              LAUNCH TARGET ENGINE
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
+                      </motion.div>
+                    )
                   ) : selectedFile ? (
                     // Cyberpunk Text Editor View (Original Notebook Editor)
                     <motion.div
@@ -3746,6 +4578,67 @@ export default function App() {
               <Trash2 className="w-4.5 h-4.5 text-red-500" />
               <span>Удалить программу</span>
             </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Obsidian News Path Prompt Modal */}
+      <AnimatePresence>
+        {isNewsPathPromptOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-md z-[99999] flex items-center justify-center p-6 select-none font-mono"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="w-full max-w-md bg-cyber-sidebar border border-cyber-yellow/45 rounded-2xl p-6 shadow-[0_15px_40px_rgba(255,183,0,0.2)] relative text-left"
+            >
+              <div className="flex items-center gap-2 border-b border-cyber-yellow/20 pb-3 mb-4 text-cyber-yellow">
+                <Settings className="w-5 h-5 animate-spin" style={{ animationDuration: '20s' }} />
+                <span className="text-xs font-black uppercase tracking-widest">
+                  // CONFIG: OBSIDIAN PATH
+                </span>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  Пожалуйста, укажите путь к вашему каталогу новостей в Obsidian (например, папку "Лента новостей"):
+                </p>
+                <input
+                  type="text"
+                  placeholder="Например: C:\Vault\Лента новостей"
+                  value={obsidianNewsPath}
+                  onChange={(e) => setObsidianNewsPath(e.target.value)}
+                  className="w-full bg-[#06040c]/85 border border-cyber-yellow/20 focus:border-cyber-yellow text-cyber-yellow placeholder-gray-700 focus:ring-1 focus:ring-cyber-yellow rounded px-3 py-2 text-xs transition-all font-mono shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.6)] cursor-text"
+                />
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsNewsPathPromptOpen(false)}
+                  className="magnetic-target flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase cursor-none transition-all text-xs"
+                >
+                  ОТМЕНА
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsNewsPathPromptOpen(false);
+                    const pathParam = obsidianNewsPath ? `?path=${encodeURIComponent(obsidianNewsPath)}` : "";
+                    invoke("open_url", { url: `obsidian://open${pathParam}` })
+                      .catch(err => console.error("Failed to open Obsidian:", err));
+                  }}
+                  className="magnetic-target flex-1 bg-cyber-yellow/10 border border-cyber-yellow text-cyber-yellow hover:bg-cyber-yellow hover:text-black rounded-xl py-2.5 text-center font-bold uppercase cursor-none transition-all text-xs shadow-[0_0_15px_rgba(255,183,0,0.15)]"
+                >
+                  ОТКРЫТЬ
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
