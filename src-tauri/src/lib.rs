@@ -371,22 +371,11 @@ fn exit_app(app: tauri::AppHandle) {
 }
 
 #[tauri::command]
-fn open_url(url: String) -> Result<(), String> {
-    #[cfg(target_os = "windows")]
-    {
-        use std::process::Command;
-        Command::new("cmd")
-            .args(&["/C", "start", "", &url])
-            .spawn()
-            .map_err(|e| format!("Ошибка запуска процесса: {}", e))?;
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        return Err("Открытие ссылок поддерживается только на ОС Windows.".to_string());
-    }
-
-    Ok(())
+fn open_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_url(url, None::<&str>)
+        .map_err(|e| format!("Ошибка открытия ссылки: {}", e))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
