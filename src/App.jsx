@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { X, RefreshCw, BarChart2, Grid, Plus, Folder, FolderOpen, FileText, Cpu, Terminal, Layers, Link, ShieldAlert, Check, HelpCircle, ChevronLeft, ChevronRight, Moon, LogOut, Bold, Italic, Highlighter, Heading1, Heading2, CheckSquare, Code, FilePlus, FolderPlus, Compass, Database, Copy, CornerUpRight, Search, Bookmark, Clipboard, Eye, Edit2, Trash2, Gamepad2, Swords, Play, Sparkles, Clock, Gamepad, Settings, Mail, Bell, Activity, HardDrive, Crop } from "lucide-react";
+import { X, RefreshCw, BarChart2, Grid, Plus, Folder, FolderOpen, FileText, Cpu, Terminal, Layers, Link, ShieldAlert, Check, HelpCircle, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Moon, LogOut, Bold, Italic, Highlighter, Heading1, Heading2, CheckSquare, Code, FilePlus, FolderPlus, Compass, Database, Copy, CornerUpRight, Search, Bookmark, Clipboard, Eye, Edit2, Trash2, Gamepad2, Swords, Play, Sparkles, Clock, Gamepad, Settings, Mail, Bell, Activity, HardDrive, Crop } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import CustomCursor from "./components/CustomCursor";
 import InteractiveBackground from "./components/InteractiveBackground";
@@ -1407,9 +1407,10 @@ export default function App() {
       const resolveImages = async () => {
         for (const imgName of imagesToResolve) {
           try {
+            const decodedName = decodeURIComponent(imgName);
             const dataUrl = await invoke("read_image_base64", {
               vaultPath: vaultPath,
-              filename: imgName
+              filename: decodedName
             });
             setResolvedImageUrls(prev => ({
               ...prev,
@@ -1419,7 +1420,7 @@ export default function App() {
             console.error(`Failed to resolve image ${imgName}:`, err);
             setResolvedImageUrls(prev => ({
               ...prev,
-              [imgName]: "failed"
+              [imgName]: `failed: ${err}`
             }));
           }
         }
@@ -1449,13 +1450,15 @@ export default function App() {
       );
     }
 
-    if (url === "failed") {
+    if (url && url.startsWith("failed")) {
+      const errMsg = url.startsWith("failed:") ? url.substring(7) : "Unknown error";
       return (
         <div key={key} style={widthStyle} className="my-3 border border-red-500/20 bg-red-950/15 rounded p-4 flex items-center gap-3">
           <ShieldAlert className="w-5 h-5 text-red-500 shrink-0" />
           <div className="font-mono">
             <div className="text-[10px] text-red-400 font-bold uppercase">IMAGE RESOLVE FAILURE</div>
             <div className="text-[9px] text-gray-500 truncate">{imgName}</div>
+            <div className="text-[8px] text-red-500/80 mt-1 font-mono">{errMsg}</div>
           </div>
         </div>
       );

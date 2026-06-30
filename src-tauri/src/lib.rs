@@ -414,3 +414,52 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_find_image() {
+        let vault = r"C:\Users\gospo\OneDrive\Документы\Obsid\Obsidian Vault";
+        let file = "Pasted image 20260630171054.png";
+        
+        let base = Path::new(vault);
+        println!("Base path is_dir: {}", base.is_dir());
+        
+        let mut target_path = None;
+        
+        // inline implementation of find_file to test it
+        fn find_file_test(dir: &Path, filename: &str, found: &mut Option<PathBuf>) {
+            if found.is_some() {
+                return;
+            }
+            if let Ok(entries) = fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                            if name.starts_with('.') {
+                                continue;
+                            }
+                        }
+                        find_file_test(&path, filename, found);
+                    } else if path.is_file() {
+                        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                            if name.to_lowercase() == filename.to_lowercase() {
+                                *found = Some(path.to_path_buf());
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        find_file_test(base, file, &mut target_path);
+        
+        println!("Target path found: {:?}", target_path);
+        assert!(target_path.is_some(), "Image was not found!");
+    }
+}
+
