@@ -335,6 +335,7 @@ export default function App() {
   const [selectedGameActions, setSelectedGameActions] = useState(null);
   const [activeModalTab, setActiveModalTab] = useState("parameters");
   const [newGameUrls, setNewGameUrls] = useState([]);
+  const [inlineGameUrl, setInlineGameUrl] = useState("");
 
   // Activity tracking and custom news states
   const [selectedGameId, setSelectedGameId] = useState(null);
@@ -3117,20 +3118,133 @@ export default function App() {
                               </div>
                             </div>
 
-                            {/* In Development Warning Banner */}
-                            <div className="bg-[#ff0055]/5 border border-red-500/20 rounded-xl p-3.5 flex items-center gap-4 relative overflow-hidden select-none shrink-0">
-                              {/* Glowing corner overlay */}
-                              <div className="absolute top-0 right-0 w-16 h-16 bg-red-500/5 blur-xl rounded-full" />
-                              <div className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/35 flex items-center justify-center text-red-500 shrink-0 animate-pulse">
-                                <ShieldAlert className="w-5 h-5" />
+                             {/* Game Launch and Quick Web Links Panel */}
+                            <div className="bg-[#0b0816]/65 border border-white/10 rounded-xl p-4.5 flex flex-col gap-4 relative overflow-hidden shrink-0">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="space-y-1 text-left">
+                                  <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                                    <Play className="w-4 h-4 text-cyber-green fill-current" />
+                                    LAUNCH CONTROL // УПРАВЛЕНИЕ ЗАПУСКОМ
+                                  </h4>
+                                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                                    Target Executable: <span className="text-gray-400 font-mono select-all">{activeGame.path}</span>
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => handleLaunchGame(activeGame, true, activeGame.urls || [])}
+                                  className={`magnetic-target flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border text-xs font-black uppercase tracking-widest cursor-none transition-all shadow-md ${
+                                    activeGame.coverTheme === "purple"
+                                      ? "bg-cyber-purple/10 border-cyber-purple/40 text-cyber-purple hover:bg-cyber-purple/20 hover:border-cyber-purple shadow-[0_0_15px_rgba(188,19,254,0.15)]"
+                                      : activeGame.coverTheme === "green"
+                                        ? "bg-cyber-green/10 border-cyber-green/40 text-cyber-green hover:bg-cyber-green/20 hover:border-cyber-green shadow-[0_0_15px_rgba(0,255,102,0.15)]"
+                                        : "bg-cyber-yellow/10 border-cyber-yellow/40 text-cyber-yellow hover:bg-cyber-yellow/20 hover:border-cyber-yellow shadow-[0_0_15px_rgba(255,183,0,0.15)]"
+                                  }`}
+                                >
+                                  <Play className="w-4.5 h-4.5 fill-current" />
+                                  <span>LAUNCH (ЗАПУСК)</span>
+                                </button>
                               </div>
-                              <div>
-                                <h4 className="text-xs font-black text-red-400 uppercase tracking-wider">
-                                  MODULE STATUS: DEVELOPMENT IN PROGRESS // В РАЗРАБОТКЕ
-                                </h4>
-                                <p className="text-[10px] text-gray-500 mt-0.5 uppercase tracking-wide leading-relaxed">
-                                  Запуск процессов временно перенаправлен на внутренние системы логирования. Данный сектор функционирует в режиме отладки и накопления данных.
-                                </p>
+
+                              {/* Web Resources Section */}
+                              <div className="border-t border-white/5 pt-3.5 flex flex-col gap-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">// QUICK LINKS (РЕСУРСЫ И САЙТЫ)</span>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2.5">
+                                  {(!activeGame.urls || activeGame.urls.length === 0) ? (
+                                    <div className="text-[10px] text-gray-500 font-mono italic">Нет добавленных сайтов</div>
+                                  ) : (
+                                    activeGame.urls.map((url, idx) => {
+                                      let domain = url;
+                                      try {
+                                        domain = new URL(url).hostname.replace("www.", "");
+                                      } catch (_) {}
+                                      return (
+                                        <div key={idx} className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-lg p-1.5 transition-all hover:bg-white/10">
+                                          <button
+                                            onClick={() => {
+                                              const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
+                                              if (isTauri) {
+                                                invoke("open_url", { url });
+                                              } else {
+                                                window.open(url, "_blank");
+                                              }
+                                            }}
+                                            className="magnetic-target text-[10px] font-bold text-cyber-green hover:text-white uppercase tracking-wider px-1 cursor-none flex items-center gap-1"
+                                          >
+                                            <Link className="w-3 h-3" />
+                                            {domain}
+                                          </button>
+                                          <button
+                                            onClick={() => {
+                                              setGames(prev => prev.map(g => {
+                                                if (g.id === activeGame.id) {
+                                                  return {
+                                                    ...g,
+                                                    urls: (g.urls || []).filter((_, uIdx) => uIdx !== idx)
+                                                  };
+                                                }
+                                                return g;
+                                              }));
+                                            }}
+                                            className="magnetic-target hover:text-red-500 text-gray-500 p-0.5 cursor-none text-[10px]"
+                                            title="Удалить ссылку"
+                                          >
+                                            ×
+                                          </button>
+                                        </div>
+                                      );
+                                    })
+                                  )}
+                                </div>
+
+                                {/* Add Website Inline Form */}
+                                <div className="flex items-center gap-2 mt-1">
+                                  <input
+                                    type="url"
+                                    placeholder="https://example.com"
+                                    value={inlineGameUrl}
+                                    onChange={(e) => setInlineGameUrl(e.target.value)}
+                                    className="flex-1 bg-black/40 border border-white/10 rounded px-2.5 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-cyber-green transition-colors cursor-text"
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        if (inlineGameUrl.trim()) {
+                                          setGames(prev => prev.map(g => {
+                                            if (g.id === activeGame.id) {
+                                              const currentUrls = g.urls || [];
+                                              if (!currentUrls.includes(inlineGameUrl.trim())) {
+                                                return { ...g, urls: [...currentUrls, inlineGameUrl.trim()] };
+                                              }
+                                            }
+                                            return g;
+                                          }));
+                                          setInlineGameUrl("");
+                                        }
+                                      }
+                                    }}
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      if (inlineGameUrl.trim()) {
+                                        setGames(prev => prev.map(g => {
+                                          if (g.id === activeGame.id) {
+                                            const currentUrls = g.urls || [];
+                                            if (!currentUrls.includes(inlineGameUrl.trim())) {
+                                              return { ...g, urls: [...currentUrls, inlineGameUrl.trim()] };
+                                            }
+                                          }
+                                          return g;
+                                        }));
+                                        setInlineGameUrl("");
+                                      }
+                                    }}
+                                    className="magnetic-target bg-cyber-green hover:bg-[#15ff7a] text-black font-black text-xs px-3 py-1.5 rounded transition-all cursor-none uppercase font-mono"
+                                  >
+                                    + ADD (ДОБАВИТЬ)
+                                  </button>
+                                </div>
                               </div>
                             </div>
 
