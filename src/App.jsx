@@ -3131,7 +3131,7 @@ export default function App() {
                                   </p>
                                 </div>
                                 <button
-                                  onClick={() => handleLaunchGame(activeGame, true, activeGame.urls || [])}
+                                  onClick={() => handleLaunchGame(activeGame, true, [])}
                                   className={`magnetic-target flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border text-xs font-black uppercase tracking-widest cursor-none transition-all shadow-md ${
                                     activeGame.coverTheme === "purple"
                                       ? "bg-cyber-purple/10 border-cyber-purple/40 text-cyber-purple hover:bg-cyber-purple/20 hover:border-cyber-purple shadow-[0_0_15px_rgba(188,19,254,0.15)]"
