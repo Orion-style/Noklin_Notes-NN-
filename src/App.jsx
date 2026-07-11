@@ -32,6 +32,21 @@ const GameModeIcon = ({ className }) => (
   </svg>
 );
 
+const formatPlayTime = (hoursValue) => {
+  const time = typeof hoursValue === 'number' ? hoursValue : parseFloat(hoursValue);
+  if (isNaN(time) || time <= 0) return '0 мин.';
+  const totalMinutes = Math.round(time * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h > 0 && m > 0) {
+    return `${h} ч. ${m} мин.`;
+  } else if (h > 0) {
+    return `${h} ч.`;
+  } else {
+    return `${m} мин.`;
+  }
+};
+
 // Build a nested directory tree from a flat array of relative file paths
 function buildFileTree(files) {
   const root = { name: "root", type: "folder", path: "", children: [] };
@@ -492,10 +507,12 @@ export default function App() {
       return data;
     } else if (chartPeriod === "month") {
       const data = [];
-      for (let i = 29; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(now.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      for (let i = 1; i <= daysInMonth; i++) {
+        const d = new Date(year, month, i);
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const label = d.toLocaleDateString("ru-RU", { day: "numeric", month: "numeric" });
         data.push({
           date: dateStr,
@@ -2401,7 +2418,7 @@ export default function App() {
                         <div className="h-[1px] bg-cyber-yellow/10 w-full" />
                         <div className="flex justify-between">
                           <span className="text-gray-500">TOTAL HOURS:</span>
-                          <span className="text-white font-bold">{(games.reduce((acc, g) => acc + (typeof g.playTime === 'number' ? g.playTime : 0), 0)).toFixed(1).replace(/\.0$/, "")}h</span>
+                          <span className="text-white font-bold">{formatPlayTime(games.reduce((acc, g) => acc + (typeof g.playTime === 'number' ? g.playTime : 0), 0))}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">SECTOR STATUS:</span>
@@ -3320,7 +3337,7 @@ export default function App() {
                                       <div className="flex flex-col">
                                         <span className="text-[9px] text-gray-500 uppercase tracking-wider">Общее время трекера:</span>
                                         <span className="text-xl font-black text-white tracking-wider mt-0.5">
-                                          {(typeof activeGame.playTime === 'number' ? activeGame.playTime : 0).toFixed(1).replace(/\.0$/, "")}h
+                                          {formatPlayTime(activeGame.playTime)}
                                         </span>
                                       </div>
                                       <div className="w-9 h-9 rounded-full bg-cyber-yellow/10 border border-cyber-yellow/20 flex items-center justify-center text-cyber-yellow animate-spin" style={{ animationDuration: '30s' }}>
@@ -3445,7 +3462,7 @@ export default function App() {
                                           <div key={log.id} className="border border-white/5 bg-black/30 rounded p-2 flex items-center justify-between gap-3 hover:border-white/10 transition-colors">
                                             <div className="min-w-0 flex-1">
                                               <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-bold text-cyber-yellow">{log.hours} ч.</span>
+                                                <span className="text-[10px] font-bold text-cyber-yellow">{formatPlayTime(log.hours)}</span>
                                                 <span className="text-[8px] text-gray-500">{log.date}</span>
                                               </div>
                                               <p className="text-[10px] text-gray-300 truncate mt-0.5">{log.notes}</p>
@@ -3610,6 +3627,126 @@ export default function App() {
 
                                   if (chartType === "github") {
                                     // GitHub Contribution Grid
+                                    if (chartPeriod === "week") {
+                                      return (
+                                        <div className="w-full h-full flex items-center justify-center select-none font-mono">
+                                          <div className="flex flex-row gap-3 py-1">
+                                            {chartData.map((day, idx) => {
+                                              const level = day.hours === 0 ? 0 : day.hours <= 1 ? 1 : day.hours <= 3 ? 2 : 3;
+                                              const colorClass = level === 0 
+                                                ? "bg-white/5 border border-white/5 text-white/20 hover:text-white/60" 
+                                                : level === 1 
+                                                  ? "bg-cyber-yellow/20 border border-cyber-yellow/30 shadow-[0_0_4px_rgba(255,183,0,0.15)] text-cyber-yellow/85" 
+                                                  : level === 2 
+                                                    ? "bg-cyber-yellow/50 border border-cyber-yellow/60 shadow-[0_0_8px_rgba(255,183,0,0.35)] text-black font-bold" 
+                                                    : "bg-cyber-yellow border border-cyber-yellow shadow-[0_0_12px_rgba(255,183,0,0.6)] text-black font-extrabold";
+                                              
+                                              const dayNumber = day.date ? parseInt(day.date.split('-')[2], 10) : "";
+
+                                              return (
+                                                <div key={idx} className="flex flex-col items-center gap-1.5">
+                                                  <div 
+                                                    className={`w-[34px] h-[34px] rounded-lg transition-all duration-200 hover:scale-110 hover:z-10 flex items-center justify-center text-xs font-bold cursor-none ${colorClass}`}
+                                                    title={`${day.date || "Дата"}: ${day.hours.toFixed(1)}ч.`}
+                                                  >
+                                                    {dayNumber}
+                                                  </div>
+                                                  <div className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">
+                                                    {day.label}
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+
+                                    if (chartPeriod === "month") {
+                                      const half = Math.ceil(chartData.length / 2);
+                                      const firstRow = chartData.slice(0, half);
+                                      const secondRow = chartData.slice(half);
+                                      const currentYear = new Date().getFullYear();
+                                      const monthName = new Date().toLocaleDateString("ru-RU", { month: "long" }).toUpperCase();
+
+                                      return (
+                                        <div className="w-full h-full flex items-center justify-between px-6 select-none font-mono">
+                                          {/* Left side: Year (slides down) */}
+                                          <motion.div
+                                            initial={{ opacity: 0, y: -25 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ type: "spring", stiffness: 80, damping: 12 }}
+                                            className="text-xl md:text-2xl font-black text-white/20 select-none tracking-widest text-right pr-4 border-r border-white/5 flex items-center justify-end h-8"
+                                          >
+                                            {currentYear}
+                                          </motion.div>
+
+                                          {/* Center: 2 Rows Grid */}
+                                          <div className="flex flex-col gap-2 justify-center flex-1 mx-4">
+                                            <div className="flex flex-row gap-2 justify-center">
+                                              {firstRow.map((day, idx) => {
+                                                const level = day.hours === 0 ? 0 : day.hours <= 1 ? 1 : day.hours <= 3 ? 2 : 3;
+                                                const colorClass = level === 0 
+                                                  ? "bg-white/5 border border-white/5 text-white/20 hover:text-white/60" 
+                                                  : level === 1 
+                                                    ? "bg-cyber-yellow/20 border border-cyber-yellow/30 shadow-[0_0_4px_rgba(255,183,0,0.15)] text-cyber-yellow/85" 
+                                                    : level === 2 
+                                                      ? "bg-cyber-yellow/50 border border-cyber-yellow/60 shadow-[0_0_8px_rgba(255,183,0,0.35)] text-black font-bold" 
+                                                      : "bg-cyber-yellow border border-cyber-yellow shadow-[0_0_12px_rgba(255,183,0,0.6)] text-black font-extrabold";
+                                                
+                                                const dayNumber = day.date ? parseInt(day.date.split('-')[2], 10) : "";
+
+                                                return (
+                                                  <div 
+                                                    key={idx} 
+                                                    className={`w-[32px] h-[32px] rounded-md transition-all duration-200 hover:scale-110 hover:z-10 flex items-center justify-center text-[12px] font-bold cursor-none ${colorClass}`}
+                                                    title={`${day.date || "Дата"}: ${day.hours.toFixed(1)}ч.`}
+                                                  >
+                                                    {dayNumber}
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                            <div className="flex flex-row gap-2 justify-center">
+                                              {secondRow.map((day, idx) => {
+                                                const level = day.hours === 0 ? 0 : day.hours <= 1 ? 1 : day.hours <= 3 ? 2 : 3;
+                                                const colorClass = level === 0 
+                                                  ? "bg-white/5 border border-white/5 text-white/20 hover:text-white/60" 
+                                                  : level === 1 
+                                                    ? "bg-cyber-yellow/20 border border-cyber-yellow/30 shadow-[0_0_4px_rgba(255,183,0,0.15)] text-cyber-yellow/85" 
+                                                    : level === 2 
+                                                      ? "bg-cyber-yellow/50 border border-cyber-yellow/60 shadow-[0_0_8px_rgba(255,183,0,0.35)] text-black font-bold" 
+                                                      : "bg-cyber-yellow border border-cyber-yellow shadow-[0_0_12px_rgba(255,183,0,0.6)] text-black font-extrabold";
+                                                
+                                                const dayNumber = day.date ? parseInt(day.date.split('-')[2], 10) : "";
+
+                                                return (
+                                                  <div 
+                                                    key={idx} 
+                                                    className={`w-[32px] h-[32px] rounded-md transition-all duration-200 hover:scale-110 hover:z-10 flex items-center justify-center text-[12px] font-bold cursor-none ${colorClass}`}
+                                                    title={`${day.date || "Дата"}: ${day.hours.toFixed(1)}ч.`}
+                                                  >
+                                                    {dayNumber}
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+
+                                          {/* Right side: Month (slides up) */}
+                                          <motion.div
+                                            initial={{ opacity: 0, y: 25 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ type: "spring", stiffness: 80, damping: 12 }}
+                                            className="text-xl md:text-2xl font-black text-cyber-yellow select-none tracking-widest text-left pl-4 border-l border-white/5 flex items-center justify-start h-8"
+                                          >
+                                            {monthName}
+                                          </motion.div>
+                                        </div>
+                                      );
+                                    }
+
+                                    // Default Year view (remains original 7-row grid)
                                     return (
                                       <div className="w-full h-full flex flex-col justify-center overflow-x-auto pr-2 scrollbar-thin select-none">
                                         <div className="grid grid-flow-col grid-rows-7 gap-[3px] mx-auto py-1">
@@ -3757,7 +3894,7 @@ export default function App() {
                                 <div className="w-full flex justify-center pt-2.5 border-t border-white/5 font-mono text-[9px] text-gray-500">
                                   <div className="flex items-center gap-1.5">
                                     <Clock className="w-3.5 h-3.5" />
-                                    <span>{typeof game.playTime === 'number' ? game.playTime.toFixed(1).replace(/\.0$/, "") : game.playTime} ч.</span>
+                                    <span>{formatPlayTime(game.playTime)}</span>
                                   </div>
                                 </div>
                               </div>
@@ -4045,7 +4182,7 @@ export default function App() {
                       </h3>
                       <div className="text-[10px] text-gray-500 font-mono flex items-center justify-center gap-1">
                         <Clock className="w-3 h-3" />
-                        <span>PLAYED: {typeof selectedGameActions.playTime === 'number' ? selectedGameActions.playTime.toFixed(1).replace(/\.0$/, "") : selectedGameActions.playTime} HOURS</span>
+                        <span>СЫГРАНО: {formatPlayTime(selectedGameActions.playTime)}</span>
                       </div>
                     </div>
                   </div>
@@ -4787,7 +4924,7 @@ export default function App() {
                   Вы действительно хотите удалить <span className="text-white font-bold">{gameToDelete.name}</span> из лаунчера? 
                 </p>
                 <p className="text-[10px] text-gray-500 leading-normal border-l-2 border-red-500/30 pl-3">
-                  Вся статистика запущенных сессий и общее время игры ({typeof gameToDelete.playTime === 'number' ? gameToDelete.playTime.toFixed(1).replace(/\.0$/, "") : gameToDelete.playTime} ч.) будут безвозвратно удалены.
+                  Вся статистика запущенных сессий и общее время игры ({formatPlayTime(gameToDelete.playTime)}) будут безвозвратно удалены.
                 </p>
               </div>
 

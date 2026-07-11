@@ -144,13 +144,20 @@ export default function CustomCursor({ isSleeping = false }) {
           const hasClass = snapped.element.classList.contains('magnetic-target') || snapped.element.closest('.magnetic-target');
           const isDisabled = snapped.element.disabled || snapped.element.hasAttribute('disabled');
           
+          const mouseMargin = 15;
+          const isMouseNear = mouse.x >= rect.left - mouseMargin &&
+                              mouse.x <= rect.right + mouseMargin &&
+                              mouse.y >= rect.top - mouseMargin &&
+                              mouse.y <= rect.bottom + mouseMargin;
+          
           isVisible = rect.width > 0 && rect.height > 0 &&
                       style.display !== 'none' &&
                       style.visibility !== 'hidden' &&
                       style.opacity !== '0' &&
                       style.pointerEvents !== 'none' &&
                       hasClass &&
-                      !isDisabled;
+                      !isDisabled &&
+                      isMouseNear;
         }
 
         if (!isConnected || !isVisible) {

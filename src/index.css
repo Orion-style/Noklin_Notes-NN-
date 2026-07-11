@@ -159,6 +159,31 @@
   box-shadow: 0 0 8px #b026ff;
 }
 
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(176, 38, 255, 0.35) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(176, 38, 255, 0.25);
+  border: 1px solid rgba(176, 38, 255, 0.15);
+  border-radius: 9999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(176, 38, 255, 0.6);
+  border-color: rgba(176, 38, 255, 0.55);
+}
+
 @keyframes cursor-wave {
   0% {
     border-radius: 50% 50% 50% 50% / 50% 50% 50% 50%;

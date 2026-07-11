@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use tauri::Emitter;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -276,9 +277,27 @@ fn launch_game(path: String) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         use std::process::Command;
+        use std::os::windows::process::CommandExt;
         let parent_dir = path.parent().unwrap_or(path);
+        let path_str = path.to_str().unwrap_or("");
+        
+        // Automatic redirection for VALORANT because launching VALORANT.exe directly fails without Riot Client parameters
+        if path_str.to_lowercase().contains("valorant.exe") {
+            let riot_client = std::path::Path::new(r"C:\Riot Games\Riot Client\RiotClientServices.exe");
+            if riot_client.exists() {
+                Command::new("cmd")
+                    .creation_flags(0x08000000)
+                    .args(&["/C", "start", "", riot_client.to_str().unwrap_or(""), "--launch-product=valorant", "--launch-patchline=live"])
+                    .current_dir(parent_dir)
+                    .spawn()
+                    .map_err(|e| format!("Ошибка запуска VALORANT через Riot Client: {}", e))?;
+                return Ok(());
+            }
+        }
+
         Command::new("cmd")
-            .args(&["/C", "start", "", path.to_str().unwrap_or("")])
+            .creation_flags(0x08000000)
+            .args(&["/C", "start", "", path_str])
             .current_dir(parent_dir)
             .spawn()
             .map_err(|e| format!("Ошибка запуска процесса: {}", e))?;
@@ -299,16 +318,19 @@ fn is_game_running(path: String) -> bool {
         Some(name) => name,
         None => return false,
     };
+    let base_name = exe_name.strip_suffix(".exe").unwrap_or(exe_name).to_lowercase();
 
     #[cfg(target_os = "windows")]
     {
         use std::process::Command;
+        use std::os::windows::process::CommandExt;
         let output = Command::new("tasklist")
-            .args(&["/NH", "/FI", &format!("IMAGENAME eq {}", exe_name)])
+            .creation_flags(0x08000000)
+            .arg("/NH")
             .output();
         if let Ok(out) = output {
-            let stdout = String::from_utf8_lossy(&out.stdout);
-            stdout.contains(exe_name)
+            let stdout = String::from_utf8_lossy(&out.stdout).to_lowercase();
+            stdout.contains(&base_name)
         } else {
             false
         }
@@ -317,6 +339,41 @@ fn is_game_running(path: String) -> bool {
     {
         false
     }
+}
+
+#[tauri::command]
+fn stop_game(path: String) -> Result<(), String> {
+    let path_buf = std::path::PathBuf::from(&path);
+    let exe_name = match path_buf.file_name().and_then(|n| n.to_str()) {
+        Some(name) => name,
+        None => return Err("Некорректное имя файла".to_string()),
+    };
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+        use std::os::windows::process::CommandExt;
+
+        let path_lower = path.to_lowercase();
+        let mut targets = vec![exe_name];
+        
+        if path_lower.contains("genshin") {
+            targets.push("GenshinImpact.exe");
+        }
+
+        for target in targets {
+            let _ = Command::new("taskkill")
+                .creation_flags(0x08000000)
+                .args(&["/F", "/T", "/IM", target])
+                .output();
+        }
+
+        if is_game_running(path.clone()) || (path_lower.contains("genshin") && is_game_running("GenshinImpact.exe".to_string())) {
+            return Err("Не удалось закрыть игру. Возможно, она запущена от имени администратора. Запустите этот менеджер от имени администратора.".to_string());
+        }
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -329,6 +386,7 @@ fn get_game_icon(path: String) -> Result<String, String> {
     #[cfg(target_os = "windows")]
     {
         use std::process::Command;
+        use std::os::windows::process::CommandExt;
         
         let script = format!(
             "Add-Type -AssemblyName System.Drawing; \
@@ -343,6 +401,7 @@ fn get_game_icon(path: String) -> Result<String, String> {
         );
 
         let output = Command::new("powershell")
+            .creation_flags(0x08000000)
             .args(&["-NoProfile", "-Command", &script])
             .output()
             .map_err(|e| format!("Ошибка запуска PowerShell: {}", e))?;
@@ -397,9 +456,16 @@ pub fn run() {
             create_directory,
             launch_game,
             is_game_running,
+            stop_game,
             get_game_icon,
             open_url
         ])
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // We emit a payload requesting the frontend to save session
+                let _ = window.emit("request-session-save", ());
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
