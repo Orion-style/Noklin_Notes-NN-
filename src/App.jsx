@@ -490,13 +490,19 @@ export default function App() {
     });
 
     const now = new Date();
+    const getLocalDateStr = (d) => {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
 
     if (chartPeriod === "week") {
       const data = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
         d.setDate(now.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = getLocalDateStr(d);
         const label = d.toLocaleDateString("ru-RU", { weekday: "short" });
         data.push({
           date: dateStr,
@@ -512,7 +518,7 @@ export default function App() {
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       for (let i = 1; i <= daysInMonth; i++) {
         const d = new Date(year, month, i);
-        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const dateStr = getLocalDateStr(d);
         const label = d.toLocaleDateString("ru-RU", { day: "numeric", month: "numeric" });
         data.push({
           date: dateStr,
@@ -527,7 +533,7 @@ export default function App() {
         for (let i = 364; i >= 0; i--) {
           const d = new Date();
           d.setDate(now.getDate() - i);
-          const dateStr = d.toISOString().split('T')[0];
+          const dateStr = getLocalDateStr(d);
           data.push({
             date: dateStr,
             hours: hoursByDate[dateStr] || 0
@@ -3332,18 +3338,18 @@ export default function App() {
                                   <div className="bg-[#06040c]/60 border border-white/5 rounded-xl p-4 flex flex-col gap-3 shrink-0">
                                     <div className="text-xs uppercase tracking-widest text-cyber-yellow border-b border-white/5 pb-1.5 font-bold">// ACTIVITY MONITOR</div>
                                     
-                                    {/* Playtime stats display */}
-                                    <div className="flex items-center justify-between bg-black/40 border border-white/5 rounded-lg p-2.5">
-                                      <div className="flex flex-col">
-                                        <span className="text-[9px] text-gray-500 uppercase tracking-wider">Общее время трекера:</span>
-                                        <span className="text-xl font-black text-white tracking-wider mt-0.5">
-                                          {formatPlayTime(activeGame.playTime)}
-                                        </span>
+                                      {/* Playtime stats display */}
+                                      <div className="flex items-center justify-between bg-black/40 border border-white/5 rounded-lg p-2.5">
+                                        <div className="flex flex-col">
+                                          <span className="text-[9px] text-gray-500 uppercase tracking-wider">Общее время трекера:</span>
+                                          <span className="text-xl font-black text-white tracking-wider mt-0.5">
+                                            {formatPlayTime(gameLogs.reduce((acc, log) => acc + (typeof log.hours === 'number' ? log.hours : 0), 0))}
+                                          </span>
+                                        </div>
+                                        <div className="w-9 h-9 rounded-full bg-cyber-yellow/10 border border-cyber-yellow/20 flex items-center justify-center text-cyber-yellow animate-spin" style={{ animationDuration: '30s' }}>
+                                          <Clock className="w-4 h-4" />
+                                        </div>
                                       </div>
-                                      <div className="w-9 h-9 rounded-full bg-cyber-yellow/10 border border-cyber-yellow/20 flex items-center justify-center text-cyber-yellow animate-spin" style={{ animationDuration: '30s' }}>
-                                        <Clock className="w-4 h-4" />
-                                      </div>
-                                    </div>
 
                                     {/* Log session inline form */}
                                     <div className="space-y-2.5">
@@ -3467,34 +3473,56 @@ export default function App() {
                                               </div>
                                               <p className="text-[10px] text-gray-300 truncate mt-0.5">{log.notes}</p>
                                             </div>
-                                            <button
-                                              onClick={() => {
-                                                // Remove from logs
-                                                setGameActivities(prev => {
-                                                  const current = prev[selectedGameId] || [];
-                                                  return {
-                                                    ...prev,
-                                                    [selectedGameId]: current.filter(item => item.id !== log.id)
-                                                  };
-                                                });
-
-                                                // Revert total playtime
-                                                setGames(prev => prev.map(g => {
-                                                  if (g.id === selectedGameId) {
-                                                    const oldTime = typeof g.playTime === 'number' ? g.playTime : 0;
-                                                    return {
-                                                      ...g,
-                                                      playTime: Math.max(0, oldTime - log.hours)
-                                                    };
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                              <button
+                                                onClick={() => {
+                                                  const newNotes = prompt("Редактировать название сессии:", log.notes);
+                                                  if (newNotes !== null) {
+                                                    setGameActivities(prev => {
+                                                      const current = prev[selectedGameId] || [];
+                                                      return {
+                                                        ...prev,
+                                                        [selectedGameId]: current.map(item => 
+                                                          item.id === log.id ? { ...item, notes: newNotes || "Игровая сессия" } : item
+                                                        )
+                                                      };
+                                                    });
                                                   }
-                                                  return g;
-                                                }));
-                                              }}
-                                              className="magnetic-target text-red-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 cursor-none transition-colors"
-                                              title="Удалить запись"
-                                            >
-                                              <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
+                                                }}
+                                                className="magnetic-target text-cyber-yellow hover:text-cyber-yellow/80 p-1 rounded hover:bg-cyber-yellow/10 cursor-none transition-colors"
+                                                title="Редактировать название"
+                                              >
+                                                <Edit2 className="w-3.5 h-3.5" />
+                                              </button>
+                                              <button
+                                                onClick={() => {
+                                                  // Remove from logs
+                                                  setGameActivities(prev => {
+                                                    const current = prev[selectedGameId] || [];
+                                                    return {
+                                                      ...prev,
+                                                      [selectedGameId]: current.filter(item => item.id !== log.id)
+                                                    };
+                                                  });
+
+                                                  // Revert total playtime
+                                                  setGames(prev => prev.map(g => {
+                                                    if (g.id === selectedGameId) {
+                                                      const oldTime = typeof g.playTime === 'number' ? g.playTime : 0;
+                                                      return {
+                                                        ...g,
+                                                        playTime: Math.max(0, oldTime - log.hours)
+                                                      };
+                                                    }
+                                                    return g;
+                                                  }));
+                                                }}
+                                                className="magnetic-target text-red-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 cursor-none transition-colors"
+                                                title="Удалить запись"
+                                              >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                              </button>
+                                            </div>
                                           </div>
                                         ))
                                       )}
