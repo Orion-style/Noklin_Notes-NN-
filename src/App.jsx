@@ -371,6 +371,18 @@ export default function App() {
     }
   });
 
+  const [gameTasks, setGameTasks] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cyber_game_tasks");
+      return saved ? JSON.parse(saved) : {};
+    } catch (_) {
+      return {};
+    }
+  });
+  const [newTaskText, setNewTaskText] = useState("");
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [editingTaskText, setEditingTaskText] = useState("");
+
   const [obsidianNewsPath, setObsidianNewsPath] = useState(() => {
     return localStorage.getItem("obsidian_news_path") || "";
   });
@@ -396,6 +408,10 @@ export default function App() {
   React.useEffect(() => {
     localStorage.setItem("cyber_game_news", JSON.stringify(gameNews));
   }, [gameNews]);
+
+  React.useEffect(() => {
+    localStorage.setItem("cyber_game_tasks", JSON.stringify(gameTasks));
+  }, [gameTasks]);
 
   React.useEffect(() => {
     localStorage.setItem("obsidian_news_path", obsidianNewsPath);
@@ -3530,10 +3546,10 @@ export default function App() {
                                   </div>
                                 </div>
 
-                                {/* Right: My News Feed (лента новостей) */}
-                                <div className="flex-1 flex flex-col">
+                                {/* Right: My News Feed & Tasks */}
+                                <div className="flex-1 flex flex-col gap-3 h-[520px] shrink-0">
                                   {/* News feed list */}
-                                  <div className="bg-[#06040c]/60 border border-white/5 rounded-xl p-4 flex flex-col gap-3 overflow-hidden h-[520px] shrink-0">
+                                  <div className="bg-[#06040c]/60 border border-white/5 rounded-xl p-4 flex flex-col gap-2.5 overflow-hidden h-[254px] shrink-0">
                                     <div className="text-xs uppercase tracking-widest text-cyber-yellow border-b border-white/5 pb-2 font-bold flex justify-between items-center select-none shrink-0">
                                       <span>// NEWS FEED // ЛЕНТА НОВОСТЕЙ</span>
                                       <button
@@ -3545,8 +3561,8 @@ export default function App() {
                                       </button>
                                     </div>
 
-                                    {/* Sync storage button block */}
-                                    <div className="flex justify-start shrink-0 mb-1">
+                                    {/* Sync storage & Change path button block */}
+                                    <div className="flex items-center gap-2 shrink-0 mb-1">
                                       <button
                                         onClick={handleSyncObsidianNews}
                                         className={`magnetic-target flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyber-green/20 hover:border-cyber-green hover:bg-cyber-green/10 text-cyber-green transition-all text-[10px] tracking-wider cursor-none font-bold uppercase shadow-[0_0_10px_rgba(0,255,102,0.02)] hover:shadow-[0_0_15px_rgba(0,255,102,0.2)] ${
@@ -3555,6 +3571,14 @@ export default function App() {
                                       >
                                         <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
                                         <span>СИНХРОНИЗИРОВАТЬ ХРАНИЛИЩЕ</span>
+                                      </button>
+                                      
+                                      <button
+                                        onClick={() => setIsNewsPathPromptOpen(true)}
+                                        className="magnetic-target flex items-center justify-center p-1.5 rounded-lg border border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-cyber-yellow/10 text-cyber-yellow transition-all cursor-none"
+                                        title="Изменить путь к ленте новостей"
+                                      >
+                                        <Settings className="w-3.5 h-3.5" />
                                       </button>
                                     </div>
                                     
@@ -3581,6 +3605,147 @@ export default function App() {
                                             </div>
                                             <ChevronRight className="w-3.5 h-3.5 text-cyber-yellow/40 group-hover:text-cyber-yellow group-hover:translate-x-0.5 transition-all shrink-0" />
                                           </button>
+                                        ))
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Tasks Block */}
+                                  <div className="bg-[#06040c]/60 border border-white/5 rounded-xl p-4 flex flex-col gap-2.5 overflow-hidden h-[254px] shrink-0">
+                                    <div className="text-xs uppercase tracking-widest text-cyber-yellow border-b border-white/5 pb-2 font-bold flex justify-between items-center select-none shrink-0">
+                                      <span>// TASKS // ЗАДАЧИ</span>
+                                    </div>
+
+                                    {/* Input for new task */}
+                                    <form 
+                                      onSubmit={(e) => {
+                                        e.preventDefault();
+                                        if (!newTaskText.trim() || !selectedGameId) return;
+                                        const taskId = Date.now().toString();
+                                        const newTaskObj = { id: taskId, text: newTaskText.trim(), completed: false };
+                                        setGameTasks(prev => ({
+                                          ...prev,
+                                          [selectedGameId]: [...(prev[selectedGameId] || []), newTaskObj]
+                                        }));
+                                        setNewTaskText("");
+                                      }}
+                                      className="flex gap-2 shrink-0"
+                                    >
+                                      <input
+                                        type="text"
+                                        placeholder="Добавить новую задачу..."
+                                        value={newTaskText}
+                                        onChange={(e) => setNewTaskText(e.target.value)}
+                                        className="flex-1 bg-black/40 border border-white/10 focus:border-cyber-yellow/50 text-white placeholder-gray-600 rounded px-2.5 py-1 text-[11px] font-mono focus:ring-0 focus:outline-none transition-all cursor-text"
+                                      />
+                                      <button
+                                        type="submit"
+                                        className="magnetic-target px-3 py-1 rounded bg-cyber-yellow/10 hover:bg-cyber-yellow hover:text-black border border-cyber-yellow/30 hover:border-cyber-yellow text-cyber-yellow text-[10px] font-bold tracking-wider transition-all cursor-none uppercase"
+                                      >
+                                        Добавить
+                                      </button>
+                                    </form>
+
+                                    {/* Tasks list */}
+                                    <div className="overflow-y-auto space-y-2 pr-1 select-none font-mono h-full scrollbar-thin">
+                                      {!selectedGameId ? (
+                                        <div className="h-full flex items-center justify-center text-center p-4">
+                                          <p className="text-[10px] text-gray-500 font-mono">Выберите игру, чтобы увидеть задачи.</p>
+                                        </div>
+                                      ) : !(gameTasks[selectedGameId]?.length) ? (
+                                        <div className="h-full flex items-center justify-center text-center p-4">
+                                          <p className="text-[10px] text-gray-500 font-mono">Нет задач. Добавьте первую задачу выше!</p>
+                                        </div>
+                                      ) : (
+                                        gameTasks[selectedGameId].map(task => (
+                                          <div
+                                            key={task.id}
+                                            className="flex items-center justify-between border border-white/5 bg-[#06040c]/40 hover:border-cyber-yellow/20 rounded-lg p-2 transition-all gap-2"
+                                          >
+                                            {editingTaskId === task.id ? (
+                                              <div className="flex-1 flex items-center gap-1.5 min-w-0">
+                                                <input
+                                                  type="text"
+                                                  value={editingTaskText}
+                                                  onChange={(e) => setEditingTaskText(e.target.value)}
+                                                  className="flex-1 bg-black/60 border border-cyber-yellow/50 text-white rounded px-1.5 py-0.5 text-[11px] font-mono focus:outline-none focus:ring-0 cursor-text"
+                                                  autoFocus
+                                                  onKeyDown={(e) => {
+                                                    if (e.key === "Enter") {
+                                                      setGameTasks(prev => ({
+                                                        ...prev,
+                                                        [selectedGameId]: prev[selectedGameId].map(t =>
+                                                          t.id === task.id ? { ...t, text: editingTaskText.trim() } : t
+                                                        )
+                                                      }));
+                                                      setEditingTaskId(null);
+                                                    } else if (e.key === "Escape") {
+                                                      setEditingTaskId(null);
+                                                    }
+                                                  }}
+                                                />
+                                                <button
+                                                  onClick={() => {
+                                                    setGameTasks(prev => ({
+                                                      ...prev,
+                                                      [selectedGameId]: prev[selectedGameId].map(t =>
+                                                        t.id === task.id ? { ...t, text: editingTaskText.trim() } : t
+                                                      )
+                                                    }));
+                                                    setEditingTaskId(null);
+                                                  }}
+                                                  className="text-cyber-green hover:text-cyber-green/85 text-[10px] font-bold px-1"
+                                                >
+                                                  OK
+                                                </button>
+                                              </div>
+                                            ) : (
+                                              <>
+                                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={task.completed}
+                                                    onChange={() => {
+                                                      setGameTasks(prev => ({
+                                                        ...prev,
+                                                        [selectedGameId]: prev[selectedGameId].map(t =>
+                                                          t.id === task.id ? { ...t, completed: !t.completed } : t
+                                                        )
+                                                      }));
+                                                    }}
+                                                    className="w-3.5 h-3.5 rounded border-white/10 bg-black/40 text-cyber-yellow focus:ring-0 focus:ring-offset-0 cursor-none"
+                                                  />
+                                                  <span className={`text-[11px] truncate font-mono ${task.completed ? "line-through text-gray-500" : "text-gray-300"}`}>
+                                                    {task.text}
+                                                  </span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                  <button
+                                                    onClick={() => {
+                                                      setEditingTaskId(task.id);
+                                                      setEditingTaskText(task.text);
+                                                    }}
+                                                    className="magnetic-target text-cyber-yellow/75 hover:text-cyber-yellow p-1 rounded hover:bg-cyber-yellow/10 cursor-none transition-colors"
+                                                    title="Редактировать задачу"
+                                                  >
+                                                    <Edit2 className="w-3 h-3" />
+                                                  </button>
+                                                  <button
+                                                    onClick={() => {
+                                                      setGameTasks(prev => ({
+                                                        ...prev,
+                                                        [selectedGameId]: prev[selectedGameId].filter(t => t.id !== task.id)
+                                                      }));
+                                                    }}
+                                                    className="magnetic-target text-red-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 cursor-none transition-colors"
+                                                    title="Удалить задачу"
+                                                  >
+                                                    <Trash2 className="w-3 h-3" />
+                                                  </button>
+                                                </div>
+                                              </>
+                                            )}
+                                          </div>
                                         ))
                                       )}
                                     </div>
