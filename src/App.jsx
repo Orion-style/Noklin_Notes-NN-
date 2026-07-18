@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { X, RefreshCw, BarChart2, Grid, Plus, Folder, FolderOpen, FileText, Cpu, Terminal, Layers, Link, ShieldAlert, Check, HelpCircle, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Moon, LogOut, Bold, Italic, Highlighter, Heading1, Heading2, CheckSquare, Code, FilePlus, FolderPlus, Compass, Database, Copy, CornerUpRight, Search, Bookmark, Clipboard, Eye, Edit2, Trash2, Gamepad2, Swords, Play, Sparkles, Clock, Gamepad, Settings, Mail, Bell, Activity, HardDrive, Crop } from "lucide-react";
+import { X, RefreshCw, BarChart2, Grid, Plus, Folder, FolderOpen, FileText, Cpu, Terminal, Layers, Link, ShieldAlert, Check, HelpCircle, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Moon, LogOut, Bold, Italic, Highlighter, Heading1, Heading2, CheckSquare, Code, FilePlus, FolderPlus, Compass, Database, Copy, CornerUpRight, Search, Bookmark, Clipboard, Eye, Edit2, Trash2, Gamepad2, Swords, Play, Sparkles, Clock, Gamepad, Settings, Mail, Bell, Activity, HardDrive, Crop, Square } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import CustomCursor from "./components/CustomCursor";
 import InteractiveBackground from "./components/InteractiveBackground";
 import OnboardingWidget from "./components/OnboardingWidget";
 
@@ -135,17 +134,7 @@ function FileTreeNode({
           }
         }}
         onMouseLeave={hideGlobalTooltip}
-        className={`magnetic-target rounded transition-all flex items-center cursor-none border shrink-0 select-none ${
-          sidebarCollapsed 
-            ? isNested
-              ? "w-7 h-7 justify-center ml-1"
-              : "w-8 h-8 justify-center ml-1.5" 
-            : "w-[calc(100%-8px)] text-left py-1.5 gap-2 text-xs"
-        } ${
-          isSelected
-            ? "bg-cyber-green/10 border-cyber-green text-cyber-green shadow-[0_0_10px_rgba(0,255,102,0.2)]"
-            : "bg-transparent border-transparent text-gray-400 hover:text-gray-200 hover:bg-cyber-purple/5"
-        }`}
+        className={`rounded transition-all flex items-center border shrink-0 select-none ${ sidebarCollapsed ? isNested ? "w-7 h-7 justify-center ml-1" : "w-8 h-8 justify-center ml-1.5" : "w-[calc(100%-8px)] text-left py-1.5 gap-2 text-xs" } ${ isSelected ? "bg-cyber-green/10 border-cyber-green text-cyber-green shadow-[0_0_10px_rgba(0,255,102,0.2)]" : "bg-transparent border-transparent text-gray-400 hover:text-gray-200 hover:bg-cyber-purple/5" }`}
         style={{ paddingLeft: sidebarCollapsed ? undefined : `${depth * 12 + 12}px` }}
       >
         <FileText className={`shrink-0 ${sidebarCollapsed ? (isNested ? "w-4 h-4" : "w-4.5 h-4.5") : "w-3.5 h-3.5"} ${isSelected ? "text-cyber-green" : "text-cyber-purple"}`} />
@@ -171,13 +160,7 @@ function FileTreeNode({
           }
         }}
         onMouseLeave={hideGlobalTooltip}
-        className={`magnetic-target rounded transition-all flex items-center cursor-none group border border-transparent select-none shrink-0 ${
-          sidebarCollapsed 
-            ? isNested
-              ? "w-7 h-7 justify-center ml-1 hover:border-cyber-purple/15 hover:bg-cyber-purple/5"
-              : "w-8 h-8 justify-center ml-1.5 hover:border-cyber-purple/15 hover:bg-cyber-purple/5" 
-            : "w-[calc(100%-8px)] py-1.5 justify-between text-xs text-gray-400 hover:text-gray-200 hover:bg-cyber-purple/5 hover:border-cyber-purple/10"
-        }`}
+        className={`rounded transition-all flex items-center group border border-transparent select-none shrink-0 ${ sidebarCollapsed ? isNested ? "w-7 h-7 justify-center ml-1 hover:border-cyber-purple/15 hover:bg-cyber-purple/5" : "w-8 h-8 justify-center ml-1.5 hover:border-cyber-purple/15 hover:bg-cyber-purple/5" : "w-[calc(100%-8px)] py-1.5 justify-between text-xs text-gray-400 hover:text-gray-200 hover:bg-cyber-purple/5 hover:border-cyber-purple/10" }`}
         style={{ paddingLeft: sidebarCollapsed ? undefined : `${depth * 12 + 12}px` }}
       >
         <div className={`flex items-center min-w-0 ${sidebarCollapsed ? "justify-center" : "gap-2"}`}>
@@ -191,7 +174,7 @@ function FileTreeNode({
                 e.stopPropagation();
                 onCreateFile(node.path);
               }}
-              className="magnetic-target p-0.5 rounded border border-transparent hover:border-cyber-green/45 hover:bg-cyber-green/10 text-cyber-green transition-all opacity-0 group-hover:opacity-100 cursor-none flex items-center justify-center"
+              className="p-0.5 rounded border border-transparent hover:border-cyber-green/45 hover:bg-cyber-green/10 text-cyber-green transition-all opacity-0 group-hover:opacity-100 flex items-center justify-center"
               title="Создать файл в этой папке"
             >
               <Plus className="w-3 h-3" />
@@ -738,8 +721,37 @@ export default function App() {
     };
   };
 
-  const [launchingGame, setLaunchingGame] = useState(null);
-  const [launchLogs, setLaunchLogs] = useState([]);
+  const [runningGames, setRunningGames] = useState(() => {
+    const saved = localStorage.getItem("cyber_running_games");
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [tick, setTick] = useState(0);
+
+  React.useEffect(() => {
+    localStorage.setItem("cyber_running_games", JSON.stringify(runningGames));
+  }, [runningGames]);
+
+  React.useEffect(() => {
+    const hasRunning = Object.values(runningGames).some(Boolean);
+    if (!hasRunning) return;
+    const interval = setInterval(() => {
+      setTick(t => t + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [runningGames]);
+
+  const formatElapsed = (ms) => {
+    if (!ms || ms < 0) return "00:00:00";
+    const totalSecs = Math.floor(ms / 1000);
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+    return [
+      hrs.toString().padStart(2, '0'),
+      mins.toString().padStart(2, '0'),
+      secs.toString().padStart(2, '0')
+    ].join(':');
+  };
 
   React.useEffect(() => {
     localStorage.setItem("cyber_games", JSON.stringify(games));
@@ -752,73 +764,77 @@ export default function App() {
   // Active game playtime trackers
   const activeTrackers = React.useRef({});
 
-  // Start tracking playtime for a specific game
-  const startTracking = React.useCallback((game) => {
-    if (activeTrackers.current[game.id]) return;
+  React.useEffect(() => {
+    Object.keys(runningGames).forEach(gameId => {
+      activeTrackers.current[gameId] = true;
+    });
+  }, []);
 
-    const intervalTime = 10000; // Check every 10 seconds
-    const incrementHours = intervalTime / (3600 * 1000); // 10 seconds in hours
+  // Helper to stop tracking and log the session
+  const stopTrackingAndLog = React.useCallback((gameId) => {
+    delete activeTrackers.current[gameId];
 
-    const intervalId = setInterval(async () => {
-      try {
-        const running = await invoke("is_game_running", { path: game.path });
-        if (running) {
-          setGames(prev => prev.map(g => {
-            if (g.id === game.id) {
+    setRunningGames(prev => {
+      const startTime = prev[gameId];
+      if (startTime) {
+        const endTime = Date.now();
+        const finalSessionHours = (endTime - startTime) / (3600 * 1000);
+
+        if (finalSessionHours >= 0.0001) {
+          const newSession = {
+            id: Date.now().toString(),
+            hours: Number(finalSessionHours.toFixed(5)),
+            notes: "Автоматическая сессия",
+            date: new Date().toISOString().split('T')[0]
+          };
+
+          setGameActivities(prevAct => {
+            const current = prevAct[gameId] || [];
+            return {
+              ...prevAct,
+              [gameId]: [newSession, ...current]
+            };
+          });
+
+          setGames(prevGames => prevGames.map(g => {
+            if (g.id === gameId) {
               const currentPlayTime = typeof g.playTime === 'number' ? g.playTime : 0;
               return {
                 ...g,
-                playTime: Number((currentPlayTime + incrementHours).toFixed(5))
+                playTime: Number((currentPlayTime + finalSessionHours).toFixed(5)),
+                lastPlayed: newSession.date
               };
             }
             return g;
           }));
-        } else {
-          // Game stopped running, clear tracker
-          clearInterval(intervalId);
-          delete activeTrackers.current[game.id];
         }
-      } catch (e) {
-        console.error("Error during game tracking:", e);
-        clearInterval(intervalId);
-        delete activeTrackers.current[game.id];
       }
-    }, intervalTime);
-
-    activeTrackers.current[game.id] = intervalId;
+      const next = { ...prev };
+      delete next[gameId];
+      return next;
+    });
   }, []);
 
-  // Periodic check to auto-detect launched games
-  React.useEffect(() => {
-    const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
-    if (!isTauri) return;
+  const handleStopGame = async (game) => {
+    try {
+      await invoke("stop_game", { path: game.path });
+      stopTrackingAndLog(game.id);
+    } catch (e) {
+      console.error("Failed to stop game:", e);
+      // Fallback: log session anyway if process failed to stop (e.g. process already exited)
+      stopTrackingAndLog(game.id);
+    }
+  };
 
-    const checkAllGames = async () => {
-      for (const game of games) {
-        if (activeTrackers.current[game.id]) continue;
-        try {
-          const running = await invoke("is_game_running", { path: game.path });
-          if (running) {
-            startTracking(game);
-          }
-        } catch (e) {
-          console.error("Error auto-detecting game status:", e);
-        }
-      }
-    };
-
-    // Run immediately on mount
-    checkAllGames();
-
-    // Check every 30 seconds for untracked games
-    const checkInterval = setInterval(checkAllGames, 30000);
-
-    return () => {
-      clearInterval(checkInterval);
-      // Clean up all trackers on unmount
-      Object.values(activeTrackers.current).forEach(clearInterval);
-    };
-  }, [games, startTracking]);
+  // Start tracking playtime for a specific game
+  const startTracking = React.useCallback((game) => {
+    const startTime = Date.now();
+    setRunningGames(prev => ({
+      ...prev,
+      [game.id]: startTime
+    }));
+    activeTrackers.current[game.id] = true;
+  }, []);
 
   // Fetch missing icons for existing games on mount
   React.useEffect(() => {
@@ -1677,11 +1693,7 @@ export default function App() {
         const content = checklistMatch[3];
         elements.push(
           <div key={idx} className="flex items-center gap-2 py-1 select-none">
-            <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-all ${
-              isChecked 
-                ? "bg-cyber-green/20 border-cyber-green text-cyber-green shadow-[0_0_8px_rgba(0,255,102,0.3)]" 
-                : "border-cyber-purple/45 text-transparent hover:border-cyber-purple"
-            }`}>
+            <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-all ${ isChecked ? "bg-cyber-green/20 border-cyber-green text-cyber-green shadow-[0_0_8px_rgba(0,255,102,0.3)]" : "border-cyber-purple/45 text-transparent hover:border-cyber-purple" }`}>
               {isChecked && <Check className="w-2.5 h-2.5" />}
             </span>
             <span className={`font-sans text-xs ${isChecked ? "line-through text-gray-500" : "text-gray-300"}`}>
@@ -2103,6 +2115,54 @@ export default function App() {
   const handleExitApp = async () => {
     try {
       const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
+      
+      // Save running games session data before exit
+      const runningIds = Object.keys(runningGames);
+      if (runningIds.length > 0) {
+        let updatedGames = [...games];
+        let updatedActivities = { ...gameActivities };
+        const endTime = Date.now();
+        let changed = false;
+
+        for (const gameId of runningIds) {
+          const startTime = runningGames[gameId];
+          if (startTime) {
+            const finalSessionHours = (endTime - startTime) / (3600 * 1000);
+            if (finalSessionHours >= 0.0001) {
+              const newSession = {
+                id: (Date.now() + Math.random()).toString(),
+                hours: Number(finalSessionHours.toFixed(5)),
+                notes: "Автоматическая сессия (при выходе)",
+                date: new Date().toISOString().split('T')[0]
+              };
+              
+              updatedActivities[gameId] = [newSession, ...(updatedActivities[gameId] || [])];
+              updatedGames = updatedGames.map(g => {
+                if (g.id === gameId) {
+                  const currentPlayTime = typeof g.playTime === 'number' ? g.playTime : 0;
+                  return {
+                    ...g,
+                    playTime: Number((currentPlayTime + finalSessionHours).toFixed(5)),
+                    lastPlayed: newSession.date
+                  };
+                }
+                return g;
+              });
+              changed = true;
+            }
+          }
+        }
+
+        if (changed) {
+          localStorage.setItem("cyber_games", JSON.stringify(updatedGames));
+          localStorage.setItem("cyber_game_activities", JSON.stringify(updatedActivities));
+          setGames(updatedGames);
+          setGameActivities(updatedActivities);
+        }
+        localStorage.removeItem("cyber_running_games");
+        setRunningGames({});
+      }
+
       if (isTauri) {
         await invoke("exit_app");
       } else {
@@ -2318,7 +2378,7 @@ export default function App() {
               {/* Toggle Button */}
               <button
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="magnetic-target absolute top-6 -right-3 w-6 h-6 rounded-full border border-cyber-purple/30 bg-cyber-sidebar flex items-center justify-center hover:bg-cyber-purple/20 hover:border-cyber-purple/65 transition-all text-cyber-purple hover:text-white cursor-none z-50 shadow-[0_0_8px_rgba(0,0,0,0.5)]"
+                className="absolute top-6 -right-3 w-6 h-6 rounded-full border border-cyber-purple/30 bg-cyber-sidebar flex items-center justify-center hover:bg-cyber-purple/20 hover:border-cyber-purple/65 transition-all text-cyber-purple hover:text-white z-50 shadow-[0_0_8px_rgba(0,0,0,0.5)]"
               >
                 {sidebarCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
               </button>
@@ -2330,11 +2390,7 @@ export default function App() {
                   onMouseLeave={hideGlobalTooltip}
                   onClick={() => { if (activeMode === "game_manager") { setSelectedGameId(null); } }} className={`flex items-center gap-3 mb-8 shrink-0 cursor-pointer ${sidebarCollapsed ? "justify-center" : ""}`}
                 >
-                  <div className={`w-10 h-10 rounded border flex items-center justify-center shrink-0 transition-all ${
-                    activeMode === "game_manager" 
-                      ? "border-cyber-yellow bg-cyber-yellow/10 shadow-[0_0_10px_rgba(255,183,0,0.3)]" 
-                      : "border-cyber-green bg-cyber-green/10 shadow-[0_0_10px_rgba(0,255,102,0.3)]"
-                  }`}>
+                  <div className={`w-10 h-10 rounded border flex items-center justify-center shrink-0 transition-all ${ activeMode === "game_manager" ? "border-cyber-yellow bg-cyber-yellow/10 shadow-[0_0_10px_rgba(255,183,0,0.3)]" : "border-cyber-green bg-cyber-green/10 shadow-[0_0_10px_rgba(0,255,102,0.3)]" }`}>
                     {activeMode === "game_manager" ? (
                       <Gamepad2 className="w-6 h-6 text-cyber-yellow animate-pulse" />
                     ) : (
@@ -2375,11 +2431,7 @@ export default function App() {
                           onClick={() => setSelectedGameId(null)}
                           onMouseEnter={(e) => showGlobalTooltip(e, "ОБЗОР (ВСЕ ИГРЫ)", "yellow")}
                           onMouseLeave={hideGlobalTooltip}
-                          className={`magnetic-target w-8 h-8 rounded border flex items-center justify-center cursor-none transition-all duration-300 shrink-0 ${
-                            selectedGameId === null
-                              ? "border-cyber-yellow bg-cyber-yellow/15 shadow-[0_0_8px_rgba(255,183,0,0.3)] text-cyber-yellow"
-                              : "border-cyber-yellow/20 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 text-cyber-yellow"
-                          }`}
+                          className={`w-8 h-8 rounded border flex items-center justify-center transition-all duration-300 shrink-0 ${ selectedGameId === null ? "border-cyber-yellow bg-cyber-yellow/15 shadow-[0_0_8px_rgba(255,183,0,0.3)] text-cyber-yellow" : "border-cyber-yellow/20 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 text-cyber-yellow" }`}
                         >
                           <Compass className="w-4 h-4" />
                         </button>
@@ -2392,11 +2444,7 @@ export default function App() {
                             onClick={() => setSelectedGameId(selectedGameId === game.id ? null : game.id)}
                             onMouseEnter={(e) => showGlobalTooltip(e, `ОТКРЫТЬ: ${game.name}`, "yellow")}
                             onMouseLeave={hideGlobalTooltip}
-                            className={`magnetic-target w-8 h-8 rounded border flex items-center justify-center cursor-none transition-all duration-300 relative group shrink-0 overflow-hidden ${
-                              selectedGameId === game.id
-                                ? "border-cyber-yellow bg-cyber-yellow/15 shadow-[0_0_8px_rgba(255,183,0,0.3)] text-cyber-yellow"
-                                : "border-cyber-yellow/20 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 text-cyber-yellow"
-                            }`}
+                            className={`w-8 h-8 rounded border flex items-center justify-center transition-all duration-300 relative group shrink-0 overflow-hidden ${ selectedGameId === game.id ? "border-cyber-yellow bg-cyber-yellow/15 shadow-[0_0_8px_rgba(255,183,0,0.3)] text-cyber-yellow" : "border-cyber-yellow/20 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 text-cyber-yellow" }`}
                           >
                             {game.icon ? (
                               <img src={game.icon} alt="" className="w-5 h-5 object-contain rounded" />
@@ -2409,7 +2457,7 @@ export default function App() {
                           onClick={handleAddGameOpenClick}
                           onMouseEnter={(e) => showGlobalTooltip(e, "ДОБАВИТЬ ИГРУ", "yellow")}
                           onMouseLeave={hideGlobalTooltip}
-                          className="magnetic-target w-8 h-8 rounded border border-dashed border-cyber-yellow/30 hover:border-cyber-yellow text-gray-500 hover:text-cyber-yellow flex items-center justify-center cursor-none transition-all shrink-0"
+                          className="w-8 h-8 rounded border border-dashed border-cyber-yellow/30 hover:border-cyber-yellow text-gray-500 hover:text-cyber-yellow flex items-center justify-center transition-all shrink-0"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
@@ -2424,7 +2472,7 @@ export default function App() {
                         </span>
                         <button
                           onClick={handleAddGameOpenClick}
-                          className="magnetic-target p-1 rounded border border-transparent hover:border-cyber-yellow/30 text-gray-400 hover:text-cyber-yellow hover:bg-cyber-yellow/5 transition-all cursor-none flex items-center justify-center"
+                          className="p-1 rounded border border-transparent hover:border-cyber-yellow/30 text-gray-400 hover:text-cyber-yellow hover:bg-cyber-yellow/5 transition-all flex items-center justify-center"
                           title="Добавить новую игру"
                         >
                           <Plus className="w-4 h-4" />
@@ -2457,11 +2505,7 @@ export default function App() {
                         {/* Overview selector */}
                         <div
                           onClick={() => setSelectedGameId(null)}
-                          className={`border rounded p-2 flex items-center gap-2.5 transition-colors group cursor-none ${
-                            selectedGameId === null
-                              ? "border-cyber-yellow bg-[#ffb700]/10 shadow-[0_0_10px_rgba(255,183,0,0.15)] text-white"
-                              : "border-cyber-yellow/15 bg-transparent hover:border-cyber-yellow/45 text-gray-400 hover:text-white"
-                          }`}
+                          className={`border rounded p-2 flex items-center gap-2.5 transition-colors group ${ selectedGameId === null ? "border-cyber-yellow bg-[#ffb700]/10 shadow-[0_0_10px_rgba(255,183,0,0.15)] text-white" : "border-cyber-yellow/15 bg-transparent hover:border-cyber-yellow/45 text-gray-400 hover:text-white" }`}
                         >
                           <Compass className="w-4 h-4 text-cyber-yellow shrink-0" />
                           <div className="flex flex-col min-w-0">
@@ -2481,11 +2525,7 @@ export default function App() {
                               key={game.id}
                               onClick={() => setSelectedGameId(selectedGameId === game.id ? null : game.id)}
                               onContextMenu={(e) => handleGameContextMenu(e, game)}
-                              className={`border rounded p-2 flex items-center justify-between transition-colors group cursor-none ${
-                                selectedGameId === game.id
-                                  ? "border-cyber-yellow bg-[#ffb700]/10 shadow-[0_0_10px_rgba(255,183,0,0.15)]"
-                                  : "border-cyber-yellow/15 bg-[#ffb700]/5 hover:border-cyber-yellow/45"
-                              }`}
+                              className={`border rounded p-2 flex items-center justify-between transition-colors group ${ selectedGameId === game.id ? "border-cyber-yellow bg-[#ffb700]/10 shadow-[0_0_10px_rgba(255,183,0,0.15)]" : "border-cyber-yellow/15 bg-[#ffb700]/5 hover:border-cyber-yellow/45" }`}
                             >
                               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                 {game.icon ? (
@@ -2579,7 +2619,7 @@ export default function App() {
                                   e.stopPropagation();
                                   handleCreateFile("");
                                 }}
-                              className="magnetic-target p-1 rounded border border-transparent hover:border-cyber-green/30 text-gray-400 hover:text-cyber-green hover:bg-cyber-green/5 transition-all cursor-none flex items-center justify-center"
+                              className="p-1 rounded border border-transparent hover:border-cyber-green/30 text-gray-400 hover:text-cyber-green hover:bg-cyber-green/5 transition-all flex items-center justify-center"
                               title="Создать новый файл в корне"
                             >
                               <Plus className="w-3.5 h-3.5" />
@@ -2592,11 +2632,7 @@ export default function App() {
                             <button
                               type="button"
                               onClick={() => setShowConnection(!showConnection)}
-                              className={`magnetic-target p-1 rounded border transition-all cursor-none ${
-                                showConnection
-                                  ? "bg-cyber-purple/20 border-cyber-purple/50 text-cyber-purple shadow-[0_0_8px_rgba(176,38,255,0.2)]"
-                                  : "bg-transparent border-transparent text-gray-400 hover:text-cyber-green hover:border-cyber-green/30"
-                              }`}
+                              className={`p-1 rounded border transition-all ${ showConnection ? "bg-cyber-purple/20 border-cyber-purple/50 text-cyber-purple shadow-[0_0_8px_rgba(176,38,255,0.2)]" : "bg-transparent border-transparent text-gray-400 hover:text-cyber-green hover:border-cyber-green/30" }`}
                               title={showConnection ? "Скрыть путь к хранилищу" : "Изменить путь к хранилищу"}
                             >
                               <Link className="w-3.5 h-3.5" />
@@ -2663,7 +2699,7 @@ export default function App() {
                               onClick={() => applyEditTool(tool.id)}
                               onMouseEnter={(e) => showGlobalTooltip(e, `${tool.label} (${tool.shortcut})`, "green")}
                               onMouseLeave={hideGlobalTooltip}
-                              className="magnetic-target w-10 h-10 rounded flex items-center justify-center transition-all cursor-none border border-transparent text-gray-400 hover:text-cyber-green hover:border-cyber-green/35 hover:bg-cyber-green/5 relative group shrink-0"
+                              className="w-10 h-10 rounded flex items-center justify-center transition-all border border-transparent text-gray-400 hover:text-cyber-green hover:border-cyber-green/35 hover:bg-cyber-green/5 relative group shrink-0"
                             >
                               <IconComponent className="w-5 h-5 shrink-0" />
                             </button>
@@ -2694,7 +2730,7 @@ export default function App() {
                                   type="button"
                                   onMouseDown={(e) => e.preventDefault()}
                                   onClick={() => applyEditTool(tool.id)}
-                                  className="magnetic-target w-8 h-8 rounded border border-cyber-purple/30 bg-cyber-purple/10 text-cyber-purple hover:text-cyber-green hover:border-cyber-green/55 hover:bg-cyber-green/5 flex items-center justify-center shrink-0 cursor-none transition-all shadow-[0_0_8px_rgba(176,38,255,0.1)] hover:shadow-[0_0_12px_rgba(0,255,102,0.2)]"
+                                  className="w-8 h-8 rounded border border-cyber-purple/30 bg-cyber-purple/10 text-cyber-purple hover:text-cyber-green hover:border-cyber-green/55 hover:bg-cyber-green/5 flex items-center justify-center shrink-0 transition-all shadow-[0_0_8px_rgba(176,38,255,0.1)] hover:shadow-[0_0_12px_rgba(0,255,102,0.2)]"
                                   title={`Применить: ${tool.label}`}
                                 >
                                   <IconComponent className="w-4 h-4" />
@@ -2717,11 +2753,7 @@ export default function App() {
                                       type="button"
                                       onMouseDown={(e) => e.preventDefault()}
                                       onClick={() => setHighlightColor("green")}
-                                      className={`magnetic-target flex items-center gap-1.5 text-[9px] font-mono px-2 py-1 rounded border transition-all cursor-none ${
-                                        highlightColor === "green"
-                                          ? "bg-cyber-green/10 border-cyber-green text-cyber-green shadow-[0_0_8px_rgba(0,255,102,0.15)]"
-                                          : "bg-transparent border-cyber-purple/15 text-gray-400 hover:text-gray-200 hover:border-cyber-purple/35"
-                                      }`}
+                                      className={`flex items-center gap-1.5 text-[9px] font-mono px-2 py-1 rounded border transition-all ${ highlightColor === "green" ? "bg-cyber-green/10 border-cyber-green text-cyber-green shadow-[0_0_8px_rgba(0,255,102,0.15)]" : "bg-transparent border-cyber-purple/15 text-gray-400 hover:text-gray-200 hover:border-cyber-purple/35" }`}
                                     >
                                       <span className="w-1.5 h-1.5 rounded-full bg-cyber-green" />
                                       Зеленый
@@ -2730,11 +2762,7 @@ export default function App() {
                                       type="button"
                                       onMouseDown={(e) => e.preventDefault()}
                                       onClick={() => setHighlightColor("blue")}
-                                      className={`magnetic-target flex items-center gap-1.5 text-[9px] font-mono px-2 py-1 rounded border transition-all cursor-none ${
-                                        highlightColor === "blue"
-                                          ? "bg-blue-500/10 border-blue-500/50 text-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.15)]"
-                                          : "bg-transparent border-cyber-purple/15 text-gray-400 hover:text-gray-200 hover:border-cyber-purple/35"
-                                      }`}
+                                      className={`flex items-center gap-1.5 text-[9px] font-mono px-2 py-1 rounded border transition-all ${ highlightColor === "blue" ? "bg-blue-500/10 border-blue-500/50 text-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.15)]" : "bg-transparent border-cyber-purple/15 text-gray-400 hover:text-gray-200 hover:border-cyber-purple/35" }`}
                                     >
                                       <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                                       Синий
@@ -2743,11 +2771,7 @@ export default function App() {
                                       type="button"
                                       onMouseDown={(e) => e.preventDefault()}
                                       onClick={() => setHighlightColor("pink")}
-                                      className={`magnetic-target flex items-center gap-1.5 text-[9px] font-mono px-2 py-1 rounded border transition-all cursor-none ${
-                                        highlightColor === "pink"
-                                          ? "bg-pink-500/10 border-pink-500/50 text-pink-300 shadow-[0_0_8px_rgba(236,72,153,0.15)]"
-                                          : "bg-transparent border-cyber-purple/15 text-gray-400 hover:text-gray-200 hover:border-cyber-purple/35"
-                                      }`}
+                                      className={`flex items-center gap-1.5 text-[9px] font-mono px-2 py-1 rounded border transition-all ${ highlightColor === "pink" ? "bg-pink-500/10 border-pink-500/50 text-pink-300 shadow-[0_0_8px_rgba(236,72,153,0.15)]" : "bg-transparent border-cyber-purple/15 text-gray-400 hover:text-gray-200 hover:border-cyber-purple/35" }`}
                                     >
                                       <span className="w-1.5 h-1.5 rounded-full bg-pink-500" />
                                       Розовый
@@ -2756,11 +2780,7 @@ export default function App() {
                                       type="button"
                                       onMouseDown={(e) => e.preventDefault()}
                                       onClick={() => setHighlightColor("purple")}
-                                      className={`magnetic-target flex items-center gap-1.5 text-[9px] font-mono px-2 py-1 rounded border transition-all cursor-none ${
-                                        highlightColor === "purple"
-                                          ? "bg-cyber-purple/15 border-cyber-purple text-cyber-purple shadow-[0_0_8px_rgba(176,38,255,0.15)]"
-                                          : "bg-transparent border-cyber-purple/15 text-gray-400 hover:text-gray-200 hover:border-cyber-purple/35"
-                                      }`}
+                                      className={`flex items-center gap-1.5 text-[9px] font-mono px-2 py-1 rounded border transition-all ${ highlightColor === "purple" ? "bg-cyber-purple/15 border-cyber-purple text-cyber-purple shadow-[0_0_8px_rgba(176,38,255,0.15)]" : "bg-transparent border-cyber-purple/15 text-gray-400 hover:text-gray-200 hover:border-cyber-purple/35" }`}
                                     >
                                       <span className="w-1.5 h-1.5 rounded-full bg-cyber-purple" />
                                       Фиолетовый
@@ -2789,7 +2809,7 @@ export default function App() {
                         onClick={() => setSidebarCollapsed(false)}
                         onMouseEnter={(e) => showGlobalTooltip(e, "ПОДКЛЮЧИТЬ VAULT", "purple")}
                         onMouseLeave={hideGlobalTooltip}
-                        className="magnetic-target w-10 h-10 rounded border bg-[#06040c]/40 hover:bg-cyber-purple/10 flex items-center justify-center transition-all group relative shrink-0 border-cyber-purple/30 text-cyber-purple shadow-[0_0_10px_rgba(176,38,255,0.15)]"
+                        className="w-10 h-10 rounded border bg-[#06040c]/40 hover:bg-cyber-purple/10 flex items-center justify-center transition-all group relative shrink-0 border-cyber-purple/30 text-cyber-purple shadow-[0_0_10px_rgba(176,38,255,0.15)]"
                       >
                         <Link className="w-5 h-5 transition-transform group-hover:scale-110" />
                       </button>
@@ -2812,7 +2832,7 @@ export default function App() {
                         <button
                           type="submit"
                           disabled={loading}
-                          className="magnetic-target w-full bg-cyber-green text-[#06040c] font-black rounded py-2.5 px-4 shadow-[0_0_12px_rgba(0,255,102,0.35)] hover:shadow-[0_0_20px_rgba(0,255,102,0.65)] hover:bg-[#15ff7a] transition-all text-xs font-mono flex items-center justify-center gap-2"
+                          className="w-full bg-cyber-green text-[#06040c] font-black rounded py-2.5 px-4 shadow-[0_0_12px_rgba(0,255,102,0.35)] hover:shadow-[0_0_20px_rgba(0,255,102,0.65)] hover:bg-[#15ff7a] transition-all text-xs font-mono flex items-center justify-center gap-2"
                         >
                           {loading ? (
                             <span className="w-4 h-4 border-2 border-[#06040c] border-t-transparent rounded-full animate-spin" />
@@ -2833,9 +2853,7 @@ export default function App() {
             {/* Main Workspace Preview Pane */}
             <main className="flex-1 flex flex-col h-full relative z-0">
               {/* Workspace Top Header Bar */}
-              <header className={`h-16 border-b bg-cyber-sidebar/65 backdrop-blur-md flex items-center justify-between px-8 z-10 relative transition-colors ${
-                activeMode === "game_manager" ? "border-cyber-yellow/20" : "border-cyber-purple/20"
-              }`}>
+              <header className={`h-16 border-b bg-cyber-sidebar/65 backdrop-blur-md flex items-center justify-between px-8 z-10 relative transition-colors ${ activeMode === "game_manager" ? "border-cyber-yellow/20" : "border-cyber-purple/20" }`}>
                 {activeMode === "game_manager" ? (
                   <div className="flex items-center gap-2 font-mono text-sm text-cyber-yellow">
                     <span className="text-cyber-yellow/60">system_mode:</span>
@@ -2858,11 +2876,7 @@ export default function App() {
                   {/* System Mode Switcher */}
                   <button
                     onClick={() => setMenuOpen(true)}
-                    className={`magnetic-target flex items-center gap-1.5 text-xs px-2.5 py-1 rounded font-mono transition-all cursor-none border ${
-                      activeMode === "game_manager"
-                        ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10 hover:border-cyber-yellow/50 shadow-[0_0_8px_rgba(255,183,0,0.1)]"
-                        : "text-cyber-purple bg-cyber-purple/5 border-cyber-purple/20 hover:bg-cyber-purple/10 hover:border-cyber-purple/50 shadow-[0_0_8px_rgba(176,38,255,0.1)]"
-                    }`}
+                    className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded font-mono transition-all border ${ activeMode === "game_manager" ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10 hover:border-cyber-yellow/50 shadow-[0_0_8px_rgba(255,183,0,0.1)]" : "text-cyber-purple bg-cyber-purple/5 border-cyber-purple/20 hover:bg-cyber-purple/10 hover:border-cyber-purple/50 shadow-[0_0_8px_rgba(176,38,255,0.1)]" }`}
                   >
                     {activeMode === "game_manager" ? <Gamepad2 className="w-3.5 h-3.5" /> : <ObsidianIcon className="w-3.5 h-3.5 text-cyber-purple" />}
                     <span>РЕЖИМ: {activeMode === "game_manager" ? "ИГРЫ" : "БЛОКНОТ"}</span>
@@ -2870,37 +2884,23 @@ export default function App() {
 
                   <button
                     onClick={() => setShowOnboarding(true)}
-                    className={`magnetic-target flex items-center gap-1.5 text-xs font-mono transition-all cursor-none px-2.5 py-1 rounded border ${
-                      activeMode === "game_manager"
-                        ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10 hover:border-cyber-yellow/50"
-                        : "text-cyber-green bg-cyber-green/5 border-cyber-green/20 hover:bg-cyber-green/10 hover:border-cyber-green/50"
-                    }`}
+                    className={`flex items-center gap-1.5 text-xs font-mono transition-all px-2.5 py-1 rounded border ${ activeMode === "game_manager" ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10 hover:border-cyber-yellow/50" : "text-cyber-green bg-cyber-green/5 border-cyber-green/20 hover:bg-cyber-green/10 hover:border-cyber-green/50" }`}
                   >
                     <HelpCircle className="w-3.5 h-3.5" />
                     СПРАВКА
                   </button>
                   
-                  <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded font-mono border ${
-                    activeMode === "game_manager"
-                      ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20"
-                      : "text-cyber-purple bg-cyber-purple/5 border-cyber-purple/20"
-                  }`}>
+                  <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded font-mono border ${ activeMode === "game_manager" ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20" : "text-cyber-purple bg-cyber-purple/5 border-cyber-purple/20" }`}>
                     <Layers className="w-3.5 h-3.5" />
                     STAGE 1 RUNTIME
                   </div>
  
                   {/* System Control Widget */}
-                  <div className={`flex items-center gap-1 bg-[#06040c]/50 p-1 rounded font-mono border shadow-[0_0_10px_rgba(0,0,0,0.3)] ${
-                    activeMode === "game_manager" ? "border-cyber-yellow/25" : "border-cyber-purple/25"
-                  }`}>
+                  <div className={`flex items-center gap-1 bg-[#06040c]/50 p-1 rounded font-mono border shadow-[0_0_10px_rgba(0,0,0,0.3)] ${ activeMode === "game_manager" ? "border-cyber-yellow/25" : "border-cyber-purple/25" }`}>
                     <button
                       type="button"
                       onClick={() => setIsSleeping(true)}
-                      className={`magnetic-target p-1.5 text-xs rounded transition-all cursor-none flex items-center gap-1 border border-transparent ${
-                        activeMode === "game_manager"
-                          ? "text-cyber-yellow hover:text-white hover:bg-cyber-yellow/20 hover:border-cyber-yellow/35"
-                          : "text-cyber-purple hover:text-white hover:bg-cyber-purple/20 hover:border-cyber-purple/35"
-                      }`}
+                      className={`p-1.5 text-xs rounded transition-all flex items-center gap-1 border border-transparent ${ activeMode === "game_manager" ? "text-cyber-yellow hover:text-white hover:bg-cyber-yellow/20 hover:border-cyber-yellow/35" : "text-cyber-purple hover:text-white hover:bg-cyber-purple/20 hover:border-cyber-purple/35" }`}
                       title="Войти в спящий режим"
                     >
                       <Moon className="w-3.5 h-3.5" />
@@ -2910,7 +2910,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={handleExitApp}
-                      className="magnetic-target p-1.5 text-xs text-red-400 hover:text-white hover:bg-red-500/20 border border-transparent hover:border-red-500/35 rounded transition-all cursor-none flex items-center gap-1"
+                      className="p-1.5 text-xs text-red-400 hover:text-white hover:bg-red-500/20 border border-transparent hover:border-red-500/35 rounded transition-all flex items-center gap-1"
                       title="Выйти из приложения"
                     >
                       <LogOut className="w-3.5 h-3.5" />
@@ -2945,11 +2945,7 @@ export default function App() {
                             setActiveMode("notebook");
                             setMenuOpen(false);
                           }}
-                          className={`magnetic-target border rounded-xl p-5 cursor-none transition-all duration-300 flex items-center gap-4 ${
-                            activeMode === "notebook" 
-                              ? "bg-cyber-purple/15 border-cyber-purple text-white shadow-[0_0_15px_rgba(176,38,255,0.25)]" 
-                              : "bg-[#0c0817]/40 border-cyber-purple/20 text-gray-400 hover:border-cyber-purple/60 hover:text-white hover:bg-cyber-purple/5"
-                          }`}
+                          className={`border rounded-xl p-5 transition-all duration-300 flex items-center gap-4 ${ activeMode === "notebook" ? "bg-cyber-purple/15 border-cyber-purple text-white shadow-[0_0_15px_rgba(176,38,255,0.25)]" : "bg-[#0c0817]/40 border-cyber-purple/20 text-gray-400 hover:border-cyber-purple/60 hover:text-white hover:bg-cyber-purple/5" }`}
                         >
                           <div className="w-12 h-12 rounded-lg bg-cyber-purple/10 flex items-center justify-center shrink-0 border border-cyber-purple/35">
                             <ObsidianIcon className="w-8 h-8 text-cyber-purple" />
@@ -2969,11 +2965,7 @@ export default function App() {
                             setActiveMode("game_manager");
                             setMenuOpen(false);
                           }}
-                          className={`magnetic-target border rounded-xl p-5 cursor-none transition-all duration-300 flex items-center gap-4 ${
-                            activeMode === "game_manager" 
-                              ? "bg-cyber-yellow/15 border-cyber-yellow text-white shadow-[0_0_15px_rgba(255,183,0,0.25)]" 
-                              : "bg-[#0c0817]/40 border-cyber-yellow/20 text-gray-400 hover:border-cyber-yellow/60 hover:text-white hover:bg-cyber-yellow/5"
-                          }`}
+                          className={`border rounded-xl p-5 transition-all duration-300 flex items-center gap-4 ${ activeMode === "game_manager" ? "bg-cyber-yellow/15 border-cyber-yellow text-white shadow-[0_0_15px_rgba(255,183,0,0.25)]" : "bg-[#0c0817]/40 border-cyber-yellow/20 text-gray-400 hover:border-cyber-yellow/60 hover:text-white hover:bg-cyber-yellow/5" }`}
                         >
                           <div className="w-12 h-12 rounded-lg bg-cyber-yellow/10 flex items-center justify-center shrink-0 border border-cyber-yellow/35">
                             <Gamepad2 className="w-6 h-6 text-cyber-yellow" />
@@ -2991,19 +2983,11 @@ export default function App() {
                         <div className="relative w-64 h-64 flex items-center justify-center">
                           {/* Rotating concentric rings */}
                           <div className="absolute inset-0 rounded-full border border-dashed border-gray-600/35 animate-spin" style={{ animationDuration: '30s' }} />
-                          <div className={`absolute inset-4 rounded-full border border-double animate-spin transition-colors duration-300 ${
-                            (hoveredMode || activeMode) === "game_manager" ? "border-cyber-yellow/30" : "border-cyber-purple/30"
-                          }`} style={{ animationDuration: '20s', animationDirection: 'reverse' }} />
-                          <div className={`absolute inset-10 rounded-full border border-dashed animate-spin transition-colors duration-300 ${
-                            (hoveredMode || activeMode) === "game_manager" ? "border-cyber-yellow/50" : "border-cyber-purple/50"
-                          }`} style={{ animationDuration: '10s' }} />
+                          <div className={`absolute inset-4 rounded-full border border-double animate-spin transition-colors duration-300 ${ (hoveredMode || activeMode) === "game_manager" ? "border-cyber-yellow/30" : "border-cyber-purple/30" }`} style={{ animationDuration: '20s', animationDirection: 'reverse' }} />
+                          <div className={`absolute inset-10 rounded-full border border-dashed animate-spin transition-colors duration-300 ${ (hoveredMode || activeMode) === "game_manager" ? "border-cyber-yellow/50" : "border-cyber-purple/50" }`} style={{ animationDuration: '10s' }} />
                           
                           {/* Inner glowing core */}
-                          <div className={`absolute inset-16 rounded-full bg-[#050308]/90 border flex flex-col items-center justify-center transition-all duration-500 ${
-                            (hoveredMode || activeMode) === "game_manager" 
-                              ? "border-cyber-yellow shadow-[0_0_35px_rgba(255,183,0,0.3)] text-cyber-yellow" 
-                              : "border-cyber-purple shadow-[0_0_35px_rgba(176,38,255,0.3)] text-cyber-purple"
-                          }`}>
+                          <div className={`absolute inset-16 rounded-full bg-[#050308]/90 border flex flex-col items-center justify-center transition-all duration-500 ${ (hoveredMode || activeMode) === "game_manager" ? "border-cyber-yellow shadow-[0_0_35px_rgba(255,183,0,0.3)] text-cyber-yellow" : "border-cyber-purple shadow-[0_0_35px_rgba(176,38,255,0.3)] text-cyber-purple" }`}>
                             {(hoveredMode || activeMode) === "game_manager" ? (
                               <GameModeIcon className="w-16 h-16 animate-pulse" />
                             ) : (
@@ -3013,9 +2997,7 @@ export default function App() {
                         </div>
                         
                         <div className="text-center mt-6">
-                          <h3 className={`font-mono text-xs font-black tracking-[0.2em] transition-colors uppercase ${
-                            (hoveredMode || activeMode) === "game_manager" ? "text-cyber-yellow" : "text-cyber-purple"
-                          }`}>
+                          <h3 className={`font-mono text-xs font-black tracking-[0.2em] transition-colors uppercase ${ (hoveredMode || activeMode) === "game_manager" ? "text-cyber-yellow" : "text-cyber-purple" }`}>
                             {(hoveredMode || activeMode) === "game_manager" ? "Launcher Protocol Active" : "Notebook Workspace Active"}
                           </h3>
                           <p className="text-[10px] text-gray-500 font-mono mt-1 tracking-wider">
@@ -3051,7 +3033,7 @@ export default function App() {
                         {/* Close button */}
                         <button
                           onClick={() => setMenuOpen(false)}
-                          className="magnetic-target w-full border border-red-500/40 bg-red-950/10 hover:bg-red-500/20 hover:border-red-500 rounded-xl py-3 text-center text-red-400 font-bold uppercase tracking-widest cursor-none transition-all shadow-[0_0_10px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]"
+                          className="w-full border border-red-500/40 bg-red-950/10 hover:bg-red-500/20 hover:border-red-500 rounded-xl py-3 text-center text-red-400 font-bold uppercase tracking-widest transition-all shadow-[0_0_10px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]"
                         >
                           CLOSE PROTOCOL (ВЕРНУТЬСЯ)
                         </button>
@@ -3104,7 +3086,7 @@ export default function App() {
                               <div className="flex items-center gap-4">
                                 <button
                                   onClick={() => setSelectedGameId(null)}
-                                  className="magnetic-target flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:border-cyber-yellow hover:text-cyber-yellow bg-white/5 hover:bg-cyber-yellow/5 transition-all text-xs cursor-none"
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:border-cyber-yellow hover:text-cyber-yellow bg-white/5 hover:bg-cyber-yellow/5 transition-all text-xs"
                                 >
                                   <ChevronLeft className="w-4 h-4" />
                                   <span>НАЗАД К СПИСКУ</span>
@@ -3139,7 +3121,7 @@ export default function App() {
                               <div className="flex items-center gap-2.5">
                                 <button
                                   onClick={() => handleEditGameClick(activeGame)}
-                                  className="magnetic-target flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-cyber-yellow/10 text-cyber-yellow transition-all text-xs cursor-none"
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-cyber-yellow/10 text-cyber-yellow transition-all text-xs"
                                 >
                                   <Edit2 className="w-3.5 h-3.5" />
                                   <span>ИЗМЕНИТЬ</span>
@@ -3149,7 +3131,7 @@ export default function App() {
                                     e.stopPropagation();
                                     setGameToDelete(activeGame);
                                   }}
-                                  className="magnetic-target flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/20 hover:border-red-500 hover:bg-red-500/10 text-red-400 transition-all text-xs cursor-none"
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/20 hover:border-red-500 hover:bg-red-500/10 text-red-400 transition-all text-xs"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                   <span>УДАЛИТЬ</span>
@@ -3169,19 +3151,29 @@ export default function App() {
                                     Target Executable: <span className="text-gray-400 font-mono select-all">{activeGame.path}</span>
                                   </p>
                                 </div>
-                                <button
-                                  onClick={() => handleLaunchGame(activeGame, true, [])}
-                                  className={`magnetic-target flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border text-xs font-black uppercase tracking-widest cursor-none transition-all shadow-md ${
-                                    activeGame.coverTheme === "purple"
-                                      ? "bg-cyber-purple/10 border-cyber-purple/40 text-cyber-purple hover:bg-cyber-purple/20 hover:border-cyber-purple shadow-[0_0_15px_rgba(188,19,254,0.15)]"
-                                      : activeGame.coverTheme === "green"
-                                        ? "bg-cyber-green/10 border-cyber-green/40 text-cyber-green hover:bg-cyber-green/20 hover:border-cyber-green shadow-[0_0_15px_rgba(0,255,102,0.15)]"
-                                        : "bg-cyber-yellow/10 border-cyber-yellow/40 text-cyber-yellow hover:bg-cyber-yellow/20 hover:border-cyber-yellow shadow-[0_0_15px_rgba(255,183,0,0.15)]"
-                                  }`}
-                                >
-                                  <Play className="w-4.5 h-4.5 fill-current" />
-                                  <span>LAUNCH (ЗАПУСК)</span>
-                                </button>
+                                {runningGames[activeGame.id] ? (
+                                  <div className="flex items-center gap-3">
+                                    <div className="font-mono text-xs text-cyber-yellow font-bold bg-cyber-yellow/10 border border-cyber-yellow/30 rounded px-2.5 py-1.5 flex items-center gap-1.5 animate-pulse shadow-[0_0_10px_rgba(255,183,0,0.1)]">
+                                      <Clock className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '4s' }} />
+                                      <span>{formatElapsed(Date.now() - runningGames[activeGame.id])}</span>
+                                    </div>
+                                    <button
+                                      onClick={() => handleStopGame(activeGame)}
+                                      className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border border-red-500/40 bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:border-red-500 text-xs font-black uppercase tracking-widest transition-all shadow-md shadow-[0_0_15px_rgba(239,68,68,0.15)]"
+                                    >
+                                      <Square className="w-4 h-4 fill-current" />
+                                      <span>CLOSE (ЗАКРЫТЬ)</span>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => handleLaunchGame(activeGame, true, [])}
+                                    className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border text-xs font-black uppercase tracking-widest transition-all shadow-md ${ activeGame.coverTheme === "purple" ? "bg-cyber-purple/10 border-cyber-purple/40 text-cyber-purple hover:bg-cyber-purple/20 hover:border-cyber-purple shadow-[0_0_15px_rgba(188,19,254,0.15)]" : activeGame.coverTheme === "green" ? "bg-cyber-green/10 border-cyber-green/40 text-cyber-green hover:bg-cyber-green/20 hover:border-cyber-green shadow-[0_0_15px_rgba(0,255,102,0.15)]" : "bg-cyber-yellow/10 border-cyber-yellow/40 text-cyber-yellow hover:bg-cyber-yellow/20 hover:border-cyber-yellow shadow-[0_0_15px_rgba(255,183,0,0.15)]" }`}
+                                  >
+                                    <Play className="w-4.5 h-4.5 fill-current" />
+                                    <span>LAUNCH (ЗАПУСК)</span>
+                                  </button>
+                                )}
                               </div>
 
                               {/* Web Resources Section */}
@@ -3210,7 +3202,7 @@ export default function App() {
                                                 window.open(url, "_blank");
                                               }
                                             }}
-                                            className="magnetic-target text-[10px] font-bold text-cyber-green hover:text-white uppercase tracking-wider px-1 cursor-none flex items-center gap-1"
+                                            className="text-[10px] font-bold text-cyber-green hover:text-white uppercase tracking-wider px-1 flex items-center gap-1"
                                           >
                                             <Link className="w-3 h-3" />
                                             {domain}
@@ -3227,7 +3219,7 @@ export default function App() {
                                                 return g;
                                               }));
                                             }}
-                                            className="magnetic-target hover:text-red-500 text-gray-500 p-0.5 cursor-none text-[10px]"
+                                            className="hover:text-red-500 text-gray-500 p-0.5 text-[10px]"
                                             title="Удалить ссылку"
                                           >
                                             ×
@@ -3279,7 +3271,7 @@ export default function App() {
                                         setInlineGameUrl("");
                                       }
                                     }}
-                                    className="magnetic-target bg-cyber-green hover:bg-[#15ff7a] text-black font-black text-xs px-3 py-1.5 rounded transition-all cursor-none uppercase font-mono"
+                                    className="bg-cyber-green hover:bg-[#15ff7a] text-black font-black text-xs px-3 py-1.5 rounded transition-all uppercase font-mono"
                                   >
                                     + ADD (ДОБАВИТЬ)
                                   </button>
@@ -3301,7 +3293,7 @@ export default function App() {
                                   <div className="flex items-center gap-2">
                                     <button
                                       onClick={() => setSelectedNewsPost(null)}
-                                      className="magnetic-target flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:border-cyber-yellow hover:text-cyber-yellow bg-white/5 hover:bg-cyber-yellow/5 transition-all text-xs cursor-none"
+                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:border-cyber-yellow hover:text-cyber-yellow bg-white/5 hover:bg-cyber-yellow/5 transition-all text-xs"
                                     >
                                       <ChevronLeft className="w-4 h-4" />
                                       <span>НАЗАД К СПИСКУ</span>
@@ -3320,7 +3312,7 @@ export default function App() {
                                       });
                                       setSelectedNewsPost(null);
                                     }}
-                                    className="magnetic-target text-red-500 hover:text-red-400 p-1.5 border border-transparent hover:border-red-500/20 hover:bg-red-500/10 rounded-lg cursor-none transition-all flex items-center justify-center shrink-0"
+                                    className="text-red-500 hover:text-red-400 p-1.5 border border-transparent hover:border-red-500/20 hover:bg-red-500/10 rounded-lg transition-all flex items-center justify-center shrink-0"
                                     title="Удалить запись"
                                   >
                                     <Trash2 className="w-4.5 h-4.5" />
@@ -3388,7 +3380,7 @@ export default function App() {
                                                   const val = parseFloat(newActHours) || 0;
                                                   setNewActHours((val + 0.1).toFixed(1).replace(/\.0$/, ""));
                                                 }}
-                                                className="magnetic-target p-0.5 text-gray-500 hover:text-cyber-yellow transition-colors hover:bg-white/5 rounded cursor-none flex items-center justify-center"
+                                                className="p-0.5 text-gray-500 hover:text-cyber-yellow transition-colors hover:bg-white/5 rounded flex items-center justify-center"
                                               >
                                                 <ChevronUp className="w-2.5 h-2.5" />
                                               </button>
@@ -3398,7 +3390,7 @@ export default function App() {
                                                   const val = parseFloat(newActHours) || 0;
                                                   setNewActHours(Math.max(0, val - 0.1).toFixed(1).replace(/\.0$/, ""));
                                                 }}
-                                                className="magnetic-target p-0.5 text-gray-500 hover:text-cyber-yellow transition-colors hover:bg-white/5 rounded cursor-none flex items-center justify-center"
+                                                className="p-0.5 text-gray-500 hover:text-cyber-yellow transition-colors hover:bg-white/5 rounded flex items-center justify-center"
                                               >
                                                 <ChevronDown className="w-2.5 h-2.5" />
                                               </button>
@@ -3462,7 +3454,7 @@ export default function App() {
                                           setNewActHours("");
                                           setNewActNotes("");
                                         }}
-                                        className="magnetic-target w-full border border-cyber-yellow/40 bg-cyber-yellow/5 hover:bg-cyber-yellow hover:text-black rounded-lg py-1.5 text-xs font-bold text-cyber-yellow transition-all uppercase tracking-wider cursor-none flex items-center justify-center gap-1.5"
+                                        className="w-full border border-cyber-yellow/40 bg-cyber-yellow/5 hover:bg-cyber-yellow hover:text-black rounded-lg py-1.5 text-xs font-bold text-cyber-yellow transition-all uppercase tracking-wider flex items-center justify-center gap-1.5"
                                       >
                                         <Activity className="w-3.5 h-3.5" />
                                         Зарегистрировать сессию
@@ -3505,7 +3497,7 @@ export default function App() {
                                                     });
                                                   }
                                                 }}
-                                                className="magnetic-target text-cyber-yellow hover:text-cyber-yellow/80 p-1 rounded hover:bg-cyber-yellow/10 cursor-none transition-colors"
+                                                className="text-cyber-yellow hover:text-cyber-yellow/80 p-1 rounded hover:bg-cyber-yellow/10 transition-colors"
                                                 title="Редактировать название"
                                               >
                                                 <Edit2 className="w-3.5 h-3.5" />
@@ -3533,7 +3525,7 @@ export default function App() {
                                                     return g;
                                                   }));
                                                 }}
-                                                className="magnetic-target text-red-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 cursor-none transition-colors"
+                                                className="text-red-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 transition-colors"
                                                 title="Удалить запись"
                                               >
                                                 <Trash2 className="w-3.5 h-3.5" />
@@ -3554,7 +3546,7 @@ export default function App() {
                                       <span>// NEWS FEED // ЛЕНТА НОВОСТЕЙ</span>
                                       <button
                                         onClick={handleOpenObsidian}
-                                        className="magnetic-target flex items-center gap-1.5 px-3 py-1 rounded-lg border border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-cyber-yellow/10 text-cyber-yellow transition-all text-[10px] tracking-wider cursor-none"
+                                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-cyber-yellow/10 text-cyber-yellow transition-all text-[10px] tracking-wider"
                                       >
                                         <CornerUpRight className="w-3.5 h-3.5" />
                                         <span>ОТКРЫТЬ OBSIDIAN</span>
@@ -3565,9 +3557,7 @@ export default function App() {
                                     <div className="flex items-center gap-2 shrink-0 mb-1">
                                       <button
                                         onClick={handleSyncObsidianNews}
-                                        className={`magnetic-target flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyber-green/20 hover:border-cyber-green hover:bg-cyber-green/10 text-cyber-green transition-all text-[10px] tracking-wider cursor-none font-bold uppercase shadow-[0_0_10px_rgba(0,255,102,0.02)] hover:shadow-[0_0_15px_rgba(0,255,102,0.2)] ${
-                                          isSyncing ? "opacity-75" : ""
-                                        }`}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyber-green/20 hover:border-cyber-green hover:bg-cyber-green/10 text-cyber-green transition-all text-[10px] tracking-wider font-bold uppercase shadow-[0_0_10px_rgba(0,255,102,0.02)] hover:shadow-[0_0_15px_rgba(0,255,102,0.2)] ${ isSyncing ? "opacity-75" : "" }`}
                                       >
                                         <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
                                         <span>СИНХРОНИЗИРОВАТЬ ХРАНИЛИЩЕ</span>
@@ -3575,7 +3565,7 @@ export default function App() {
                                       
                                       <button
                                         onClick={() => setIsNewsPathPromptOpen(true)}
-                                        className="magnetic-target flex items-center justify-center p-1.5 rounded-lg border border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-cyber-yellow/10 text-cyber-yellow transition-all cursor-none"
+                                        className="flex items-center justify-center p-1.5 rounded-lg border border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-cyber-yellow/10 text-cyber-yellow transition-all"
                                         title="Изменить путь к ленте новостей"
                                       >
                                         <Settings className="w-3.5 h-3.5" />
@@ -3593,11 +3583,7 @@ export default function App() {
                                           <button
                                             key={post.id}
                                             onClick={() => setSelectedNewsPost(post)}
-                                            className={`magnetic-target w-full text-left border rounded-lg p-3 transition-all cursor-none flex items-center justify-between group ${
-                                              selectedNewsPost?.id === post.id
-                                                ? "border-cyber-yellow bg-cyber-yellow/10 text-white"
-                                                : "border-cyber-yellow/15 bg-[#ffb700]/5 hover:border-cyber-yellow/45 text-gray-300 hover:text-white"
-                                            }`}
+                                            className={`w-full text-left border rounded-lg p-3 transition-all flex items-center justify-between group ${ selectedNewsPost?.id === post.id ? "border-cyber-yellow bg-cyber-yellow/10 text-white" : "border-cyber-yellow/15 bg-[#ffb700]/5 hover:border-cyber-yellow/45 text-gray-300 hover:text-white" }`}
                                           >
                                             <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                               <FileText className="w-4 h-4 text-cyber-yellow/70 shrink-0" />
@@ -3640,7 +3626,7 @@ export default function App() {
                                       />
                                       <button
                                         type="submit"
-                                        className="magnetic-target px-3 py-1 rounded bg-cyber-yellow/10 hover:bg-cyber-yellow hover:text-black border border-cyber-yellow/30 hover:border-cyber-yellow text-cyber-yellow text-[10px] font-bold tracking-wider transition-all cursor-none uppercase"
+                                        className="px-3 py-1 rounded bg-cyber-yellow/10 hover:bg-cyber-yellow hover:text-black border border-cyber-yellow/30 hover:border-cyber-yellow text-cyber-yellow text-[10px] font-bold tracking-wider transition-all uppercase"
                                       >
                                         Добавить
                                       </button>
@@ -3713,7 +3699,7 @@ export default function App() {
                                                         )
                                                       }));
                                                     }}
-                                                    className="w-3.5 h-3.5 rounded border-white/10 bg-black/40 text-cyber-yellow focus:ring-0 focus:ring-offset-0 cursor-none"
+                                                    className="w-3.5 h-3.5 rounded border-white/10 bg-black/40 text-cyber-yellow focus:ring-0 focus:ring-offset-0"
                                                   />
                                                   <span className={`text-[11px] truncate font-mono ${task.completed ? "line-through text-gray-500" : "text-gray-300"}`}>
                                                     {task.text}
@@ -3725,7 +3711,7 @@ export default function App() {
                                                       setEditingTaskId(task.id);
                                                       setEditingTaskText(task.text);
                                                     }}
-                                                    className="magnetic-target text-cyber-yellow/75 hover:text-cyber-yellow p-1 rounded hover:bg-cyber-yellow/10 cursor-none transition-colors"
+                                                    className="text-cyber-yellow/75 hover:text-cyber-yellow p-1 rounded hover:bg-cyber-yellow/10 transition-colors"
                                                     title="Редактировать задачу"
                                                   >
                                                     <Edit2 className="w-3 h-3" />
@@ -3737,7 +3723,7 @@ export default function App() {
                                                         [selectedGameId]: prev[selectedGameId].filter(t => t.id !== task.id)
                                                       }));
                                                     }}
-                                                    className="magnetic-target text-red-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 cursor-none transition-colors"
+                                                    className="text-red-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 transition-colors"
                                                     title="Удалить задачу"
                                                   >
                                                     <Trash2 className="w-3 h-3" />
@@ -3769,11 +3755,7 @@ export default function App() {
                                       <button
                                         key={period}
                                         onClick={() => setChartPeriod(period)}
-                                        className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider cursor-none transition-all ${
-                                          chartPeriod === period
-                                            ? "bg-cyber-yellow text-black shadow-[0_0_8px_rgba(255,183,0,0.2)]"
-                                            : "text-gray-400 hover:text-white"
-                                        }`}
+                                        className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider transition-all ${ chartPeriod === period ? "bg-cyber-yellow text-black shadow-[0_0_8px_rgba(255,183,0,0.2)]" : "text-gray-400 hover:text-white" }`}
                                       >
                                         {period === "week" ? "Неделя" : period === "month" ? "Месяц" : "Год"}
                                       </button>
@@ -3784,21 +3766,13 @@ export default function App() {
                                   <div className="flex items-center bg-black/40 border border-white/10 rounded-lg p-0.5 font-mono">
                                     <button
                                       onClick={() => setChartType("bar")}
-                                      className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider cursor-none transition-all flex items-center gap-1 ${
-                                        chartType === "bar"
-                                          ? "bg-cyber-yellow text-black shadow-[0_0_8px_rgba(255,183,0,0.2)]"
-                                          : "text-gray-400 hover:text-white"
-                                      }`}
+                                      className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 ${ chartType === "bar" ? "bg-cyber-yellow text-black shadow-[0_0_8px_rgba(255,183,0,0.2)]" : "text-gray-400 hover:text-white" }`}
                                     >
                                       <span>ДИАГРАММА</span>
                                     </button>
                                     <button
                                       onClick={() => setChartType("github")}
-                                      className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider cursor-none transition-all flex items-center gap-1 ${
-                                        chartType === "github"
-                                          ? "bg-cyber-yellow text-black shadow-[0_0_8px_rgba(255,183,0,0.2)]"
-                                          : "text-gray-400 hover:text-white"
-                                      }`}
+                                      className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 ${ chartType === "github" ? "bg-cyber-yellow text-black shadow-[0_0_8px_rgba(255,183,0,0.2)]" : "text-gray-400 hover:text-white" }`}
                                     >
                                       <span>СЕТКА</span>
                                     </button>
@@ -3839,7 +3813,7 @@ export default function App() {
                                               return (
                                                 <div key={idx} className="flex flex-col items-center gap-1.5">
                                                   <div 
-                                                    className={`w-[34px] h-[34px] rounded-lg transition-all duration-200 hover:scale-110 hover:z-10 flex items-center justify-center text-xs font-bold cursor-none ${colorClass}`}
+                                                    className={`w-[34px] h-[34px] rounded-lg transition-all duration-200 hover:scale-110 hover:z-10 flex items-center justify-center text-xs font-bold ${colorClass}`}
                                                     title={`${day.date || "Дата"}: ${day.hours.toFixed(1)}ч.`}
                                                   >
                                                     {dayNumber}
@@ -3892,7 +3866,7 @@ export default function App() {
                                                 return (
                                                   <div 
                                                     key={idx} 
-                                                    className={`w-[32px] h-[32px] rounded-md transition-all duration-200 hover:scale-110 hover:z-10 flex items-center justify-center text-[12px] font-bold cursor-none ${colorClass}`}
+                                                    className={`w-[32px] h-[32px] rounded-md transition-all duration-200 hover:scale-110 hover:z-10 flex items-center justify-center text-[12px] font-bold ${colorClass}`}
                                                     title={`${day.date || "Дата"}: ${day.hours.toFixed(1)}ч.`}
                                                   >
                                                     {dayNumber}
@@ -3916,7 +3890,7 @@ export default function App() {
                                                 return (
                                                   <div 
                                                     key={idx} 
-                                                    className={`w-[32px] h-[32px] rounded-md transition-all duration-200 hover:scale-110 hover:z-10 flex items-center justify-center text-[12px] font-bold cursor-none ${colorClass}`}
+                                                    className={`w-[32px] h-[32px] rounded-md transition-all duration-200 hover:scale-110 hover:z-10 flex items-center justify-center text-[12px] font-bold ${colorClass}`}
                                                     title={`${day.date || "Дата"}: ${day.hours.toFixed(1)}ч.`}
                                                   >
                                                     {dayNumber}
@@ -4031,23 +4005,11 @@ export default function App() {
                                 key={game.id}
                                 onClick={() => setSelectedGameId(game.id)}
                                 onContextMenu={(e) => handleGameContextMenu(e, game)}
-                                className={`magnetic-target group border rounded-xl p-5 bg-[#0a0614]/50 border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-[#ffb700]/5 transition-all duration-300 relative flex flex-col items-center justify-between min-h-[220px] cursor-none shadow-[0_4px_12px_rgba(0,0,0,0.4)] ${
-                                  game.coverTheme === "purple" 
-                                    ? "hover:border-cyber-purple hover:bg-cyber-purple/5" 
-                                    : game.coverTheme === "green"
-                                      ? "hover:border-cyber-green hover:bg-cyber-green/5"
-                                      : ""
-                                }`}
+                                className={`group border rounded-xl p-5 bg-[#0a0614]/50 border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-[#ffb700]/5 transition-all duration-300 relative flex flex-col items-center justify-between min-h-[220px] shadow-[0_4px_12px_rgba(0,0,0,0.4)] ${ game.coverTheme === "purple" ? "hover:border-cyber-purple hover:bg-cyber-purple/5" : game.coverTheme === "green" ? "hover:border-cyber-green hover:bg-cyber-green/5" : "" }`}
                               >
                                 {/* Category Badge on top */}
                                 <div className="w-full flex justify-center">
-                                  <span className={`text-[8px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border inline-block ${
-                                    game.coverTheme === "purple"
-                                      ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/5"
-                                      : game.coverTheme === "green"
-                                        ? "text-cyber-green border-cyber-green/30 bg-cyber-green/5"
-                                        : "text-cyber-yellow border-cyber-yellow/30 bg-cyber-yellow/5"
-                                  }`}>
+                                  <span className={`text-[8px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border inline-block ${ game.coverTheme === "purple" ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/5" : game.coverTheme === "green" ? "text-cyber-green border-cyber-green/30 bg-cyber-green/5" : "text-cyber-yellow border-cyber-yellow/30 bg-cyber-yellow/5" }`}>
                                     {game.category}
                                   </span>
                                 </div>
@@ -4068,13 +4030,7 @@ export default function App() {
                                       }}
                                     />
                                   ) : (
-                                    <div className={`w-24 h-24 rounded-2xl border flex items-center justify-center bg-white/5 border-white/10 text-gray-400 transition-all ${
-                                      game.coverTheme === "purple" 
-                                        ? "group-hover:text-cyber-purple group-hover:border-cyber-purple/30 group-hover:shadow-[0_0_20px_rgba(188,19,254,0.15)]" 
-                                        : game.coverTheme === "green" 
-                                          ? "group-hover:text-cyber-green group-hover:border-cyber-green/30 group-hover:shadow-[0_0_20px_rgba(0,255,102,0.15)]" 
-                                          : "group-hover:text-cyber-yellow group-hover:border-cyber-yellow/30 group-hover:shadow-[0_0_20px_rgba(255,183,0,0.15)]"
-                                    }`}>
+                                    <div className={`w-24 h-24 rounded-2xl border flex items-center justify-center bg-white/5 border-white/10 text-gray-400 transition-all ${ game.coverTheme === "purple" ? "group-hover:text-cyber-purple group-hover:border-cyber-purple/30 group-hover:shadow-[0_0_20px_rgba(188,19,254,0.15)]" : game.coverTheme === "green" ? "group-hover:text-cyber-green group-hover:border-cyber-green/30 group-hover:shadow-[0_0_20px_rgba(0,255,102,0.15)]" : "group-hover:text-cyber-yellow group-hover:border-cyber-yellow/30 group-hover:shadow-[0_0_20px_rgba(255,183,0,0.15)]" }`}>
                                       <Gamepad2 className="w-10 h-10" />
                                     </div>
                                   )}
@@ -4096,7 +4052,7 @@ export default function App() {
                             {/* Predefined Add Game Button in Grid */}
                             <div
                               onClick={handleAddGameOpenClick}
-                              className="magnetic-target border border-dashed rounded-xl p-4 bg-transparent border-cyber-yellow/15 hover:border-cyber-yellow hover:bg-cyber-yellow/5 transition-all duration-300 flex flex-col items-center justify-center gap-2.5 min-h-[140px] cursor-none group shadow-lg"
+                              className="border border-dashed rounded-xl p-4 bg-transparent border-cyber-yellow/15 hover:border-cyber-yellow hover:bg-cyber-yellow/5 transition-all duration-300 flex flex-col items-center justify-center gap-2.5 min-h-[140px] group shadow-lg"
                             >
                               <div className="w-10 h-10 rounded-full border border-dashed border-cyber-yellow/45 flex items-center justify-center text-gray-500 group-hover:text-cyber-yellow group-hover:border-cyber-yellow transition-all">
                                 <Plus className="w-5 h-5" />
@@ -4160,7 +4116,7 @@ export default function App() {
                                     handleAddGameOpenClick();
                                   }
                                 }}
-                                className="magnetic-target w-full border border-cyber-yellow bg-cyber-yellow/10 hover:bg-cyber-yellow hover:text-[#06040c] rounded-xl py-3 font-mono font-bold text-xs text-cyber-yellow tracking-widest cursor-none transition-all shadow-[0_0_12px_rgba(255,183,0,0.2)] hover:shadow-[0_0_22px_rgba(255,183,0,0.5)] flex items-center justify-center gap-2"
+                                className="w-full border border-cyber-yellow bg-cyber-yellow/10 hover:bg-cyber-yellow hover:text-[#06040c] rounded-xl py-3 font-mono font-bold text-xs text-cyber-yellow tracking-widest transition-all shadow-[0_0_12px_rgba(255,183,0,0.2)] hover:shadow-[0_0_22px_rgba(255,183,0,0.5)] flex items-center justify-center gap-2"
                               >
                                 <Eye className="w-4 h-4 text-cyber-yellow group-hover:text-black transition-colors" />
                                 OPEN MODULE INTERFACE
@@ -4193,20 +4149,8 @@ export default function App() {
                             <span className="text-sm font-bold text-gray-100">{selectedFile.split('/').pop()}</span>
                           </div>
                           {/* Sync status badge */}
-                          <div className={`flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border transition-all ${
-                            savingState === "saving" 
-                              ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/10" 
-                              : savingState === "saved"
-                                ? "text-cyber-green border-cyber-green/30 bg-cyber-green/10 shadow-[0_0_8px_rgba(0,255,102,0.15)]"
-                                : "text-red-400 border-red-500/30 bg-red-950/20"
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${
-                              savingState === "saving" 
-                                ? "bg-cyber-purple animate-pulse" 
-                                : savingState === "saved"
-                                  ? "bg-cyber-green"
-                                  : "bg-red-500"
-                            }`} />
+                          <div className={`flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border transition-all ${ savingState === "saving" ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/10" : savingState === "saved" ? "text-cyber-green border-cyber-green/30 bg-cyber-green/10 shadow-[0_0_8px_rgba(0,255,102,0.15)]" : "text-red-400 border-red-500/30 bg-red-950/20" }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${ savingState === "saving" ? "bg-cyber-purple animate-pulse" : savingState === "saved" ? "bg-cyber-green" : "bg-red-500" }`} />
                             {savingState}
                           </div>
                         </div>
@@ -4217,22 +4161,14 @@ export default function App() {
                             <button
                               type="button"
                               onClick={() => setEditMode("edit")}
-                              className={`magnetic-target px-2.5 py-1 text-[10px] rounded transition-all cursor-none ${
-                                editMode === "edit"
-                                  ? "bg-cyber-green/10 border border-cyber-green/30 text-cyber-green shadow-[0_0_8px_rgba(0,255,102,0.2)] font-bold"
-                                  : "border border-transparent text-gray-400 hover:text-white"
-                              }`}
+                              className={`px-2.5 py-1 text-[10px] rounded transition-all ${ editMode === "edit" ? "bg-cyber-green/10 border border-cyber-green/30 text-cyber-green shadow-[0_0_8px_rgba(0,255,102,0.2)] font-bold" : "border border-transparent text-gray-400 hover:text-white" }`}
                             >
                               EDIT
                             </button>
                             <button
                               type="button"
                               onClick={() => setEditMode("preview")}
-                              className={`magnetic-target px-2.5 py-1 text-[10px] rounded transition-all cursor-none ${
-                                editMode === "preview"
-                                  ? "bg-cyber-purple/15 border border-cyber-purple/30 text-cyber-purple shadow-[0_0_8px_rgba(176,38,255,0.2)] font-bold"
-                                  : "border border-transparent text-gray-400 hover:text-white"
-                              }`}
+                              className={`px-2.5 py-1 text-[10px] rounded transition-all ${ editMode === "preview" ? "bg-cyber-purple/15 border border-cyber-purple/30 text-cyber-purple shadow-[0_0_8px_rgba(176,38,255,0.2)] font-bold" : "border border-transparent text-gray-400 hover:text-white" }`}
                             >
                               PREVIEW
                             </button>
@@ -4280,7 +4216,7 @@ export default function App() {
                     >
                       <div 
                         onClick={() => setMenuOpen(true)}
-                        className="text-center max-w-sm p-8 rounded-2xl bg-[#0e091a]/40 border border-cyber-purple/20 hover:border-cyber-purple/55 hover:bg-[#0c0817]/65 backdrop-blur-md shadow-[0_15px_35px_rgba(0,0,0,0.4)] flex-shrink-0 cursor-none group transition-all duration-300 select-none"
+                        className="text-center max-w-sm p-8 rounded-2xl bg-[#0e091a]/40 border border-cyber-purple/20 hover:border-cyber-purple/55 hover:bg-[#0c0817]/65 backdrop-blur-md shadow-[0_15px_35px_rgba(0,0,0,0.4)] flex-shrink-0 group transition-all duration-300 select-none"
                       >
                         <motion.div
                           animate={{
@@ -4353,21 +4289,13 @@ export default function App() {
                         className="w-20 h-20 object-contain rounded-2xl shadow-[0_0_25px_rgba(0,0,0,0.5)] border border-white/5" 
                       />
                     ) : (
-                      <div className={`w-20 h-20 rounded-2xl border flex items-center justify-center bg-white/5 border-white/10 text-gray-400 ${
-                        selectedGameActions.coverTheme === "purple" ? "text-cyber-purple border-cyber-purple/30" : selectedGameActions.coverTheme === "green" ? "text-cyber-green border-cyber-green/30" : "text-cyber-yellow border-cyber-yellow/30"
-                      }`}>
+                      <div className={`w-20 h-20 rounded-2xl border flex items-center justify-center bg-white/5 border-white/10 text-gray-400 ${ selectedGameActions.coverTheme === "purple" ? "text-cyber-purple border-cyber-purple/30" : selectedGameActions.coverTheme === "green" ? "text-cyber-green border-cyber-green/30" : "text-cyber-yellow border-cyber-yellow/30" }`}>
                         <Gamepad2 className="w-10 h-10" />
                       </div>
                     )}
                     
                     <div className="space-y-1">
-                      <span className={`text-[8px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border inline-block ${
-                        selectedGameActions.coverTheme === "purple"
-                          ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/5"
-                          : selectedGameActions.coverTheme === "green"
-                            ? "text-cyber-green border-cyber-green/30 bg-cyber-green/5"
-                            : "text-cyber-yellow border-cyber-yellow/30 bg-cyber-yellow/5"
-                      }`}>
+                      <span className={`text-[8px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border inline-block ${ selectedGameActions.coverTheme === "purple" ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/5" : selectedGameActions.coverTheme === "green" ? "text-cyber-green border-cyber-green/30 bg-cyber-green/5" : "text-cyber-yellow border-cyber-yellow/30 bg-cyber-yellow/5" }`}>
                         {selectedGameActions.category}
                       </span>
                       <h3 className="text-xl font-black text-white mt-1 uppercase tracking-wide truncate max-w-[280px]">
@@ -4387,18 +4315,12 @@ export default function App() {
                     </div>
                     
                     {/* Launch Executable option */}
-                    <label className="flex items-center gap-3.5 cursor-none text-gray-300 hover:text-white select-none text-xs font-bold">
+                    <label className="flex items-center gap-3.5 text-gray-300 hover:text-white select-none text-xs font-bold">
                       <input 
                         type="checkbox"
                         checked={executeLaunchGame}
                         onChange={(e) => setExecuteLaunchGame(e.target.checked)}
-                        className={`rounded border-white/10 bg-black/40 focus:ring-0 focus:ring-offset-0 w-5 h-5 cursor-none ${
-                          selectedGameActions.coverTheme === "purple" 
-                            ? "text-cyber-purple accent-cyber-purple" 
-                            : selectedGameActions.coverTheme === "green" 
-                              ? "text-cyber-green accent-cyber-green" 
-                              : "text-cyber-yellow accent-cyber-yellow"
-                        }`}
+                        className={`rounded border-white/10 bg-black/40 focus:ring-0 focus:ring-offset-0 w-5 h-5 ${ selectedGameActions.coverTheme === "purple" ? "text-cyber-purple accent-cyber-purple" : selectedGameActions.coverTheme === "green" ? "text-cyber-green accent-cyber-green" : "text-cyber-yellow accent-cyber-yellow" }`}
                       />
                       <span>Запустить игру ({selectedGameActions.name})</span>
                     </label>
@@ -4411,7 +4333,7 @@ export default function App() {
                         domain = new URL(url).hostname.replace("www.", "");
                       } catch(_) {}
                       return (
-                        <label key={index} className="flex items-center gap-3.5 cursor-none text-gray-300 hover:text-white select-none text-xs font-bold">
+                        <label key={index} className="flex items-center gap-3.5 text-gray-300 hover:text-white select-none text-xs font-bold">
                           <input 
                             type="checkbox"
                             checked={!!executeUrls[index]}
@@ -4421,13 +4343,7 @@ export default function App() {
                                 [index]: e.target.checked
                               }));
                             }}
-                            className={`rounded border-white/10 bg-black/40 focus:ring-0 focus:ring-offset-0 w-5 h-5 cursor-none ${
-                              selectedGameActions.coverTheme === "purple" 
-                                ? "text-cyber-purple accent-cyber-purple" 
-                                : selectedGameActions.coverTheme === "green" 
-                                  ? "text-cyber-green accent-cyber-green" 
-                                  : "text-cyber-yellow accent-cyber-yellow"
-                            }`}
+                            className={`rounded border-white/10 bg-black/40 focus:ring-0 focus:ring-offset-0 w-5 h-5 ${ selectedGameActions.coverTheme === "purple" ? "text-cyber-purple accent-cyber-purple" : selectedGameActions.coverTheme === "green" ? "text-cyber-green accent-cyber-green" : "text-cyber-yellow accent-cyber-yellow" }`}
                           />
                           <span className="truncate max-w-[280px]">Открыть сайт: {domain}</span>
                         </label>
@@ -4444,15 +4360,7 @@ export default function App() {
                         setSelectedGameActions(null);
                         handleLaunchGame(game, executeLaunchGame, urlsToOpen);
                       }}
-                      className={`magnetic-target w-full rounded-xl py-3 text-center font-black uppercase tracking-widest cursor-none transition-all flex items-center justify-center gap-2 border ${
-                        (!executeLaunchGame && !Object.values(executeUrls).some(Boolean))
-                          ? "bg-gray-800/10 border-white/5 text-gray-600 cursor-not-allowed opacity-50"
-                          : selectedGameActions.coverTheme === "purple"
-                            ? "bg-cyber-purple/10 border-cyber-purple/40 text-cyber-purple hover:bg-cyber-purple/20 hover:border-cyber-purple shadow-[0_0_15px_rgba(188,19,254,0.15)] hover:shadow-[0_0_25px_rgba(188,19,254,0.3)]"
-                            : selectedGameActions.coverTheme === "green"
-                              ? "bg-cyber-green/10 border-cyber-green/40 text-cyber-green hover:bg-cyber-green/20 hover:border-cyber-green shadow-[0_0_15px_rgba(0,255,102,0.15)] hover:shadow-[0_0_25px_rgba(0,255,102,0.3)]"
-                              : "bg-cyber-yellow/10 border-cyber-yellow/40 text-cyber-yellow hover:bg-cyber-yellow/20 hover:border-cyber-yellow shadow-[0_0_15px_rgba(255,183,0,0.15)] hover:shadow-[0_0_25px_rgba(255,183,0,0.3)]"
-                      }`}
+                      className={`w-full rounded-xl py-3 text-center font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 border ${ (!executeLaunchGame && !Object.values(executeUrls).some(Boolean)) ? "bg-gray-800/10 border-white/5 text-gray-600 cursor-not-allowed opacity-50" : selectedGameActions.coverTheme === "purple" ? "bg-cyber-purple/10 border-cyber-purple/40 text-cyber-purple hover:bg-cyber-purple/20 hover:border-cyber-purple shadow-[0_0_15px_rgba(188,19,254,0.15)] hover:shadow-[0_0_25px_rgba(188,19,254,0.3)]" : selectedGameActions.coverTheme === "green" ? "bg-cyber-green/10 border-cyber-green/40 text-cyber-green hover:bg-cyber-green/20 hover:border-cyber-green shadow-[0_0_15px_rgba(0,255,102,0.15)] hover:shadow-[0_0_25px_rgba(0,255,102,0.3)]" : "bg-cyber-yellow/10 border-cyber-yellow/40 text-cyber-yellow hover:bg-cyber-yellow/20 hover:border-cyber-yellow shadow-[0_0_15px_rgba(255,183,0,0.15)] hover:shadow-[0_0_25px_rgba(255,183,0,0.3)]" }`}
                     >
                       <Play className="w-4 h-4 fill-current" />
                       START (СТАРТ)
@@ -4460,7 +4368,7 @@ export default function App() {
 
                     <button
                       onClick={() => setSelectedGameActions(null)}
-                      className="magnetic-target w-full border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase cursor-none transition-all text-xs"
+                      className="w-full border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase transition-all text-xs"
                     >
                       CLOSE (ЗАКРЫТЬ)
                     </button>
@@ -4528,7 +4436,7 @@ export default function App() {
                     </span>
                     <button
                       onClick={() => setAddGameOpen(false)}
-                      className="magnetic-target text-gray-500 hover:text-white text-xs cursor-none"
+                      className="text-gray-500 hover:text-white text-xs"
                     >
                       [ ESC ]
                     </button>
@@ -4540,22 +4448,14 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => setActiveModalTab("parameters")}
-                        className={`flex-1 pb-2 border-b-2 font-bold transition-all text-center uppercase tracking-widest cursor-none ${
-                          activeModalTab === "parameters" 
-                            ? "border-cyber-yellow text-cyber-yellow font-black" 
-                            : "border-transparent text-gray-500 hover:text-gray-300"
-                        }`}
+                        className={`flex-1 pb-2 border-b-2 font-bold transition-all text-center uppercase tracking-widest ${ activeModalTab === "parameters" ? "border-cyber-yellow text-cyber-yellow font-black" : "border-transparent text-gray-500 hover:text-gray-300" }`}
                       >
                         Параметры
                       </button>
                       <button
                         type="button"
                         onClick={() => setActiveModalTab("functions")}
-                        className={`flex-1 pb-2 border-b-2 font-bold transition-all text-center uppercase tracking-widest cursor-none ${
-                          activeModalTab === "functions" 
-                            ? "border-cyber-yellow text-cyber-yellow font-black" 
-                            : "border-transparent text-gray-500 hover:text-gray-300"
-                        }`}
+                        className={`flex-1 pb-2 border-b-2 font-bold transition-all text-center uppercase tracking-widest ${ activeModalTab === "functions" ? "border-cyber-yellow text-cyber-yellow font-black" : "border-transparent text-gray-500 hover:text-gray-300" }`}
                       >
                         Функции
                       </button>
@@ -4573,7 +4473,7 @@ export default function App() {
                         <button
                           type="button"
                           onClick={() => setCropSrc(null)}
-                          className="magnetic-target text-gray-500 hover:text-white text-xs cursor-none"
+                          className="text-gray-500 hover:text-white text-xs"
                         >
                           [ ESC ]
                         </button>
@@ -4620,7 +4520,7 @@ export default function App() {
                           step="0.05"
                           value={zoom}
                           onChange={(e) => setZoom(parseFloat(e.target.value))}
-                          className="w-full h-1 bg-[#050308] border border-cyber-yellow/20 rounded-lg appearance-none cursor-none accent-cyber-yellow"
+                          className="w-full h-1 bg-[#050308] border border-cyber-yellow/20 rounded-lg appearance-none accent-cyber-yellow"
                         />
                       </div>
 
@@ -4628,14 +4528,14 @@ export default function App() {
                         <button
                           type="button"
                           onClick={() => setCropSrc(null)}
-                          className="magnetic-target flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase cursor-none transition-all text-xs"
+                          className="flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase transition-all text-xs"
                         >
                           CANCEL
                         </button>
                         <button
                           type="button"
                           onClick={handleCropSave}
-                          className="magnetic-target flex-1 bg-cyber-yellow border border-cyber-yellow text-[#06040c] hover:bg-[#ffc800] rounded-xl py-2.5 text-center font-bold uppercase cursor-none transition-all text-xs shadow-[0_0_12px_rgba(255,183,0,0.2)]"
+                          className="flex-1 bg-cyber-yellow border border-cyber-yellow text-[#06040c] hover:bg-[#ffc800] rounded-xl py-2.5 text-center font-bold uppercase transition-all text-xs shadow-[0_0_12px_rgba(255,183,0,0.2)]"
                         >
                           APPLY (ПРИМЕНИТЬ)
                         </button>
@@ -4691,7 +4591,7 @@ export default function App() {
                               />
                               <label
                                 htmlFor="custom-icon-upload"
-                                className="magnetic-target border border-dashed border-cyber-yellow/45 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 rounded px-4 py-2 cursor-none text-[10px] font-bold text-cyber-yellow uppercase tracking-wider transition-all flex-1 text-center"
+                                className="border border-dashed border-cyber-yellow/45 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 rounded px-4 py-2 text-[10px] font-bold text-cyber-yellow uppercase tracking-wider transition-all flex-1 text-center"
                               >
                                 {newGameIcon ? "Change Icon (Сменить)" : "Upload Image (Загрузить)"}
                               </label>
@@ -4776,7 +4676,7 @@ export default function App() {
                                     onClick={() => {
                                       setNewGameUrls(prev => prev.filter((_, i) => i !== index));
                                     }}
-                                    className="magnetic-target w-8 h-8 rounded border border-red-500/25 bg-red-950/5 hover:bg-red-500/10 text-red-400 hover:text-red-300 hover:border-red-500 flex items-center justify-center cursor-none transition-all shrink-0 font-bold"
+                                    className="w-8 h-8 rounded border border-red-500/25 bg-red-950/5 hover:bg-red-500/10 text-red-400 hover:text-red-300 hover:border-red-500 flex items-center justify-center transition-all shrink-0 font-bold"
                                   >
                                     ×
                                   </button>
@@ -4788,7 +4688,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => setNewGameUrls(prev => [...prev, ""])}
-                            className="magnetic-target w-full border border-dashed border-cyber-yellow/30 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 rounded-xl py-2 cursor-none text-[10px] font-bold text-cyber-yellow uppercase tracking-wider transition-all text-center flex items-center justify-center gap-1.5"
+                            className="w-full border border-dashed border-cyber-yellow/30 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 rounded-xl py-2 text-[10px] font-bold text-cyber-yellow uppercase tracking-wider transition-all text-center flex items-center justify-center gap-1.5"
                           >
                             <Plus className="w-3.5 h-3.5" />
                             Добавить ссылку (Add URL)
@@ -4800,13 +4700,13 @@ export default function App() {
                         <button
                           type="button"
                           onClick={() => setAddGameOpen(false)}
-                          className="magnetic-target flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase cursor-none transition-all"
+                          className="flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase transition-all"
                         >
                           CANCEL
                         </button>
                         <button
                           type="submit"
-                          className="magnetic-target flex-1 bg-cyber-yellow border border-cyber-yellow text-[#06040c] hover:bg-[#ffc800] rounded-xl py-2.5 text-center font-bold uppercase cursor-none transition-all shadow-[0_0_12px_rgba(255,183,0,0.2)]"
+                          className="flex-1 bg-cyber-yellow border border-cyber-yellow text-[#06040c] hover:bg-[#ffc800] rounded-xl py-2.5 text-center font-bold uppercase transition-all shadow-[0_0_12px_rgba(255,183,0,0.2)]"
                         >
                           {editingGameId ? "SAVE CHANGES" : "ADD SOFTWARE"}
                         </button>
@@ -4848,11 +4748,7 @@ export default function App() {
             animate={{ opacity: 1, scale: 1, x: 0 }}
             exit={{ opacity: 0, scale: 0.9, x: 5 }}
             transition={{ duration: 0.12, ease: "easeOut" }}
-            className={`fixed bg-[#0e091a]/95 text-[10px] font-mono py-1.5 px-3 rounded pointer-events-none z-[9999] whitespace-nowrap border transition-all duration-200 ${
-              tooltip.theme === "green"
-                ? "border-cyber-green/50 text-cyber-green shadow-[0_0_12px_rgba(0,255,102,0.3)] [text-shadow:0_0_5px_rgba(0,255,102,0.5)]"
-                : "border-cyber-purple/50 text-cyber-purple shadow-[0_0_12px_rgba(176,38,255,0.3)] [text-shadow:0_0_5px_rgba(176,38,255,0.5)]"
-            }`}
+            className={`fixed bg-[#0e091a]/95 text-[10px] font-mono py-1.5 px-3 rounded pointer-events-none z-[9999] whitespace-nowrap border transition-all duration-200 ${ tooltip.theme === "green" ? "border-cyber-green/50 text-cyber-green shadow-[0_0_12px_rgba(0,255,102,0.3)] [text-shadow:0_0_5px_rgba(0,255,102,0.5)]" : "border-cyber-purple/50 text-cyber-purple shadow-[0_0_12px_rgba(176,38,255,0.3)] [text-shadow:0_0_5px_rgba(176,38,255,0.5)]" }`}
             style={{
               left: tooltip.x,
               top: tooltip.y,
@@ -4860,9 +4756,7 @@ export default function App() {
             }}
           >
             {/* Left pointer arrow */}
-            <div className={`absolute top-1/2 -left-1 w-1.5 h-1.5 bg-[#0e091a] rotate-45 -translate-y-1/2 border-l border-b ${
-              tooltip.theme === "green" ? "border-cyber-green/50" : "border-cyber-purple/50"
-            }`} />
+            <div className={`absolute top-1/2 -left-1 w-1.5 h-1.5 bg-[#0e091a] rotate-45 -translate-y-1/2 border-l border-b ${ tooltip.theme === "green" ? "border-cyber-green/50" : "border-cyber-purple/50" }`} />
             {tooltip.text}
           </motion.div>
         )}
@@ -4887,28 +4781,28 @@ export default function App() {
             {/* Top section: Creation */}
             <button
               onClick={() => handleContextAction("new-note")}
-              className="magnetic-target w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 cursor-none transition-colors"
+              className="w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 transition-colors"
             >
               <FilePlus className="w-3.5 h-3.5 text-cyber-green" />
               <span>Новая заметка</span>
             </button>
             <button
               onClick={() => handleContextAction("new-folder")}
-              className="magnetic-target w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 cursor-none transition-colors"
+              className="w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 transition-colors"
             >
               <FolderPlus className="w-3.5 h-3.5 text-cyber-purple" />
               <span>Новая папка</span>
             </button>
             <button
               onClick={() => handleContextAction("new-canvas")}
-              className="magnetic-target w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 cursor-none transition-colors"
+              className="w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 transition-colors"
             >
               <Compass className="w-3.5 h-3.5 text-gray-400" />
               <span>Новый холст</span>
             </button>
             <button
               onClick={() => handleContextAction("new-db")}
-              className="magnetic-target w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 cursor-none transition-colors"
+              className="w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 transition-colors"
             >
               <Database className="w-3.5 h-3.5 text-gray-400" />
               <span>Создать базу данных</span>
@@ -4919,28 +4813,28 @@ export default function App() {
             {/* Middle section: File operations */}
             <button
               onClick={() => handleContextAction("copy")}
-              className="magnetic-target w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 cursor-none transition-colors"
+              className="w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 transition-colors"
             >
               <Copy className="w-3.5 h-3.5 text-gray-400" />
               <span>Создать копию</span>
             </button>
             <button
               onClick={() => handleContextAction("move")}
-              className="magnetic-target w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 cursor-none transition-colors"
+              className="w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 transition-colors"
             >
               <CornerUpRight className="w-3.5 h-3.5 text-gray-400" />
               <span>Переместить...</span>
             </button>
             <button
               onClick={() => handleContextAction("search")}
-              className="magnetic-target w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 cursor-none transition-colors"
+              className="w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 transition-colors"
             >
               <Search className="w-3.5 h-3.5 text-gray-400" />
               <span>Искать в папке</span>
             </button>
             <button
               onClick={() => handleContextAction("bookmark")}
-              className="magnetic-target w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 cursor-none transition-colors"
+              className="w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 transition-colors"
             >
               <Bookmark className="w-3.5 h-3.5 text-gray-400" />
               <span>Добавить в закладки...</span>
@@ -4951,7 +4845,7 @@ export default function App() {
             {/* Path operations */}
             <button
               onClick={() => handleContextAction("copy-path")}
-              className="magnetic-target w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center justify-between cursor-none transition-colors"
+              className="w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center justify-between transition-colors"
             >
               <div className="flex items-center gap-2">
                 <Clipboard className="w-3.5 h-3.5 text-gray-400" />
@@ -4965,7 +4859,7 @@ export default function App() {
             {/* Explorer action */}
             <button
               onClick={() => handleContextAction("show-in-explorer")}
-              className="magnetic-target w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 cursor-none transition-colors"
+              className="w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 transition-colors"
             >
               <Eye className="w-3.5 h-3.5 text-gray-400" />
               <span>Показать в Проводнике</span>
@@ -4976,14 +4870,14 @@ export default function App() {
             {/* Rename and delete */}
             <button
               onClick={() => handleContextAction("rename")}
-              className="magnetic-target w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 cursor-none transition-colors"
+              className="w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 transition-colors"
             >
               <Edit2 className="w-3.5 h-3.5 text-gray-400" />
               <span>Переименовать</span>
             </button>
             <button
               onClick={() => handleContextAction("delete")}
-              className="magnetic-target w-full text-left py-1.5 px-3 hover:bg-red-500/10 text-red-400 hover:text-red-300 rounded flex items-center gap-2 cursor-none transition-colors font-semibold"
+              className="w-full text-left py-1.5 px-3 hover:bg-red-500/10 text-red-400 hover:text-red-300 rounded flex items-center gap-2 transition-colors font-semibold"
             >
               <Trash2 className="w-3.5 h-3.5 text-red-500" />
               <span>Удалить</span>
@@ -5013,14 +4907,14 @@ export default function App() {
             </div>
             <button
               onClick={() => handleGameContextAction("edit")}
-              className="magnetic-target w-full text-left py-3 px-4 hover:bg-cyber-yellow/10 hover:text-cyber-yellow rounded flex items-center gap-3 cursor-none transition-colors font-bold"
+              className="w-full text-left py-3 px-4 hover:bg-cyber-yellow/10 hover:text-cyber-yellow rounded flex items-center gap-3 transition-colors font-bold"
             >
               <Settings className="w-4.5 h-4.5 text-cyber-yellow" />
               <span>Изменить параметры</span>
             </button>
             <button
               onClick={() => handleGameContextAction("delete")}
-              className="magnetic-target w-full text-left py-3 px-4 hover:bg-red-500/10 text-red-400 hover:text-red-300 rounded flex items-center gap-3 cursor-none transition-colors font-black"
+              className="w-full text-left py-3 px-4 hover:bg-red-500/10 text-red-400 hover:text-red-300 rounded flex items-center gap-3 transition-colors font-black"
             >
               <Trash2 className="w-4.5 h-4.5 text-red-500" />
               <span>Удалить программу</span>
@@ -5068,7 +4962,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setIsNewsPathPromptOpen(false)}
-                  className="magnetic-target flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase cursor-none transition-all text-xs"
+                  className="flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase transition-all text-xs"
                 >
                   ОТМЕНА
                 </button>
@@ -5080,7 +4974,7 @@ export default function App() {
                     invoke("open_url", { url: `obsidian://open${pathParam}` })
                       .catch(err => console.error("Failed to open Obsidian:", err));
                   }}
-                  className="magnetic-target flex-1 bg-cyber-yellow/10 border border-cyber-yellow text-cyber-yellow hover:bg-cyber-yellow hover:text-black rounded-xl py-2.5 text-center font-bold uppercase cursor-none transition-all text-xs shadow-[0_0_15px_rgba(255,183,0,0.15)]"
+                  className="flex-1 bg-cyber-yellow/10 border border-cyber-yellow text-cyber-yellow hover:bg-cyber-yellow hover:text-black rounded-xl py-2.5 text-center font-bold uppercase transition-all text-xs shadow-[0_0_15px_rgba(255,183,0,0.15)]"
                 >
                   ОТКРЫТЬ
                 </button>
@@ -5125,7 +5019,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setGameToDelete(null)}
-                  className="magnetic-target flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase cursor-none transition-all text-xs"
+                  className="flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase transition-all text-xs"
                 >
                   ОТМЕНА
                 </button>
@@ -5135,7 +5029,7 @@ export default function App() {
                     handleDeleteGame(gameToDelete.id);
                     setGameToDelete(null);
                   }}
-                  className="magnetic-target flex-1 bg-red-950/20 border border-red-500/50 text-red-400 hover:bg-red-500/20 hover:border-red-500 rounded-xl py-2.5 text-center font-bold uppercase cursor-none transition-all text-xs shadow-[0_0_15px_rgba(239,68,68,0.15)]"
+                  className="flex-1 bg-red-950/20 border border-red-500/50 text-red-400 hover:bg-red-500/20 hover:border-red-500 rounded-xl py-2.5 text-center font-bold uppercase transition-all text-xs shadow-[0_0_15px_rgba(239,68,68,0.15)]"
                 >
                   УДАЛИТЬ
                 </button>
@@ -5144,9 +5038,6 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Fluid Custom Slime Cursor */}
-      <CustomCursor isSleeping={isSleeping} />
     </div>
   );
 }

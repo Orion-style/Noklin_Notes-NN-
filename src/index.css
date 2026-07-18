@@ -22,12 +22,6 @@
     color: #f3f4f6;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     overflow: hidden;
-    cursor: none !important;
-  }
-
-  /* Make sure all interactive elements don't show the standard cursor */
-  a, button, input, textarea, select, [role="button"] {
-    cursor: none !important;
   }
 }
 
@@ -71,39 +65,7 @@
   }
 }
 
-@utility magnetic-target {
-  position: relative;
-  overflow: hidden;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(176, 38, 255, 0.25) 0%, rgba(0, 255, 102, 0.1) 40%, transparent 70%);
-    opacity: 0;
-    transition: opacity 0.4s ease;
-    pointer-events: none;
-    z-index: 0;
-    animation: spin-gradient 4s linear infinite;
-  }
-  
-  &:hover::before {
-    opacity: 1;
-  }
-  
-  & > * {
-    position: relative;
-    z-index: 1;
-  }
-}
 
-@keyframes spin-gradient {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
 
 @keyframes float-slow {
   0%, 100% {
@@ -184,24 +146,4 @@
   border-color: rgba(176, 38, 255, 0.55);
 }
 
-@keyframes cursor-wave {
-  0% {
-    border-radius: 50% 50% 50% 50% / 50% 50% 50% 50%;
-  }
-  25% {
-    border-radius: 65% 35% 55% 45% / 45% 60% 40% 55%;
-  }
-  50% {
-    border-radius: 45% 55% 35% 65% / 55% 40% 60% 45%;
-  }
-  75% {
-    border-radius: 60% 40% 60% 40% / 40% 55% 45% 60%;
-  }
-  100% {
-    border-radius: 50% 50% 50% 50% / 50% 50% 50% 50%;
-  }
-}
 
-@utility animate-cursor-wave {
-  animation: cursor-wave 3.5s ease-in-out infinite;
-}
