@@ -6,7 +6,7 @@ const onboardingSteps = [
   {
     icon: Cpu,
     title: "ОБЗОР СИСТЕМЫ",
-    subtitle: "Cybernetic Note Terminal",
+    subtitle: "Кибернетический терминал заметок",
     description: "Добро пожаловать в CYBER-NOTES — высокотехнологичный менеджер локальных заметок Obsidian. Система работает на базе сверхбыстрого движка Tauri и Rust, обеспечивая полную конфиденциальность и мгновенную загрузку ваших файлов.",
     colorClass: "text-cyber-green",
     borderColorClass: "border-cyber-green/30"
@@ -15,7 +15,7 @@ const onboardingSteps = [
     icon: Terminal,
     title: "ПОДКЛЮЧЕНИЕ ХРАНИЛИЩА",
     subtitle: "Инициализация локального пути",
-    description: "В боковой панели слева найдите поле ввода пути к вашему хранилищу (Obsidian Vault Path). Введите абсолютный путь (например, C:\\Users\\Name\\Vault) и нажмите кнопку «CONNECT VAULT» для запуска индексатора файлов.",
+    description: "В боковой панели слева найдите поле ввода пути к вашему хранилищу (Путь к хранилищу Obsidian). Введите абсолютный путь (например, C:\\Users\\Имя\\Хранилище) и нажмите кнопку «ПОДКЛЮЧИТЬ ХРАНИЛИЩЕ» для запуска индексатора файлов.",
     colorClass: "text-cyber-purple",
     borderColorClass: "border-cyber-purple/30"
   },
@@ -23,7 +23,7 @@ const onboardingSteps = [
     icon: Folder,
     title: "ПРОВОДНИК ФАЙЛОВ",
     subtitle: "Управление заметками",
-    description: "После успешной авторизации в списке «Vault Files» отобразится дерево ваших заметок в формате Markdown. Вы можете мгновенно переключаться между файлами с помощью адаптивного курсора. Количество файлов выводится в индикаторе.",
+    description: "После успешной авторизации в списке «Файлы хранилища» отобразится дерево ваших заметок в формате Markdown. Вы можете мгновенно переключаться между файлами с помощью адаптивного курсора. Количество файлов выводится в индикаторе.",
     colorClass: "text-cyber-green",
     borderColorClass: "border-cyber-green/30"
   },

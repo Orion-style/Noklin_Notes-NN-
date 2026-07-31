@@ -1,9 +1,10 @@
-import React, { useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { X, RefreshCw, BarChart2, Grid, Plus, Folder, FolderOpen, FileText, Cpu, Terminal, Layers, Link, ShieldAlert, Check, HelpCircle, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Moon, LogOut, Bold, Italic, Highlighter, Heading1, Heading2, CheckSquare, Code, FilePlus, FolderPlus, Compass, Database, Copy, CornerUpRight, Search, Bookmark, Clipboard, Eye, Edit2, Trash2, Gamepad2, Swords, Play, Sparkles, Clock, Gamepad, Settings, Mail, Bell, Activity, HardDrive, Crop, Square } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
+import { X, RefreshCw, BarChart2, Grid, Plus, Folder, FolderOpen, FileText, Cpu, Terminal, Layers, Link, ShieldAlert, Check, HelpCircle, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Moon, Sun, LogOut, Bold, Italic, Highlighter, Heading1, Heading2, CheckSquare, Code, FilePlus, FolderPlus, Compass, Database, Copy, CornerUpRight, Search, Bookmark, Clipboard, Eye, Edit2, Trash2, Gamepad2, Swords, Play, Sparkles, Clock, Gamepad, Settings, Mail, Bell, Activity, HardDrive, Crop, Square, Calendar, Zap, Flame, Shuffle, Pause, RotateCcw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import InteractiveBackground from "./components/InteractiveBackground";
 import OnboardingWidget from "./components/OnboardingWidget";
+import ObsidianImage from "./components/ObsidianImage";
 
 // Obsidian crystalline SVG icon
 const ObsidianIcon = ({ className }) => (
@@ -30,6 +31,9 @@ const GameModeIcon = ({ className }) => (
     <circle cx="50" cy="50" r="6" fill="currentColor" />
   </svg>
 );
+
+// Translation helper function
+const t = (ru, en) => ru || en;
 
 const formatPlayTime = (hoursValue) => {
   const time = typeof hoursValue === 'number' ? hoursValue : parseFloat(hoursValue);
@@ -134,11 +138,11 @@ function FileTreeNode({
           }
         }}
         onMouseLeave={hideGlobalTooltip}
-        className={`rounded transition-all flex items-center border shrink-0 select-none ${ sidebarCollapsed ? isNested ? "w-7 h-7 justify-center ml-1" : "w-8 h-8 justify-center ml-1.5" : "w-[calc(100%-8px)] text-left py-1.5 gap-2 text-xs" } ${ isSelected ? "bg-cyber-green/10 border-cyber-green text-cyber-green shadow-[0_0_10px_rgba(0,255,102,0.2)]" : "bg-transparent border-transparent text-gray-400 hover:text-gray-200 hover:bg-cyber-purple/5" }`}
-        style={{ paddingLeft: sidebarCollapsed ? undefined : `${depth * 12 + 12}px` }}
+        className={`rounded transition-colors flex items-center shrink-0 select-none ${ sidebarCollapsed ? (isNested ? "w-7 h-7 justify-center ml-1" : "w-8 h-8 justify-center ml-1.5") : "w-[calc(100%-8px)] text-left h-7 px-2 gap-2 text-xs" } ${ isSelected ? "bg-cyber-green/15 text-cyber-green font-bold border-l-2 border-l-cyber-green border-t-transparent border-r-transparent border-b-transparent" : "bg-transparent border border-transparent text-gray-400 hover:text-gray-200 hover:bg-white/5" }`}
+        style={{ paddingLeft: sidebarCollapsed ? undefined : `${depth * 12 + 8}px` }}
       >
         <FileText className={`shrink-0 ${sidebarCollapsed ? (isNested ? "w-4 h-4" : "w-4.5 h-4.5") : "w-3.5 h-3.5"} ${isSelected ? "text-cyber-green" : "text-cyber-purple"}`} />
-        {!sidebarCollapsed && <span className="truncate font-mono">{node.name}</span>}
+        {!sidebarCollapsed && <span className="truncate font-mono whitespace-nowrap">{node.name}</span>}
       </button>
     );
   }
@@ -148,7 +152,7 @@ function FileTreeNode({
   const FolderIcon = isCollapsed ? Folder : FolderOpen;
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-0.5">
       <div
         onDragOver={(e) => onDragOver(e)}
         onDrop={(e) => onDrop(e, node.path)}
@@ -160,12 +164,12 @@ function FileTreeNode({
           }
         }}
         onMouseLeave={hideGlobalTooltip}
-        className={`rounded transition-all flex items-center group border border-transparent select-none shrink-0 ${ sidebarCollapsed ? isNested ? "w-7 h-7 justify-center ml-1 hover:border-cyber-purple/15 hover:bg-cyber-purple/5" : "w-8 h-8 justify-center ml-1.5 hover:border-cyber-purple/15 hover:bg-cyber-purple/5" : "w-[calc(100%-8px)] py-1.5 justify-between text-xs text-gray-400 hover:text-gray-200 hover:bg-cyber-purple/5 hover:border-cyber-purple/10" }`}
-        style={{ paddingLeft: sidebarCollapsed ? undefined : `${depth * 12 + 12}px` }}
+        className={`rounded transition-colors flex items-center group border border-transparent select-none shrink-0 ${ sidebarCollapsed ? (isNested ? "w-7 h-7 justify-center ml-1 hover:border-cyber-purple/15 hover:bg-cyber-purple/5" : "w-8 h-8 justify-center ml-1.5 hover:border-cyber-purple/15 hover:bg-cyber-purple/5") : "w-[calc(100%-8px)] h-7 px-2 justify-between text-xs text-gray-400 hover:text-gray-200 hover:bg-white/5" }`}
+        style={{ paddingLeft: sidebarCollapsed ? undefined : `${depth * 12 + 8}px` }}
       >
         <div className={`flex items-center min-w-0 ${sidebarCollapsed ? "justify-center" : "gap-2"}`}>
           <FolderIcon className={`text-cyber-green shrink-0 ${sidebarCollapsed ? (isNested ? "w-4 h-4" : "w-4.5 h-4.5") : "w-3.5 h-3.5"}`} />
-          {!sidebarCollapsed && <span className="font-mono font-bold truncate">{node.name}</span>}
+          {!sidebarCollapsed && <span className="font-mono font-bold truncate whitespace-nowrap">{node.name}</span>}
         </div>
         {!sidebarCollapsed && (
           <div className="flex items-center gap-1.5 mr-2 shrink-0">
@@ -215,6 +219,10 @@ function FileTreeNode({
 
 export default function App() {
   const [vaultPath, setVaultPath] = useState("");
+  const [customImagesPath, setCustomImagesPath] = useState(() => {
+    return localStorage.getItem("cyber_custom_images_path") || "";
+  });
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [files, setFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -226,6 +234,92 @@ export default function App() {
     return localStorage.getItem("cyber_onboarding_done") !== "true";
   });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState(() => {
+    const saved = localStorage.getItem("cyber_sidebar_tab");
+    return (saved && saved !== "tools") ? saved : "files";
+  });
+  React.useEffect(() => {
+    localStorage.setItem("cyber_sidebar_tab", sidebarTab);
+  }, [sidebarTab]);
+
+  const handleOpenSelectedInObsidian = () => {
+    if (!selectedFile) return;
+    let fullPath = selectedFile;
+    if (vaultPath) {
+      const normalizedVault = vaultPath.replace(/\\/g, '/').replace(/\/$/, '');
+      const normalizedFile = selectedFile.replace(/\\/g, '/').replace(/^\//, '');
+      fullPath = `${normalizedVault}/${normalizedFile}`;
+    }
+    const pathParam = `?path=${encodeURIComponent(fullPath)}`;
+    const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
+    if (isTauri) {
+      invoke("open_url", { url: `obsidian://open${pathParam}` }).catch(err => console.error("Failed to open file in Obsidian:", err));
+    } else {
+      window.open(`obsidian://open${pathParam}`, '_blank');
+    }
+  };
+
+  // Focus Timer & Daily Goals States
+  const [focusTime, setFocusTime] = useState(25 * 60);
+  const [focusInitialTime, setFocusInitialTime] = useState(25 * 60);
+  const [focusIsRunning, setFocusIsRunning] = useState(false);
+  const [focusMode, setFocusMode] = useState("work"); // "work", "short", "long"
+
+  const [dailyGoals, setDailyGoals] = useState(() => {
+    const saved = localStorage.getItem("cyber_daily_goals");
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return [
+      { id: "1", title: "Провести 1 фокус-сессию (25 минут)", category: "ФОКУС", completed: false },
+      { id: "2", title: "Запустить игру или проверить обновления", category: "ИГРЫ", completed: false },
+      { id: "3", title: "Создать или обновить заметку в Obsidian", category: "ЗАМЕТКИ", completed: false }
+    ];
+  });
+
+  const [newGoalText, setNewGoalText] = useState("");
+
+  React.useEffect(() => {
+    localStorage.setItem("cyber_daily_goals", JSON.stringify(dailyGoals));
+  }, [dailyGoals]);
+
+  const toggleDailyGoal = (goalId) => {
+    setDailyGoals(prev => prev.map(g => g.id === goalId ? { ...g, completed: !g.completed } : g));
+  };
+
+  const handleAddCustomGoal = (e) => {
+    e.preventDefault();
+    if (!newGoalText.trim()) return;
+    const newGoal = {
+      id: Date.now().toString(),
+      title: newGoalText.trim(),
+      category: "ПОЛЬЗОВАТЕЛЬСКАЯ",
+      completed: false
+    };
+    setDailyGoals(prev => [...prev, newGoal]);
+    setNewGoalText("");
+  };
+
+  React.useEffect(() => {
+    let timer = null;
+    if (focusIsRunning && focusTime > 0) {
+      timer = setInterval(() => {
+        setFocusTime(prev => prev - 1);
+      }, 1000);
+    } else if (focusTime === 0 && focusIsRunning) {
+      setFocusIsRunning(false);
+    }
+    return () => clearInterval(timer);
+  }, [focusIsRunning, focusTime]);
+
+  const setTimerPreset = (minutes, modeName) => {
+    const secs = minutes * 60;
+    setFocusMode(modeName);
+    setFocusInitialTime(secs);
+    setFocusTime(secs);
+    setFocusIsRunning(false);
+  };
+
   const [expandedFolders, setExpandedFolders] = useState({});
   const [isSleeping, setIsSleeping] = useState(false);
   const [tooltip, setTooltip] = useState({ text: "", x: 0, y: 0, theme: "purple", visible: false });
@@ -233,8 +327,10 @@ export default function App() {
   const [savingState, setSavingState] = useState("saved"); // "saved", "saving", "error"
   const saveTimeoutRef = React.useRef(null);
   const [editMode, setEditMode] = useState("preview");
-  const [resolvedImageUrls, setResolvedImageUrls] = useState({});
+  const [imageStateMap, setImageStateMap] = useState({});
   const resolvedRef = React.useRef({});
+
+  const activeFileRef = React.useRef(selectedFile);
   const [highlightColor, setHighlightColor] = useState("green");
   const [zoomPercent, setZoomPercent] = useState(() => {
     const saved = localStorage.getItem("cyber_zoom");
@@ -249,6 +345,7 @@ export default function App() {
         try {
           const { getCurrentWindow, LogicalSize } = await import("@tauri-apps/api/window");
           const appWindow = getCurrentWindow();
+          if (!appWindow) return;
           
           // Base window dimensions configured in tauri.conf.json
           const baseW = 800;
@@ -261,7 +358,7 @@ export default function App() {
           
           await appWindow.setSize(new LogicalSize(newW, newH));
         } catch (err) {
-          console.error("Failed to resize Tauri window:", err);
+          console.warn("Window resize skipped or failed:", err);
         }
       }
     };
@@ -276,8 +373,26 @@ export default function App() {
   });
   const textareaRef = React.useRef(null);
 
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem("cyber_theme") || "dark";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("cyber_theme", theme);
+    const root = document.documentElement;
+    root.setAttribute("data-theme", theme);
+    if (theme === "light") {
+      root.classList.add("light");
+      root.classList.remove("dark");
+    } else {
+      root.classList.add("dark");
+      root.classList.remove("light");
+    }
+  }, [theme]);
+
   const [activeMode, setActiveMode] = useState(() => {
-    return localStorage.getItem("cyber_active_mode") || "notebook";
+    const savedMode = localStorage.getItem("cyber_active_mode");
+    return savedMode === "notebook" || !savedMode ? "game_manager" : savedMode;
   });
   const [menuOpen, setMenuOpen] = useState(false);
   const [hoveredMode, setHoveredMode] = useState(null);
@@ -334,6 +449,8 @@ export default function App() {
   const [activeModalTab, setActiveModalTab] = useState("parameters");
   const [newGameUrls, setNewGameUrls] = useState([]);
   const [inlineGameUrl, setInlineGameUrl] = useState("");
+  const [launchingGame, setLaunchingGame] = useState(null);
+  const [launchLogs, setLaunchLogs] = useState([]);
 
   // Activity tracking and custom news states
   const [selectedGameId, setSelectedGameId] = useState(null);
@@ -366,9 +483,25 @@ export default function App() {
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editingTaskText, setEditingTaskText] = useState("");
 
-  const [obsidianNewsPath, setObsidianNewsPath] = useState(() => {
-    return localStorage.getItem("obsidian_news_path") || "";
+  const [obsidianNewsPaths, setObsidianNewsPaths] = useState(() => {
+    try {
+      const saved = localStorage.getItem("obsidian_news_paths");
+      if (saved) return JSON.parse(saved);
+      const legacy = localStorage.getItem("obsidian_news_path");
+      return legacy ? { legacy } : {};
+    } catch (_) {
+      return {};
+    }
   });
+  const currentObsidianNewsPath = selectedGameId ? (obsidianNewsPaths[selectedGameId] || "") : "";
+  const setObsidianNewsPath = (path) => {
+    if (!selectedGameId) return;
+    setObsidianNewsPaths(prev => ({
+      ...prev,
+      [selectedGameId]: path
+    }));
+  };
+
   const [isNewsPathPromptOpen, setIsNewsPathPromptOpen] = useState(false);
   const [selectedNewsPost, setSelectedNewsPost] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -384,6 +517,52 @@ export default function App() {
   const [newActNotes, setNewActNotes] = useState("");
   const [newActDate, setNewActDate] = useState(() => new Date().toISOString().split('T')[0]);
 
+  const [activeDaysCount, setActiveDaysCount] = useState(1);
+  const [consecutiveStreak, setConsecutiveStreak] = useState(1);
+
+  React.useEffect(() => {
+    try {
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const todayTime = new Date(todayStr).getTime();
+
+      let savedDays = [];
+      try {
+        savedDays = JSON.parse(localStorage.getItem("noklin_active_days") || "[]");
+      } catch (_) {}
+
+      if (!savedDays.includes(todayStr)) {
+        savedDays.push(todayStr);
+        localStorage.setItem("noklin_active_days", JSON.stringify(savedDays));
+      }
+      setActiveDaysCount(savedDays.length);
+
+      let streakData = { streak: 1, lastVisitDate: todayStr };
+      try {
+        const savedStreak = localStorage.getItem("noklin_streak_data");
+        if (savedStreak) streakData = JSON.parse(savedStreak);
+      } catch (_) {}
+
+      if (streakData.lastVisitDate && streakData.lastVisitDate !== todayStr) {
+        const lastVisitTime = new Date(streakData.lastVisitDate).getTime();
+        const diffInDays = Math.round((todayTime - lastVisitTime) / (1000 * 60 * 60 * 24));
+
+        if (diffInDays === 1) {
+          streakData.streak += 1;
+          streakData.lastVisitDate = todayStr;
+        } else if (diffInDays >= 2) {
+          streakData.streak = 1;
+          streakData.lastVisitDate = todayStr;
+        }
+      } else if (!streakData.lastVisitDate) {
+        streakData = { streak: 1, lastVisitDate: todayStr };
+      }
+
+      localStorage.setItem("noklin_streak_data", JSON.stringify(streakData));
+      setConsecutiveStreak(streakData.streak);
+    } catch (_) {}
+  }, []);
+
   React.useEffect(() => {
     localStorage.setItem("cyber_game_activities", JSON.stringify(gameActivities));
   }, [gameActivities]);
@@ -397,8 +576,8 @@ export default function App() {
   }, [gameTasks]);
 
   React.useEffect(() => {
-    localStorage.setItem("obsidian_news_path", obsidianNewsPath);
-  }, [obsidianNewsPath]);
+    localStorage.setItem("obsidian_news_paths", JSON.stringify(obsidianNewsPaths));
+  }, [obsidianNewsPaths]);
 
   React.useEffect(() => {
     localStorage.setItem("cyber_chart_type", chartType);
@@ -416,27 +595,27 @@ export default function App() {
   }, [games, selectedGameId]);
 
   const handleOpenObsidian = () => {
-    if (!obsidianNewsPath.trim()) {
+    if (!currentObsidianNewsPath.trim()) {
       setIsNewsPathPromptOpen(true);
     } else {
-      const pathParam = obsidianNewsPath ? `?path=${encodeURIComponent(obsidianNewsPath)}` : "";
+      const pathParam = currentObsidianNewsPath ? `?path=${encodeURIComponent(currentObsidianNewsPath)}` : "";
       invoke("open_url", { url: `obsidian://open${pathParam}` })
         .catch(err => console.error("Failed to open Obsidian:", err));
     }
   };
 
   const handleSyncObsidianNews = async () => {
-    if (!obsidianNewsPath || !selectedGameId) return;
+    if (!currentObsidianNewsPath || !selectedGameId) return;
     setIsSyncing(true);
     try {
-      const filesList = await invoke("read_vault_files", { path: obsidianNewsPath });
+      const filesList = await invoke("read_vault_files", { path: currentObsidianNewsPath });
       const newPosts = [];
       
       for (const relPath of filesList) {
         if (relPath.endsWith(".md")) {
           try {
             const content = await invoke("read_file_content", {
-              vaultPath: obsidianNewsPath,
+              vaultPath: currentObsidianNewsPath,
               relPath: relPath
             });
             
@@ -477,6 +656,50 @@ export default function App() {
       console.error("Failed to scan Obsidian files:", err);
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleCreateDailyNote = async () => {
+    if (!currentObsidianNewsPath || !currentObsidianNewsPath.trim() || !selectedGameId) {
+      setIsNewsPathPromptOpen(true);
+      return;
+    }
+
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+    const relPath = `${todayStr}.md`;
+
+    const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
+
+    try {
+      if (isTauri) {
+        try {
+          await invoke("create_file", { vaultPath: currentObsidianNewsPath, relPath: relPath });
+        } catch (e) {
+          console.log("Daily note file already exists or notice:", e);
+        }
+      }
+      await handleSyncObsidianNews();
+
+      let targetPath = currentObsidianNewsPath.replace(/\\/g, '/');
+      if (!targetPath.endsWith('/')) {
+        targetPath += '/';
+      }
+      const fullNotePath = `${targetPath}${relPath}`;
+      const pathParam = `?path=${encodeURIComponent(fullNotePath)}`;
+
+      if (isTauri) {
+        await invoke("open_url", { url: `obsidian://open${pathParam}` }).catch(err => {
+          console.error("Failed to open Obsidian daily note:", err);
+        });
+      } else {
+        window.open(`obsidian://open${pathParam}`, '_blank');
+      }
+    } catch (err) {
+      console.error("Failed to create or open daily note:", err);
     }
   };
 
@@ -569,11 +792,11 @@ export default function App() {
   // Automatic news scanning from Obsidian folder path
   React.useEffect(() => {
     handleSyncObsidianNews();
-  }, [selectedGameId, obsidianNewsPath]);
+  }, [selectedGameId, currentObsidianNewsPath]);
 
-  // Effect to scan all news posts and resolve images using obsidianNewsPath
+  // Effect to scan all news posts and resolve images using currentObsidianNewsPath
   React.useEffect(() => {
-    if (!selectedGameId || !obsidianNewsPath) return;
+    if (!selectedGameId || !currentObsidianNewsPath) return;
     const posts = gameNews[selectedGameId] || [];
     const imagesToResolve = [];
     const regex = /!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g;
@@ -593,28 +816,30 @@ export default function App() {
     const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
     if (isTauri) {
       const resolveImages = async () => {
-        for (const imgName of imagesToResolve) {
-          try {
-            const dataUrl = await invoke("read_image_base64", {
-              vaultPath: obsidianNewsPath,
-              filename: imgName
-            });
-            setResolvedImageUrls(prev => ({
-              ...prev,
-              [imgName]: dataUrl
-            }));
-          } catch (err) {
-            console.error(`Failed to resolve news image ${imgName}:`, err);
-            setResolvedImageUrls(prev => ({
-              ...prev,
-              [imgName]: "failed"
-          }));
-          }
-        }
+        await Promise.all(
+          imagesToResolve.map(async (imgName) => {
+            try {
+              const dataUrl = await invoke("read_image_base64", {
+                vaultPath: currentObsidianNewsPath,
+                filename: imgName
+              });
+              setResolvedImageUrls(prev => ({
+                ...prev,
+                [imgName]: dataUrl
+              }));
+            } catch (err) {
+              console.error(`Failed to resolve news image ${imgName}:`, err);
+              setResolvedImageUrls(prev => ({
+                ...prev,
+                [imgName]: "failed"
+              }));
+            }
+          })
+        );
       };
       resolveImages();
     }
-  }, [gameNews, selectedGameId, obsidianNewsPath]);
+  }, [gameNews, selectedGameId, currentObsidianNewsPath]);
 
   // Launch action selections
   const [executeLaunchGame, setExecuteLaunchGame] = useState(true);
@@ -995,23 +1220,23 @@ export default function App() {
   const handleLaunchGame = async (game, runExecutable = true, urlsToOpen = []) => {
     setLaunchingGame(game);
     setLaunchLogs([
-      "INITIALIZING SYSTEM PROTOCOLS...",
-      `CONNECTING TO APPLICATION: ${game.name.toUpperCase()}`,
-      runExecutable ? `EXECUTABLE TARGET: ${game.path}` : "EXECUTABLE LAUNCH DESELECTED BY USER.",
+      "ИНИЦИАЛИЗАЦИЯ СИСТЕМНЫХ ПРОТОКОЛОВ...",
+      `ПОДКЛЮЧЕНИЕ К ПРИЛОЖЕНИЮ: ${game.name.toUpperCase()}`,
+      runExecutable ? `ИСПОЛНЯЕМЫЙ ФАЙЛ: ${game.path}` : "ЗАПУСК ИСПОЛНЯЕМОГО ФАЙЛА ОТМЕНЕН ПОЛЬЗОВАТЕЛЕМ.",
     ]);
 
     const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
     await delay(700);
-    setLaunchLogs(prev => [...prev, "ALLOCATING VIRTUAL RUNTIME SPACE..."]);
+    setLaunchLogs(prev => [...prev, "ВЫДЕЛЕНИЕ ВИРТУАЛЬНОГО ПРОСТРАНСТВА..."]);
     await delay(600);
-    setLaunchLogs(prev => [...prev, "BYPASSING SECURITY SANDBOX... STATUS: OK"]);
+    setLaunchLogs(prev => [...prev, "ПРОВЕРКА БЕЗОПАСНОСТИ... СТАТУС: ОК"]);
     await delay(500);
     
     if (runExecutable) {
-      setLaunchLogs(prev => [...prev, "EXECUTING RUN PROCESS..."]);
+      setLaunchLogs(prev => [...prev, "ЗАПУСК ПРОЦЕССА..."]);
     } else {
-      setLaunchLogs(prev => [...prev, "SKIPPING RUN PROCESS (WEB ONLY MODE)..."]);
+      setLaunchLogs(prev => [...prev, "ПРОПУСК ЗАПУСКА ПРОЦЕССА (ТОЛЬКО ВЕБ-РЕЖИМ)..."]);
     }
     
     const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
@@ -1020,20 +1245,20 @@ export default function App() {
       try {
         if (runExecutable) {
           await invoke("launch_game", { path: game.path });
-          setLaunchLogs(prev => [...prev, "SUCCESS: ENGINE LAUNCHED SECURELY."]);
+          setLaunchLogs(prev => [...prev, "УСПЕШНО: ДВИЖОК БЕЗОПАСНО ЗАПУЩЕН."]);
         }
 
         // Open selected URLs
         if (urlsToOpen.length > 0) {
-          setLaunchLogs(prev => [...prev, "OPENING CONFIGURED WEB RESOURCES..."]);
+          setLaunchLogs(prev => [...prev, "ОТКРЫТИЕ НАСТРОЕННЫХ ВЕБ-РЕСУРСОВ..."]);
           for (const url of urlsToOpen) {
             if (url && url.trim() !== "") {
               try {
                 await invoke("open_url", { url });
-                setLaunchLogs(prev => [...prev, `OPENED: ${url}`]);
+                setLaunchLogs(prev => [...prev, `ОТКРЫТО: ${url}`]);
               } catch (e) {
                 console.error("Failed to open URL:", e);
-                setLaunchLogs(prev => [...prev, `ERROR OPENING URL: ${url}`]);
+                setLaunchLogs(prev => [...prev, `ОШИБКА ОТКРЫТИЯ URL: ${url}`]);
               }
             }
           }
@@ -1058,23 +1283,23 @@ export default function App() {
         await delay(1000);
         setLaunchingGame(null);
       } catch (err) {
-        setLaunchLogs(prev => [...prev, `CRITICAL ERROR: ${err}`]);
+        setLaunchLogs(prev => [...prev, `КРИТИЧЕСКАЯ ОШИБКА: ${err}`]);
         await delay(3000);
         setLaunchingGame(null);
       }
     } else {
       setLaunchLogs(prev => [
         ...prev,
-        "[DEMO FALLBACK] TAURI RUNTIME NOT DETECTED.",
-        runExecutable ? `[DEMO MODE] SPAWNED EMULATED PROCESS IN BACKGROUND.` : `[DEMO MODE] SKIPPED EMULATED PROCESS.`,
-        "SUCCESS: SIMULATED LAUNCH PROTOCOLS COMPLETED."
+        "[ДЕМО РЕЖИМ] ТАУРИ ДВИЖОК НЕ ОБНАРУЖЕН.",
+        runExecutable ? `[ДЕМО РЕЖИМ] СОЗДАН ЭМУЛИРУЕМЫЙ ПРОЦЕСС В ФОНЕ.` : `[ДЕМО РЕЖИМ] ПРОЦЕСС ПРОПУЩЕН.`,
+        "УСПЕШНО: ИМИТАЦИЯ ПРОТОКОЛА ЗАПУСКА СВЕРШЕНА."
       ]);
 
       if (urlsToOpen.length > 0) {
         setLaunchLogs(prev => [
           ...prev,
-          "[DEMO MODE] SIMULATING OPENING WEB RESOURCES...",
-          ...urlsToOpen.map(url => `[DEMO] OPENED: ${url}`)
+          "[ДЕМО РЕЖИМ] ИМИТАЦИЯ ОТКРЫТИЯ ВЕБ-РЕСУРСОВ...",
+          ...urlsToOpen.map(url => `[ДЕМО] ОТКРЫТО: ${url}`)
         ]);
       }
       
@@ -1402,9 +1627,6 @@ export default function App() {
     }
   };
 
-  React.useEffect(() => {
-    resolvedRef.current = resolvedImageUrls;
-  }, [resolvedImageUrls]);
 
   React.useEffect(() => {
     if (!selectedFile) {
@@ -1441,102 +1663,379 @@ export default function App() {
     }
   }, [selectedFile, connected, vaultPath]);
 
-  // Resolve Obsidian-style wiki attachments asynchronously
+
+  // Track current active file ref to cancel stale requests when switching notes
+  React.useEffect(() => {
+    activeFileRef.current = selectedFile;
+  }, [selectedFile]);
+
+  // Helper to check valid image extensions
+  const isImageExtension = (filename) => {
+    const ext = filename.split('.').pop().toLowerCase();
+    return ["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg", "avif"].includes(ext);
+  };
+
+  const normalizeImageReference = (value = "") => {
+    let result = String(value).trim();
+    try {
+      result = decodeURIComponent(result);
+    } catch (_) {}
+    result = result.replace(/\\/g, "/").replace(/^<|>$/g, "");
+    const pipeIndex = result.indexOf("|");
+    if (pipeIndex !== -1) {
+      result = result.slice(0, pipeIndex);
+    }
+    return result.trim();
+  };
+
+  const createImageStateKey = (notePath, imageReference) => {
+    return [
+      notePath || "unknown-note",
+      normalizeImageReference(imageReference),
+    ].join("::");
+  };
+
+  const imageRequestsRef = React.useRef(new Set());
+  const imageObjectUrlsRef = React.useRef(new Set());
+  const imageEffectRunCountRef = React.useRef(0);
+
+  const setImageLoading = (imageKey) => {
+    if (import.meta.env.DEV) {
+      console.error("[IMAGE STATE] loading", { imageKey });
+    }
+    setImageStateMap((prev) => ({
+      ...prev,
+      [imageKey]: { status: "loading" },
+    }));
+  };
+
+  const setImageSuccess = (imageKey, url) => {
+    if (import.meta.env.DEV) {
+      console.error("[IMAGE STATE] success", { imageKey, url });
+    }
+    setImageStateMap((prev) => ({
+      ...prev,
+      [imageKey]: { status: "success", url },
+    }));
+  };
+
+  const setImageError = (imageKey, message) => {
+    if (import.meta.env.DEV) {
+      console.error("[IMAGE STATE] error", { imageKey, message });
+    }
+    setImageStateMap((prev) => ({
+      ...prev,
+      [imageKey]: {
+        status: "error",
+        message: message || "Не удалось загрузить изображение",
+      },
+    }));
+  };
+
+  const normalizeImageBytes = (result) => {
+    if (result instanceof Uint8Array) {
+      return result;
+    }
+    if (result instanceof ArrayBuffer) {
+      return new Uint8Array(result);
+    }
+    if (Array.isArray(result)) {
+      return Uint8Array.from(result);
+    }
+    if (result && typeof result === "object" && Array.isArray(result.data)) {
+      return Uint8Array.from(result.data);
+    }
+    throw new Error(
+      `Неизвестный формат бинарного ответа: ${
+        result?.constructor?.name ?? typeof result
+      }`
+    );
+  };
+
+  const getImageMimeType = (path) => {
+    const cleanPath = path.split("|")[0].toLowerCase();
+    if (cleanPath.endsWith(".png")) return "image/png";
+    if (cleanPath.endsWith(".jpg") || cleanPath.endsWith(".jpeg")) return "image/jpeg";
+    if (cleanPath.endsWith(".webp")) return "image/webp";
+    if (cleanPath.endsWith(".gif")) return "image/gif";
+    if (cleanPath.endsWith(".bmp")) return "image/bmp";
+    if (cleanPath.endsWith(".avif")) return "image/avif";
+    if (cleanPath.endsWith(".svg")) return "image/svg+xml";
+    throw new Error("Формат изображения не поддерживается");
+  };
+
+  const loadLocalImage = async (imageReference, vPath, notePath) => {
+    const normalizedReference = normalizeImageReference(imageReference);
+    const imageKey = createImageStateKey(notePath, normalizedReference);
+
+    if (import.meta.env.DEV) {
+      console.error("[IMAGE REFERENCE]", {
+        originalReference: imageReference,
+        normalizedReference,
+        notePath,
+        imageKey,
+      });
+    }
+
+    if (imageRequestsRef.current.has(imageKey)) {
+      if (import.meta.env.DEV) {
+        console.error("[IMAGE LOAD SKIPPED] already requested", imageKey);
+      }
+      return;
+    }
+    imageRequestsRef.current.add(imageKey);
+
+    const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
+
+    if (import.meta.env.DEV) {
+      console.error("[IMAGE LOAD START]", {
+        imageKey,
+        originalReference: imageReference,
+        normalizedReference,
+        notePath,
+        vaultPath: vPath,
+        isTauri,
+      });
+    }
+
+    setImageLoading(imageKey);
+
+    if (!isTauri) {
+      const demoUrl = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop";
+      setImageSuccess(imageKey, demoUrl);
+      return;
+    }
+
+    if (!vPath) {
+      setImageError(imageKey, "Путь к Obsidian-хранилищу не настроен");
+      return;
+    }
+
+    try {
+      if (import.meta.env.DEV) {
+        console.error("[IMAGE BEFORE INVOKE]", {
+          command: "load_note_image_bytes",
+          arguments: {
+            vaultPath: vPath,
+            notePath: notePath || null,
+            imgRef: normalizedReference,
+            customImagesPath: customImagesPath.trim() || null,
+          },
+        });
+      }
+
+      const result = await Promise.race([
+        invoke("load_note_image_bytes", {
+          vaultPath: vPath,
+          notePath: notePath || null,
+          imgRef: normalizedReference,
+          customImagesPath: customImagesPath.trim() || null,
+        }),
+        new Promise((_, reject) => {
+          window.setTimeout(() => {
+            reject(new Error("Загрузка изображения превысила 10 секунд"));
+          }, 10000);
+        }),
+      ]);
+
+      if (import.meta.env.DEV) {
+        console.error("[IMAGE INVOKE RESOLVED]", {
+          type: typeof result,
+          constructor: result?.constructor?.name,
+          isArray: Array.isArray(result),
+          length: result?.length,
+          byteLength: result?.byteLength,
+          keys: result && typeof result === "object" ? Object.keys(result) : [],
+        });
+      }
+
+      const bytes = normalizeImageBytes(result);
+
+      if (import.meta.env.DEV) {
+        console.error("[IMAGE BYTES]", {
+          length: bytes.length,
+          firstBytes: Array.from(bytes.slice(0, 16)),
+        });
+      }
+
+      if (bytes.length === 0) {
+        throw new Error("Получен пустой файл");
+      }
+
+      const mimeType = getImageMimeType(normalizedReference);
+      const blob = new Blob([bytes], { type: mimeType });
+      const objectUrl = URL.createObjectURL(blob);
+      imageObjectUrlsRef.current.add(objectUrl);
+
+      if (import.meta.env.DEV) {
+        console.error("[IMAGE BLOB]", {
+          size: blob.size,
+          type: blob.type,
+          objectUrl,
+        });
+      }
+
+      setImageSuccess(imageKey, objectUrl);
+    } catch (error) {
+      imageRequestsRef.current.delete(imageKey);
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("[IMAGE LOAD] failed", { imageKey, error });
+      setImageError(imageKey, message);
+    }
+  };
+
+  // Revoke Blob URLs on unmount only
+  React.useEffect(() => {
+    return () => {
+      for (const url of imageObjectUrlsRef.current) {
+        URL.revokeObjectURL(url);
+      }
+      imageObjectUrlsRef.current.clear();
+    };
+  }, []);
+
+  // Clear request cache when switching selected file
+  React.useEffect(() => {
+    imageRequestsRef.current.clear();
+  }, [selectedFile]);
+
+  // Resolve Obsidian-style wiki & standard markdown attachments asynchronously for active note
   React.useEffect(() => {
     if (!selectedFileContent) return;
 
-    const regex = /!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g;
+    imageEffectRunCountRef.current += 1;
+    if (import.meta.env.DEV) {
+      console.error("[IMAGE EFFECT RUN]", {
+        count: imageEffectRunCountRef.current,
+        selectedFile,
+        vaultPath,
+      });
+    }
+
+    const currentFile = selectedFile;
+    const regex = /!\[\[([^\]|]+)(?:\|([^\]]*))?\]\]|!\[([^\]]*)\]\(([^)]+)\)/g;
     let match;
     const imagesToResolve = [];
-    
+
     while ((match = regex.exec(selectedFileContent)) !== null) {
-      const imageName = match[1].trim();
-      if (!resolvedRef.current[imageName] && !imagesToResolve.includes(imageName)) {
-        imagesToResolve.push(imageName);
+      const isWiki = !!match[1];
+      const rawPath = (isWiki ? match[1] : match[4] || '').trim();
+
+      if (!rawPath) continue;
+      if (rawPath.startsWith("http://") || rawPath.startsWith("https://") || rawPath.startsWith("data:")) continue;
+
+      if (isWiki && !isImageExtension(rawPath)) {
+        continue;
+      }
+
+      const normalizedRef = normalizeImageReference(rawPath);
+      const key = createImageStateKey(currentFile, normalizedRef);
+      if (!imageStateMap[key] && !imagesToResolve.includes(rawPath)) {
+        imagesToResolve.push(rawPath);
       }
     }
 
     if (imagesToResolve.length === 0) return;
 
-    const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
-    if (isTauri && connected && vaultPath) {
-      const resolveImages = async () => {
-        for (const imgName of imagesToResolve) {
-          try {
-            const decodedName = decodeURIComponent(imgName);
-            const dataUrl = await invoke("read_image_base64", {
-              vaultPath: vaultPath,
-              filename: decodedName
-            });
-            setResolvedImageUrls(prev => ({
-              ...prev,
-              [imgName]: dataUrl
-            }));
-          } catch (err) {
-            console.error(`Failed to resolve image ${imgName}:`, err);
-            setResolvedImageUrls(prev => ({
-              ...prev,
-              [imgName]: `failed: ${err}`
-            }));
-          }
-        }
-      };
-      resolveImages();
-    } else {
-      // Demo mode fallback images (e.g. Unsplash placeholders)
-      imagesToResolve.forEach(imgName => {
-        setResolvedImageUrls(prev => ({
-          ...prev,
-          [imgName]: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop"
-        }));
+    imagesToResolve.forEach((imgRef) => {
+      loadLocalImage(imgRef, vaultPath, currentFile);
+    });
+  }, [selectedFileContent, selectedFile, vaultPath, customImagesPath]);
+
+  const renderWikiImage = (imgRef, altOrWidth, key) => {
+    const normalizedReference = normalizeImageReference(imgRef);
+    const imageKey = createImageStateKey(selectedFile, normalizedReference);
+    const state = imageStateMap[imageKey];
+
+    if (import.meta.env.DEV) {
+      console.error("[IMAGE RENDER]", {
+        imgRef,
+        normalizedReference,
+        imageKey,
+        state,
+        availableKeys: Object.keys(imageStateMap),
       });
     }
-  }, [selectedFileContent, connected, vaultPath]);
 
-  const renderWikiImage = (imgName, widthVal, key) => {
-    const url = resolvedImageUrls[imgName];
-    const widthStyle = widthVal ? { width: `${widthVal}px` } : { maxWidth: "100%", maxHeight: "360px" };
+    let widthVal = null;
+    let altText = null;
 
-    if (!url) {
+    if (altOrWidth) {
+      const trimmed = altOrWidth.trim();
+      if (/^\d+$/.test(trimmed)) {
+        widthVal = parseInt(trimmed, 10);
+      } else {
+        altText = trimmed;
+      }
+    }
+
+    if (!state) {
       return (
-        <div key={key} style={widthStyle} className="my-3 border border-cyber-purple/20 bg-cyber-purple/5 rounded p-4 flex flex-col items-center justify-center gap-2 animate-pulse h-40">
-          <span className="w-5 h-5 border-2 border-cyber-purple border-t-transparent rounded-full animate-spin" />
-          <span className="text-[10px] text-cyber-purple font-mono uppercase tracking-wider">RESOLVING ATTACHMENT...</span>
+        <div
+          key={key}
+          style={widthVal ? { width: `${widthVal}px` } : { maxWidth: "100%" }}
+          className="my-3 border border-cyber-purple/20 bg-[#0c0818]/60 rounded-lg p-3 flex items-center justify-center gap-2 text-cyber-purple font-mono text-[10px] uppercase tracking-wider"
+        >
+          <span className="w-3 h-3 border border-cyber-purple border-t-transparent rounded-full animate-spin shrink-0" />
+          <span>ПОДГОТОВКА ИЗОБРАЖЕНИЯ...</span>
         </div>
       );
     }
 
-    if (url && url.startsWith("failed")) {
-      const errMsg = url.startsWith("failed:") ? url.substring(7) : "Unknown error";
+    if (state.status === "loading") {
       return (
-        <div key={key} style={widthStyle} className="my-3 border border-red-500/20 bg-red-950/15 rounded p-4 flex items-center gap-3">
-          <ShieldAlert className="w-5 h-5 text-red-500 shrink-0" />
-          <div className="font-mono">
-            <div className="text-[10px] text-red-400 font-bold uppercase">IMAGE RESOLVE FAILURE</div>
-            <div className="text-[9px] text-gray-500 truncate">{imgName}</div>
-            <div className="text-[8px] text-red-500/80 mt-1 font-mono">{errMsg}</div>
+        <div
+          key={key}
+          style={widthVal ? { width: `${widthVal}px` } : { maxWidth: "100%" }}
+          className="my-3 border border-cyber-purple/30 bg-[#0c0818]/90 rounded-lg p-4 flex flex-col items-center justify-center gap-2.5 h-36 shadow-lg min-w-[240px]"
+        >
+          <div className="flex items-center gap-2 text-cyber-purple font-mono text-[10px] font-bold uppercase tracking-wider">
+            <span className="w-3.5 h-3.5 border-2 border-cyber-purple border-t-transparent rounded-full animate-spin shrink-0" />
+            <span>ЗАГРУЗКА ИЗОБРАЖЕНИЯ...</span>
+          </div>
+          <div className="w-full max-w-xs h-1.5 bg-black/60 rounded-full overflow-hidden border border-cyber-purple/20 p-0.5">
+            <div className="h-full bg-gradient-to-r from-cyber-purple to-cyber-green rounded-full animate-pulse shadow-[0_0_8px_rgba(176,38,255,0.5)] w-full" />
+          </div>
+          <span className="text-[9px] text-gray-400 font-mono truncate max-w-full px-2 bg-black/40 py-0.5 rounded border border-white/5">
+            {normalizedReference}
+          </span>
+        </div>
+      );
+    }
+
+    if (state.status === "error") {
+      return (
+        <div
+          key={key}
+          style={widthVal ? { width: `${widthVal}px` } : { maxWidth: "100%" }}
+          className="my-3 border border-red-500/30 bg-red-950/20 rounded-lg p-3 flex items-center gap-3 text-red-300 shadow-md max-w-full"
+        >
+          <ShieldAlert className="w-5 h-5 text-red-400 shrink-0" />
+          <div className="font-mono text-xs overflow-hidden">
+            <div className="font-bold text-red-400 uppercase tracking-wide text-[11px]">
+              НЕ УДАЛОСЬ ЗАГРУЗИТЬ ИЗОБРАЖЕНИЕ
+            </div>
+            <div className="text-[10px] text-gray-400 truncate mt-0.5">
+              {normalizedReference}
+            </div>
+            {import.meta.env.DEV && (
+              <div className="text-[9px] text-red-500/80 mt-1 font-mono">
+                {state.message}
+              </div>
+            )}
           </div>
         </div>
       );
     }
 
     return (
-      <div key={key} className="my-3 flex flex-col items-center group relative overflow-hidden rounded border border-cyber-purple/10 bg-[#0e091a]/40 p-2 shadow-lg transition-all hover:border-cyber-purple/35 max-w-full">
-        <div className="absolute top-0 left-0 w-1.5 h-1.5 border-t border-l border-cyber-green opacity-0 group-hover:opacity-100 transition-opacity" />
-        <div className="absolute top-0 right-0 w-1.5 h-1.5 border-t border-r border-cyber-green opacity-0 group-hover:opacity-100 transition-opacity" />
-        <div className="absolute bottom-0 left-0 w-1.5 h-1.5 border-b border-l border-cyber-green opacity-0 group-hover:opacity-100 transition-opacity" />
-        <div className="absolute bottom-0 right-0 w-1.5 h-1.5 border-b border-r border-cyber-green opacity-0 group-hover:opacity-100 transition-opacity" />
-
-        <img
-          src={url}
-          alt={imgName}
-          style={widthStyle}
-          className="rounded object-contain select-none max-w-full transition-transform duration-300 group-hover:scale-[1.01]"
-        />
-        <div className="text-[9px] text-gray-500 font-mono mt-1.5 uppercase tracking-wide truncate max-w-full px-1">
-          {imgName}
-        </div>
-      </div>
+      <ObsidianImage
+        key={key}
+        src={state.url}
+        alt={altText || normalizedReference}
+        width={widthVal}
+        isError={false}
+      />
     );
   };
 
@@ -1545,39 +2044,47 @@ export default function App() {
     
     let html = text;
 
-    // 1. Process wiki images to custom tags
-    html = html.replace(/!\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/g, (match, name, width) => {
-      const w = width ? ` width="${width.trim()}"` : '';
-      return `<wiki-image name="${name.trim()}"${w}></wiki-image>`;
+    // 1. Process wiki images (ONLY if valid image extension)
+    // ![[img/screenshot.png|500]] or ![[screenshot.png|Описание]] or ![[img/screenshot.png]]
+    html = html.replace(/!\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/g, (match, path, meta) => {
+      const cleanPath = path.trim();
+      if (!isImageExtension(cleanPath)) {
+        return match; // Keep unchanged if it's a note embed like ![[Note]]
+      }
+      const metaAttr = meta ? ` meta="${meta.trim()}"` : '';
+      return `<wiki-image ref="${cleanPath}"${metaAttr}></wiki-image>`;
+    });
+
+    // Standard markdown images: ![alt](img/screenshot.png) or ![alt](https://...)
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, src) => {
+      const cleanSrc = src.trim();
+      if (cleanSrc.startsWith("http://") || cleanSrc.startsWith("https://") || cleanSrc.startsWith("data:")) {
+        return `<img src="${cleanSrc}" alt="${alt}" style="max-width:100%;max-height:480px;" class="my-3 rounded" />`;
+      }
+      const metaAttr = alt ? ` meta="${alt.trim()}"` : '';
+      return `<wiki-image ref="${cleanSrc}"${metaAttr}></wiki-image>`;
     });
 
     // 2. Process Highlights (Obsidian compatible, styled as colored markers)
-    // Purple highlight: ==***text***==
     html = html.replace(/==\*\*\*([^*=]+)\*\*\*==/g, '<mark-purple>$1</mark-purple>');
     html = html.replace(/==___([^_=]+)___==/g, '<mark-purple>$1</mark-purple>');
-
-    // Pink highlight: ==**text**==
     html = html.replace(/==\*\*([^*=]+)\*\*==/g, '<mark-pink>$1</mark-pink>');
     html = html.replace(/==__([^_=]+)__==/g, '<mark-pink>$1</mark-pink>');
-
-    // Blue highlight: ==*text*==
     html = html.replace(/==\*([^*=]+)\*==/g, '<mark-blue>$1</mark-blue>');
     html = html.replace(/==_([^_=]+)_==/g, '<mark-blue>$1</mark-blue>');
-
-    // Standard green highlight: ==text==
     html = html.replace(/==([^=]+)==/g, '<mark-green>$1</mark-green>');
 
-    // 3. Process Bold Italic (***text*** or ___text___ or **_text_** or __*text*__)
+    // 3. Process Bold Italic
     html = html.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
     html = html.replace(/___([^_]+)___/g, '<strong><em>$1</em></strong>');
     html = html.replace(/\*\*_(.+?)_\*\*/g, '<strong><em>$1</em></strong>');
     html = html.replace(/__\*(.+?)\*__/g, '<strong><em>$1</em></strong>');
 
-    // 4. Process Bold (**text** or __text__)
+    // 4. Process Bold
     html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
 
-    // 5. Process Italic (*text* or _text_)
+    // 5. Process Italic
     html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
     html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
 
@@ -1656,15 +2163,15 @@ export default function App() {
           );
         }
       } else if (part.startsWith("<wiki-image")) {
-        const nameMatch = part.match(/name="([^"]*)"/);
-        const widthMatch = part.match(/width="([^"]*)"/);
-        const name = nameMatch ? nameMatch[1] : "";
-        const width = widthMatch && widthMatch[1] ? parseInt(widthMatch[1]) : null;
+        const refMatch = part.match(/ref="([^"]*)"/);
+        const metaMatch = part.match(/meta="([^"]*)"/);
+        const ref = refMatch ? refMatch[1] : "";
+        const meta = metaMatch ? metaMatch[1] : "";
         stack[stack.length - 1].children.push(
-          renderWikiImage(name, width, Math.random())
+          renderWikiImage(ref, meta, Math.random())
         );
       } else if (part === "</wiki-image>") {
-        // Ignore self-closing tag close
+        // Ignore
       } else {
         stack[stack.length - 1].children.push(part);
       }
@@ -1741,13 +2248,15 @@ export default function App() {
         return;
       }
 
-      // Standalone Wiki Images
+      // Standalone Wiki Images (ONLY if image extension)
       const wikiImageMatch = line.match(/^\s*!\[\[([^\]|]+)(?:\|([^\]]*))?\]\]\s*$/);
       if (wikiImageMatch) {
-        const imgName = wikiImageMatch[1].trim();
-        const widthVal = wikiImageMatch[2] ? parseInt(wikiImageMatch[2]) : null;
-        elements.push(renderWikiImage(imgName, widthVal, idx));
-        return;
+        const imgRef = wikiImageMatch[1].trim();
+        if (isImageExtension(imgRef)) {
+          const meta = wikiImageMatch[2] ? wikiImageMatch[2].trim() : null;
+          elements.push(renderWikiImage(imgRef, meta, idx));
+          return;
+        }
       }
 
       // Standard line
@@ -2374,7 +2883,7 @@ export default function App() {
             style={{ zoom: `${zoomPercent}%` }}
           >
             {/* Sidebar */}
-            <aside className={`bg-cyber-sidebar/85 backdrop-blur-lg border-r border-cyber-purple/20 flex flex-col justify-between p-5 z-10 relative shadow-[5px_0_25px_rgba(0,0,0,0.5)] transition-all duration-300 ease-in-out ${sidebarCollapsed ? "w-20 items-center px-2" : "w-80"}`}>
+            <aside className={`bg-cyber-sidebar/85 backdrop-blur-lg border-r border-cyber-purple/20 flex flex-col justify-between p-4 md:p-5 z-10 relative shadow-[5px_0_25px_rgba(0,0,0,0.5)] shrink-0 transition-[width,padding] duration-300 ease-in-out ${sidebarCollapsed ? "w-16 md:w-20 items-center px-2 py-4" : "w-72"}`}>
               {/* Toggle Button */}
               <button
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -2383,31 +2892,69 @@ export default function App() {
                 {sidebarCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
               </button>
 
-              <div className="flex flex-col h-full w-full overflow-hidden">
+              <div className="flex flex-col h-full w-full overflow-hidden pt-1">
                 {/* App Header */}
                 <div 
-                  onMouseEnter={(e) => showGlobalTooltip(e, activeMode === "game_manager" ? "CYBER-GAMES TERMINAL" : "CYBER-NOTES TERMINAL", activeMode === "game_manager" ? "yellow" : "green")}
+                  onMouseEnter={(e) => showGlobalTooltip(e, activeMode === "game_manager" ? "CYBER-GAMES TERMINAL" : activeMode === "stats" ? "CYBER-STATS TERMINAL" : "CYBER-NOTES TERMINAL", activeMode === "game_manager" ? "yellow" : activeMode === "stats" ? "purple" : "green")}
                   onMouseLeave={hideGlobalTooltip}
-                  onClick={() => { if (activeMode === "game_manager") { setSelectedGameId(null); } }} className={`flex items-center gap-3 mb-8 shrink-0 cursor-pointer ${sidebarCollapsed ? "justify-center" : ""}`}
+                  onClick={() => { if (activeMode === "game_manager") { setSelectedGameId(null); } }} className={`flex items-center gap-3 mb-8 shrink-0 cursor-pointer ${sidebarCollapsed ? "justify-center pt-1" : ""}`}
                 >
-                  <div className={`w-10 h-10 rounded border flex items-center justify-center shrink-0 transition-all ${ activeMode === "game_manager" ? "border-cyber-yellow bg-cyber-yellow/10 shadow-[0_0_10px_rgba(255,183,0,0.3)]" : "border-cyber-green bg-cyber-green/10 shadow-[0_0_10px_rgba(0,255,102,0.3)]" }`}>
+                  <div className={`w-10 h-10 rounded border flex items-center justify-center shrink-0 transition-all ${ activeMode === "game_manager" ? "border-cyber-yellow bg-cyber-yellow/10 shadow-[0_0_10px_rgba(255,183,0,0.3)]" : activeMode === "stats" ? "border-cyber-purple bg-cyber-purple/10 shadow-[0_0_10px_rgba(176,38,255,0.3)]" : "border-cyber-green bg-cyber-green/10 shadow-[0_0_10px_rgba(0,255,102,0.3)]" }`}>
                     {activeMode === "game_manager" ? (
                       <Gamepad2 className="w-6 h-6 text-cyber-yellow animate-pulse" />
+                    ) : activeMode === "stats" ? (
+                      <BarChart2 className="w-6 h-6 text-cyber-purple animate-pulse" />
                     ) : (
                       <Cpu className="w-6 h-6 text-cyber-green animate-pulse" />
                     )}
                   </div>
                   {!sidebarCollapsed && (
                     <div className="overflow-hidden whitespace-nowrap transition-all duration-300">
-                      <h1 className={`text-xl font-black tracking-widest font-mono transition-all ${activeMode === "game_manager" ? "neon-text-yellow" : "neon-text-green"}`}>
-                        {activeMode === "game_manager" ? "CYBER-GAMES" : "CYBER-NOTES"}
+                      <h1 className={`text-xl font-black tracking-widest font-mono transition-all ${activeMode === "game_manager" ? "neon-text-yellow" : activeMode === "stats" ? "neon-text-purple" : "neon-text-green"}`}>
+                        {activeMode === "game_manager" ? "CYBER-GAMES" : activeMode === "stats" ? "CYBER-STATS" : "CYBER-NOTES"}
                       </h1>
                       <p className="text-[10px] text-cyber-purple uppercase tracking-widest font-mono">
-                        {activeMode === "game_manager" ? "Launcher Module" : "Stage 1 Terminal"}
+                        {activeMode === "game_manager" ? "Launcher Module" : activeMode === "stats" ? "Analytics Hub" : "Stage 1 Terminal"}
                       </p>
                     </div>
                   )}
                 </div>
+
+                {/* Sidebar Navigation Tabs */}
+                {!sidebarCollapsed ? (
+                  <div className="flex items-center gap-1 bg-[#06040c]/70 p-1 rounded-lg border border-cyber-purple/20 mb-4 shrink-0 font-mono text-[10px] select-none shadow-inner">
+                    <button
+                      type="button"
+                      onClick={() => setActiveMode("game_manager")}
+                      onMouseEnter={(e) => showGlobalTooltip(e, "Игровой менеджер", "yellow")}
+                      onMouseLeave={hideGlobalTooltip}
+                      className={`flex-1 h-8 px-2 rounded-md flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap border ${
+                        activeMode === "game_manager"
+                          ? "bg-cyber-yellow/20 text-cyber-yellow border-cyber-yellow/40 shadow-[0_0_8px_rgba(255,183,0,0.15)] font-bold"
+                          : "text-gray-400 hover:text-white border-transparent hover:bg-white/5"
+                      }`}
+                    >
+                      <Gamepad2 className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate whitespace-nowrap">Игры</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-1.5 mb-3 shrink-0 select-none">
+                    <button
+                      type="button"
+                      onClick={() => setActiveMode("game_manager")}
+                      onMouseEnter={(e) => showGlobalTooltip(e, "ИГРОВОЙ МЕНЕДЖЕР", "yellow")}
+                      onMouseLeave={hideGlobalTooltip}
+                      className={`w-8 h-8 rounded border flex items-center justify-center transition-all ${
+                        activeMode === "game_manager"
+                          ? "border-cyber-yellow bg-cyber-yellow/20 text-cyber-yellow shadow-[0_0_8px_rgba(255,183,0,0.3)]"
+                          : "border-gray-700/40 text-gray-400 hover:text-white hover:border-gray-500"
+                      }`}
+                    >
+                      <Gamepad2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
 
                 {/* Sidebar Main Content */}
                 {activeMode === "game_manager" ? (
@@ -2468,7 +3015,7 @@ export default function App() {
                       <div className="flex items-center justify-between text-xs uppercase tracking-wider text-gray-400 font-mono mb-4 p-1 rounded border border-transparent hover:border-cyber-yellow/35 hover:bg-cyber-yellow/5 transition-all shrink-0">
                         <span className="flex items-center gap-1.5 text-cyber-yellow font-bold">
                           <Gamepad className="w-4 h-4" />
-                          SYSTEM GAMES
+                          СИСТЕМНЫЕ ИГРЫ
                         </span>
                         <button
                           onClick={handleAddGameOpenClick}
@@ -2482,21 +3029,21 @@ export default function App() {
                       {/* Telemetry data */}
                       <div className="bg-[#ffcc00]/5 border border-cyber-yellow/20 rounded p-3 mb-4 font-mono text-[10px] space-y-2 shrink-0">
                         <div className="flex justify-between text-gray-400">
-                          <span>SYSTEM METRICS:</span>
-                          <span className="text-cyber-yellow font-bold font-mono">ACTIVE</span>
+                          <span>МЕТРИКИ СИСТЕМЫ:</span>
+                          <span className="text-cyber-yellow font-bold font-mono">АКТИВНО</span>
                         </div>
                         <div className="h-[1px] bg-cyber-yellow/10 w-full" />
                         <div className="flex justify-between">
-                          <span className="text-gray-500">TOTAL HOURS:</span>
+                          <span className="text-gray-500">ВСЕГО ЧАСОВ:</span>
                           <span className="text-white font-bold">{formatPlayTime(games.reduce((acc, g) => acc + (typeof g.playTime === 'number' ? g.playTime : 0), 0))}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-500">SECTOR STATUS:</span>
-                          <span className="text-cyber-green font-bold">TRACKING ACTIVE</span>
+                          <span className="text-gray-500">СТАТУС СЕКТОРА:</span>
+                          <span className="text-cyber-green font-bold">ТРЕКИНГ АКТИВЕН</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-500">T-ENGINE:</span>
-                          <span className="text-white font-bold">STAGE 2 RUNTIME</span>
+                          <span className="text-gray-500">АКТИВНЫЕ ДНИ:</span>
+                          <span className="text-white font-bold">{activeDaysCount} дн.</span>
                         </div>
                       </div>
 
@@ -2517,7 +3064,7 @@ export default function App() {
                         {games.length === 0 ? (
                           <div className="h-32 border border-dashed border-cyber-yellow/10 rounded flex flex-col items-center justify-center text-center p-4">
                             <Gamepad className="w-8 h-8 text-gray-600 mb-2" />
-                            <p className="text-xs text-gray-500 font-mono">No games installed.</p>
+                            <p className="text-xs text-gray-500 font-mono">Нет установленных игр.</p>
                           </div>
                         ) : (
                           games.map(game => (
@@ -2525,7 +3072,7 @@ export default function App() {
                               key={game.id}
                               onClick={() => setSelectedGameId(selectedGameId === game.id ? null : game.id)}
                               onContextMenu={(e) => handleGameContextMenu(e, game)}
-                              className={`border rounded p-2 flex items-center justify-between transition-colors group ${ selectedGameId === game.id ? "border-cyber-yellow bg-[#ffb700]/10 shadow-[0_0_10px_rgba(255,183,0,0.15)]" : "border-cyber-yellow/15 bg-[#ffb700]/5 hover:border-cyber-yellow/45" }`}
+                              className={`sidebar-game-item border rounded p-2 flex items-center justify-between transition-colors group cursor-pointer ${ selectedGameId === game.id ? "is-selected border-cyber-yellow bg-[#ffb700]/10 shadow-[0_0_10px_rgba(255,183,0,0.15)]" : "border-cyber-yellow/15 bg-[#ffb700]/5 hover:border-cyber-yellow/45" }`}
                             >
                               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                 {game.icon ? (
@@ -2534,19 +3081,19 @@ export default function App() {
                                   <Gamepad className="w-5 h-5 text-cyber-yellow/60 shrink-0" />
                                 )}
                                 <div className="flex flex-col min-w-0">
-                                  <span className="font-mono text-xs font-bold text-gray-200 truncate">{game.name}</span>
-                                  <span className="text-[9px] text-gray-500 font-mono mt-0.5 uppercase tracking-wider">{game.category}</span>
+                                  <span className="sidebar-game-name font-mono text-xs font-bold text-gray-200 truncate">{game.name}</span>
+                                  <span className="sidebar-game-category text-[9px] text-gray-500 font-mono mt-0.5 uppercase tracking-wider">{game.category}</span>
                                 </div>
                               </div>
-                              <ChevronRight className="w-4 h-4 text-cyber-yellow/40 group-hover:text-cyber-yellow group-hover:translate-x-0.5 transition-all shrink-0" />
+                              <ChevronRight className="sidebar-game-arrow w-4 h-4 text-cyber-yellow/40 group-hover:text-cyber-yellow group-hover:translate-x-0.5 transition-all shrink-0" />
                             </div>
                           ))
                         )}
                       </div>
                     </div>
                   )
-                ) : editMode === "preview" ? (
-                  // Preview mode sidebar (File Tree)
+                ) : (
+                  // File Tree View
                   sidebarCollapsed ? (
                     <div className="flex-1 flex flex-col items-center gap-4 overflow-hidden mt-4 w-full">
                       {/* Files Icon Header */}
@@ -2609,7 +3156,7 @@ export default function App() {
                       >
                         <span className="flex items-center gap-1.5">
                           <Folder className="w-4 h-4 text-cyber-green" />
-                          Vault Files
+                          Файлы хранилища
                         </span>
                         <div className="flex items-center gap-2">
                           {connected && (
@@ -2649,7 +3196,7 @@ export default function App() {
                         {files.length === 0 ? (
                           <div className="h-32 border border-dashed border-cyber-purple/10 rounded flex flex-col items-center justify-center text-center p-4">
                             <FileText className="w-8 h-8 text-gray-600 mb-2" />
-                            <p className="text-xs text-gray-500 font-mono">No active vault linked.</p>
+                            <p className="text-xs text-gray-500 font-mono">Хранилище не подключено.</p>
                           </div>
                         ) : (
                           buildFileTree(files).children.map((child, idx) => (
@@ -2675,125 +3222,6 @@ export default function App() {
                       </div>
                     </>
                   )
-                ) : (
-                  // Edit mode sidebar (Text Formatting Tools)
-                  sidebarCollapsed ? (
-                    <div className="flex-1 flex flex-col items-center gap-4 overflow-hidden mt-4 w-full">
-                      {/* Editor Icon Header */}
-                      <div 
-                        onMouseEnter={(e) => showGlobalTooltip(e, "ИНСТРУМЕНТЫ РЕДАКТОРА", "green")}
-                        onMouseLeave={hideGlobalTooltip}
-                        className="relative group flex items-center justify-center w-10 h-10 rounded border border-cyber-purple/20 bg-cyber-purple/5 text-cyber-purple shrink-0"
-                      >
-                        <Terminal className="w-5 h-5" />
-                      </div>
-
-                      {/* Collapsed Tool List */}
-                      <div className="flex-1 w-full overflow-y-auto space-y-2 flex flex-col items-center pr-0 select-none pb-2">
-                        {editTools.map((tool) => {
-                          const IconComponent = tool.icon;
-                          return (
-                            <button
-                              key={tool.id}
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={() => applyEditTool(tool.id)}
-                              onMouseEnter={(e) => showGlobalTooltip(e, `${tool.label} (${tool.shortcut})`, "green")}
-                              onMouseLeave={hideGlobalTooltip}
-                              className="w-10 h-10 rounded flex items-center justify-center transition-all border border-transparent text-gray-400 hover:text-cyber-green hover:border-cyber-green/35 hover:bg-cyber-green/5 relative group shrink-0"
-                            >
-                              <IconComponent className="w-5 h-5 shrink-0" />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Tools Heading */}
-                      <div className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-gray-400 font-mono mb-4 select-none shrink-0">
-                        <Terminal className="w-4 h-4 text-cyber-purple" />
-                        Инструменты текста
-                      </div>
-
-                      {/* Tools List */}
-                      <div className="flex-1 overflow-y-auto space-y-3 pr-1 select-none pb-2">
-                        {editTools.map((tool) => {
-                          const IconComponent = tool.icon;
-                          const isHighlight = tool.id === "highlight";
-                          return (
-                            <div 
-                              key={tool.id} 
-                              className="border border-cyber-purple/15 bg-[#0e091a]/30 rounded p-3 flex flex-col gap-2.5 hover:border-cyber-purple/35 transition-colors"
-                            >
-                              <div className="flex items-start gap-3">
-                                <button
-                                  type="button"
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => applyEditTool(tool.id)}
-                                  className="w-8 h-8 rounded border border-cyber-purple/30 bg-cyber-purple/10 text-cyber-purple hover:text-cyber-green hover:border-cyber-green/55 hover:bg-cyber-green/5 flex items-center justify-center shrink-0 transition-all shadow-[0_0_8px_rgba(176,38,255,0.1)] hover:shadow-[0_0_12px_rgba(0,255,102,0.2)]"
-                                  title={`Применить: ${tool.label}`}
-                                >
-                                  <IconComponent className="w-4 h-4" />
-                                </button>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="font-mono text-xs font-bold text-gray-200 truncate">{tool.label}</span>
-                                    <span className="font-mono text-[9px] text-cyber-purple bg-cyber-purple/5 border border-cyber-purple/15 px-1.5 py-0.5 rounded shrink-0">{tool.shortcut}</span>
-                                  </div>
-                                  <p className="text-[10px] text-gray-500 leading-normal mt-0.5">{tool.desc}</p>
-                                </div>
-                              </div>
-
-                              {/* Custom Settings (for highlighter color setting) */}
-                              {isHighlight && (
-                                <div className="pl-11 border-t border-cyber-purple/5 pt-2 flex flex-col gap-1.5">
-                                  <span className="text-[9px] text-gray-500 font-mono uppercase tracking-wider">Цвет маркера:</span>
-                                  <div className="flex flex-wrap gap-2">
-                                    <button
-                                      type="button"
-                                      onMouseDown={(e) => e.preventDefault()}
-                                      onClick={() => setHighlightColor("green")}
-                                      className={`flex items-center gap-1.5 text-[9px] font-mono px-2 py-1 rounded border transition-all ${ highlightColor === "green" ? "bg-cyber-green/10 border-cyber-green text-cyber-green shadow-[0_0_8px_rgba(0,255,102,0.15)]" : "bg-transparent border-cyber-purple/15 text-gray-400 hover:text-gray-200 hover:border-cyber-purple/35" }`}
-                                    >
-                                      <span className="w-1.5 h-1.5 rounded-full bg-cyber-green" />
-                                      Зеленый
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onMouseDown={(e) => e.preventDefault()}
-                                      onClick={() => setHighlightColor("blue")}
-                                      className={`flex items-center gap-1.5 text-[9px] font-mono px-2 py-1 rounded border transition-all ${ highlightColor === "blue" ? "bg-blue-500/10 border-blue-500/50 text-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.15)]" : "bg-transparent border-cyber-purple/15 text-gray-400 hover:text-gray-200 hover:border-cyber-purple/35" }`}
-                                    >
-                                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                                      Синий
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onMouseDown={(e) => e.preventDefault()}
-                                      onClick={() => setHighlightColor("pink")}
-                                      className={`flex items-center gap-1.5 text-[9px] font-mono px-2 py-1 rounded border transition-all ${ highlightColor === "pink" ? "bg-pink-500/10 border-pink-500/50 text-pink-300 shadow-[0_0_8px_rgba(236,72,153,0.15)]" : "bg-transparent border-cyber-purple/15 text-gray-400 hover:text-gray-200 hover:border-cyber-purple/35" }`}
-                                    >
-                                      <span className="w-1.5 h-1.5 rounded-full bg-pink-500" />
-                                      Розовый
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onMouseDown={(e) => e.preventDefault()}
-                                      onClick={() => setHighlightColor("purple")}
-                                      className={`flex items-center gap-1.5 text-[9px] font-mono px-2 py-1 rounded border transition-all ${ highlightColor === "purple" ? "bg-cyber-purple/15 border-cyber-purple text-cyber-purple shadow-[0_0_8px_rgba(176,38,255,0.15)]" : "bg-transparent border-cyber-purple/15 text-gray-400 hover:text-gray-200 hover:border-cyber-purple/35" }`}
-                                    >
-                                      <span className="w-1.5 h-1.5 rounded-full bg-cyber-purple" />
-                                      Фиолетовый
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )
                 )}
 
                 {/* Separator (only shown if connection panel is visible) */}
@@ -2807,7 +3235,7 @@ export default function App() {
                     <div className="mb-6 flex justify-center shrink-0">
                       <button
                         onClick={() => setSidebarCollapsed(false)}
-                        onMouseEnter={(e) => showGlobalTooltip(e, "ПОДКЛЮЧИТЬ VAULT", "purple")}
+                        onMouseEnter={(e) => showGlobalTooltip(e, "ПОДКЛЮЧИТЬ ХРАНИЛИЩЕ", "purple")}
                         onMouseLeave={hideGlobalTooltip}
                         className="w-10 h-10 rounded border bg-[#06040c]/40 hover:bg-cyber-purple/10 flex items-center justify-center transition-all group relative shrink-0 border-cyber-purple/30 text-cyber-purple shadow-[0_0_10px_rgba(176,38,255,0.15)]"
                       >
@@ -2818,14 +3246,14 @@ export default function App() {
                     <form onSubmit={handleConnect} className="mb-6 bg-[#06040c]/60 backdrop-blur-md p-4 rounded border border-cyber-purple/25 shadow-lg shrink-0">
                       <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2 font-mono flex items-center gap-1.5">
                         <Link className="w-3.5 h-3.5 text-cyber-purple" />
-                        Obsidian Vault Path
+                        Путь к хранилищу Obsidian
                       </label>
                       <div className="space-y-3">
                         <input
                           type="text"
                           value={vaultPath}
                           onChange={(e) => setVaultPath(e.target.value)}
-                          placeholder="C:\Users\name\Vault"
+                          placeholder="C:\Users\Имя\Хранилище"
                           className="w-full bg-[#06040c]/80 border border-cyber-purple/40 text-cyber-green placeholder-gray-600 focus:outline-none focus:border-cyber-green focus:ring-1 focus:ring-cyber-green rounded px-3 py-2 text-xs transition-all font-mono shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.6)]"
                         />
                         
@@ -2839,7 +3267,7 @@ export default function App() {
                           ) : (
                             <>
                               <Terminal className="w-4 h-4" />
-                              CONNECT VAULT
+                              ПОДКЛЮЧИТЬ ХРАНИЛИЩЕ
                             </>
                           )}
                         </button>
@@ -2851,77 +3279,107 @@ export default function App() {
             </aside>
 
             {/* Main Workspace Preview Pane */}
-            <main className="flex-1 flex flex-col h-full relative z-0">
+            <main className="flex-1 flex flex-col h-full relative z-0 min-w-0 overflow-hidden">
               {/* Workspace Top Header Bar */}
-              <header className={`h-16 border-b bg-cyber-sidebar/65 backdrop-blur-md flex items-center justify-between px-8 z-10 relative transition-colors ${ activeMode === "game_manager" ? "border-cyber-yellow/20" : "border-cyber-purple/20" }`}>
+              <header className={`h-16 border-b bg-cyber-sidebar/65 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10 relative transition-colors ${ activeMode === "game_manager" ? "border-cyber-yellow/20" : activeMode === "stats" ? "border-cyber-purple/20" : "border-cyber-purple/20" }`}>
                 {activeMode === "game_manager" ? (
-                  <div className="flex items-center gap-2 font-mono text-sm text-cyber-yellow">
-                    <span className="text-cyber-yellow/60">system_mode:</span>
-                    <span className="text-white font-bold tracking-widest uppercase">GAME MANAGER / LAUNCHER</span>
+                  <div className="flex items-center gap-2 font-mono text-xs md:text-sm text-cyber-yellow truncate min-w-0">
+                    <span className="text-cyber-yellow/60 whitespace-nowrap">режим_системы:</span>
+                    <span className="text-white font-bold tracking-widest uppercase whitespace-nowrap">ИГРОВОЙ МЕНЕДЖЕР</span>
+                  </div>
+                ) : activeMode === "stats" ? (
+                  <div className="flex items-center gap-2 font-mono text-xs md:text-sm text-cyber-purple truncate min-w-0">
+                    <span className="text-cyber-purple/60 whitespace-nowrap">режим_системы:</span>
+                    <span className="text-white font-bold tracking-widest uppercase whitespace-nowrap">ЦЕНТР СТАТИСТИКИ</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 font-mono text-sm">
-                    <span className="text-cyber-purple">workspace:</span>
-                    <span className="text-gray-400">/local-vault</span>
+                  <div className="flex items-center gap-1.5 font-mono text-xs md:text-sm truncate min-w-0">
+                    <span className="text-cyber-purple whitespace-nowrap">рабочая_область:</span>
+                    <span className="text-gray-400 whitespace-nowrap">/локальное-хранилище</span>
                     {selectedFile && (
                       <>
                         <span className="text-cyber-purple">/</span>
-                        <span className="text-cyber-green font-bold">{selectedFile}</span>
+                        <span className="text-cyber-green font-bold truncate max-w-[150px] md:max-w-[280px] xl:max-w-[400px]">{selectedFile}</span>
                       </>
                     )}
                   </div>
                 )}
                 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 md:gap-3 shrink-0">
                   {/* System Mode Switcher */}
                   <button
                     onClick={() => setMenuOpen(true)}
-                    className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded font-mono transition-all border ${ activeMode === "game_manager" ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10 hover:border-cyber-yellow/50 shadow-[0_0_8px_rgba(255,183,0,0.1)]" : "text-cyber-purple bg-cyber-purple/5 border-cyber-purple/20 hover:bg-cyber-purple/10 hover:border-cyber-purple/50 shadow-[0_0_8px_rgba(176,38,255,0.1)]" }`}
+                    className={`h-8 px-3 rounded-lg font-mono text-xs flex items-center gap-1.5 transition-colors border whitespace-nowrap shrink-0 ${ activeMode === "game_manager" ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10 hover:border-cyber-yellow/50" : activeMode === "stats" ? "text-cyber-purple bg-cyber-purple/5 border-cyber-purple/20 hover:bg-cyber-purple/10 hover:border-cyber-purple/50" : "text-cyber-green bg-cyber-green/5 border-cyber-green/20 hover:bg-cyber-green/10 hover:border-cyber-green/50" }`}
                   >
-                    {activeMode === "game_manager" ? <Gamepad2 className="w-3.5 h-3.5" /> : <ObsidianIcon className="w-3.5 h-3.5 text-cyber-purple" />}
-                    <span>РЕЖИМ: {activeMode === "game_manager" ? "ИГРЫ" : "БЛОКНОТ"}</span>
+                    {activeMode === "game_manager" ? <Gamepad2 className="w-3.5 h-3.5" /> : activeMode === "stats" ? <BarChart2 className="w-3.5 h-3.5 text-cyber-purple" /> : <ObsidianIcon className="w-3.5 h-3.5 text-cyber-green" />}
+                    <span>РЕЖИМ: {activeMode === "game_manager" ? "ИГРЫ" : activeMode === "stats" ? "СТАТИСТИКА" : "БЛОКНОТ"}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowSettingsModal(true)}
+                    className={`h-8 px-3 rounded-lg font-mono text-xs flex items-center gap-1.5 transition-colors border whitespace-nowrap shrink-0 ${ activeMode === "game_manager" ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10" : "text-cyber-green bg-cyber-green/5 border-cyber-green/20 hover:bg-cyber-green/10" }`}
+                    title="Настройки хранилища и изображений"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">НАСТРОЙКИ</span>
                   </button>
 
                   <button
                     onClick={() => setShowOnboarding(true)}
-                    className={`flex items-center gap-1.5 text-xs font-mono transition-all px-2.5 py-1 rounded border ${ activeMode === "game_manager" ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10 hover:border-cyber-yellow/50" : "text-cyber-green bg-cyber-green/5 border-cyber-green/20 hover:bg-cyber-green/10 hover:border-cyber-green/50" }`}
+                    className={`h-8 px-3 rounded-lg font-mono text-xs flex items-center gap-1.5 transition-colors border whitespace-nowrap shrink-0 ${ activeMode === "game_manager" ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10" : "text-cyber-green bg-cyber-green/5 border-cyber-green/20 hover:bg-cyber-green/10" }`}
                   >
                     <HelpCircle className="w-3.5 h-3.5" />
-                    СПРАВКА
+                    <span className="hidden sm:inline">СПРАВКА</span>
                   </button>
                   
-                  <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded font-mono border ${ activeMode === "game_manager" ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20" : "text-cyber-purple bg-cyber-purple/5 border-cyber-purple/20" }`}>
-                    <Layers className="w-3.5 h-3.5" />
-                    STAGE 1 RUNTIME
+                  <div 
+                    className={`h-8 px-3 rounded-lg font-mono text-xs flex items-center gap-1.5 border whitespace-nowrap shrink-0 ${ activeMode === "game_manager" ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20" : "text-cyber-purple bg-cyber-purple/5 border-cyber-purple/20" }`}
+                    title="Серия ежедневных входов подряд"
+                  >
+                    <Flame className="w-3.5 h-3.5 text-cyber-yellow animate-pulse shrink-0" />
+                    <span className="hidden md:inline">СЕРИЯ ВХОДОВ: {consecutiveStreak} ДН.</span>
+                    <span className="md:hidden">{consecutiveStreak} ДН.</span>
                   </div>
  
                   {/* System Control Widget */}
-                  <div className={`flex items-center gap-1 bg-[#06040c]/50 p-1 rounded font-mono border shadow-[0_0_10px_rgba(0,0,0,0.3)] ${ activeMode === "game_manager" ? "border-cyber-yellow/25" : "border-cyber-purple/25" }`}>
+                  <div className={`h-8 flex items-center gap-1 bg-[#06040c]/50 px-1 rounded-lg font-mono border whitespace-nowrap shrink-0 system-control-widget ${ activeMode === "game_manager" ? "border-cyber-yellow/25" : "border-cyber-purple/25" }`}>
+                    <button
+                      type="button"
+                      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                      onMouseEnter={(e) => showGlobalTooltip(e, theme === "dark" ? "Переключить на светлую тему" : "Переключить на темную тему", activeMode === "game_manager" ? "yellow" : "purple")}
+                      onMouseLeave={hideGlobalTooltip}
+                      className={`h-6 px-2 text-xs rounded transition-colors flex items-center gap-1 border border-transparent whitespace-nowrap ${ activeMode === "game_manager" ? "text-cyber-yellow hover:bg-cyber-yellow/20" : "text-cyber-purple hover:bg-cyber-purple/20" }`}
+                      title={theme === "dark" ? "Включить светлую тему" : "Включить темную тему"}
+                    >
+                      {theme === "dark" ? <Sun className="w-3.5 h-3.5 shrink-0 text-cyber-yellow" /> : <Moon className="w-3.5 h-3.5 shrink-0 text-cyber-purple" />}
+                      <span className="text-[9px] uppercase tracking-wider hidden lg:inline">{theme === "dark" ? "СВЕТ" : "ТЕНЬ"}</span>
+                    </button>
+                    <div className={`w-[1px] h-4 ${activeMode === "game_manager" ? "bg-cyber-yellow/20" : "bg-cyber-purple/20"}`} />
                     <button
                       type="button"
                       onClick={() => setIsSleeping(true)}
-                      className={`p-1.5 text-xs rounded transition-all flex items-center gap-1 border border-transparent ${ activeMode === "game_manager" ? "text-cyber-yellow hover:text-white hover:bg-cyber-yellow/20 hover:border-cyber-yellow/35" : "text-cyber-purple hover:text-white hover:bg-cyber-purple/20 hover:border-cyber-purple/35" }`}
+                      className={`h-6 px-2 text-xs rounded transition-colors flex items-center gap-1 border border-transparent whitespace-nowrap ${ activeMode === "game_manager" ? "text-cyber-yellow hover:bg-cyber-yellow/20" : "text-cyber-purple hover:bg-cyber-purple/20" }`}
                       title="Войти в спящий режим"
                     >
-                      <Moon className="w-3.5 h-3.5" />
-                      <span className="text-[9px] uppercase tracking-wider hidden md:inline">SLEEP</span>
+                      <Moon className="w-3.5 h-3.5 shrink-0" />
+                      <span className="text-[9px] uppercase tracking-wider hidden lg:inline">СОН</span>
                     </button>
                     <div className={`w-[1px] h-4 ${activeMode === "game_manager" ? "bg-cyber-yellow/20" : "bg-cyber-purple/20"}`} />
                     <button
                       type="button"
                       onClick={handleExitApp}
-                      className="p-1.5 text-xs text-red-400 hover:text-white hover:bg-red-500/20 border border-transparent hover:border-red-500/35 rounded transition-all flex items-center gap-1"
+                      className="h-6 px-2 text-xs text-red-500 hover:bg-red-500/10 border border-transparent rounded transition-colors flex items-center gap-1 whitespace-nowrap"
                       title="Выйти из приложения"
                     >
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span className="text-[9px] uppercase tracking-wider hidden md:inline">EXIT</span>
+                      <LogOut className="w-3.5 h-3.5 shrink-0" />
+                      <span className="text-[9px] uppercase tracking-wider hidden lg:inline">ВЫХОД</span>
                     </button>
                   </div>
                 </div>
               </header>
 
               {/* Workspace Content Viewport */}
-              <div className="flex-1 overflow-auto p-8 flex items-center justify-center">
+              <div className="flex-1 overflow-auto p-4 md:p-6 flex flex-col items-start justify-start w-full min-w-0 overflow-x-hidden">
                 <AnimatePresence mode="wait">
                   {menuOpen ? (
                     // Arknights Endfield Mode Selection Overlay
@@ -2931,32 +3389,12 @@ export default function App() {
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.25, ease: "easeInOut" }}
-                      className="w-full max-w-5xl p-8 rounded-2xl bg-[#06040c]/90 border border-cyber-purple/35 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.85)] relative flex flex-col lg:flex-row gap-8 items-center justify-between z-20 min-h-[500px] text-left"
+                      className="w-full max-w-5xl p-8 rounded-2xl bg-[#06040c]/90 border border-cyber-purple/35 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.85)] relative flex flex-col lg:flex-row gap-8 items-center justify-between z-20 min-h-[500px] text-left mx-auto my-auto"
                     >
                       {/* Left: Mode Cards */}
                       <div className="flex flex-col gap-5 w-full lg:w-1/3 select-none">
-                        <div className="text-[10px] text-cyber-purple font-mono uppercase tracking-[0.2em] mb-2">// SELECT RUNTIME PROTOCOL</div>
+                        <div className="text-[10px] text-cyber-purple font-mono uppercase tracking-[0.2em] mb-2">// ВЫБЕРИТЕ ПРОТОКОЛ СИСТЕМЫ</div>
                         
-                        {/* Notebook Card */}
-                        <div
-                          onMouseEnter={() => setHoveredMode("notebook")}
-                          onMouseLeave={() => setHoveredMode(null)}
-                          onClick={() => {
-                            setActiveMode("notebook");
-                            setMenuOpen(false);
-                          }}
-                          className={`border rounded-xl p-5 transition-all duration-300 flex items-center gap-4 ${ activeMode === "notebook" ? "bg-cyber-purple/15 border-cyber-purple text-white shadow-[0_0_15px_rgba(176,38,255,0.25)]" : "bg-[#0c0817]/40 border-cyber-purple/20 text-gray-400 hover:border-cyber-purple/60 hover:text-white hover:bg-cyber-purple/5" }`}
-                        >
-                          <div className="w-12 h-12 rounded-lg bg-cyber-purple/10 flex items-center justify-center shrink-0 border border-cyber-purple/35">
-                            <ObsidianIcon className="w-8 h-8 text-cyber-purple" />
-                          </div>
-                          <div className="text-left">
-                            <div className="font-mono text-xs text-cyber-purple font-bold tracking-widest">[01] SYSTEM ENGINE</div>
-                            <div className="font-black tracking-wide text-sm mt-0.5">БЛОКНОТ / OBSIDIAN</div>
-                            <div className="text-[10px] text-gray-500 font-mono mt-1">Редактор заметок Markdown</div>
-                          </div>
-                        </div>
-
                         {/* Game Launcher Card */}
                         <div
                           onMouseEnter={() => setHoveredMode("game_manager")}
@@ -2968,28 +3406,31 @@ export default function App() {
                           className={`border rounded-xl p-5 transition-all duration-300 flex items-center gap-4 ${ activeMode === "game_manager" ? "bg-cyber-yellow/15 border-cyber-yellow text-white shadow-[0_0_15px_rgba(255,183,0,0.25)]" : "bg-[#0c0817]/40 border-cyber-yellow/20 text-gray-400 hover:border-cyber-yellow/60 hover:text-white hover:bg-cyber-yellow/5" }`}
                         >
                           <div className="w-12 h-12 rounded-lg bg-cyber-yellow/10 flex items-center justify-center shrink-0 border border-cyber-yellow/35">
-                            <Gamepad2 className="w-6 h-6 text-cyber-yellow" />
+                            <Gamepad2 className="w-8 h-8 text-cyber-yellow" />
                           </div>
                           <div className="text-left">
-                            <div className="font-mono text-xs text-cyber-yellow font-bold tracking-widest">[02] LAUNCHER ENGINE</div>
-                            <div className="font-black tracking-wide text-sm mt-0.5">ИГРОВОЙ МЕНЕДЖЕР</div>
-                            <div className="text-[10px] text-gray-500 font-mono mt-1">Локальный запуск процессов</div>
+                            <div className="font-mono text-xs text-cyber-yellow font-bold tracking-widest">{t("[01] ОСНОВНОЙ ДВИЖОК", "[01] PRIMARY ENGINE")}</div>
+                            <div className="font-black tracking-wide text-sm mt-0.5">{t("ИГРОВОЙ МЕНЕДЖЕР", "GAME MANAGER")}</div>
+                            <div className="text-[10px] text-gray-500 font-mono mt-1">{t("Лаунчер и трекер игр", "Game launcher & tracker")}</div>
                           </div>
                         </div>
-                      </div>
+
+                        </div>
 
                       {/* Center: Hologram HUD */}
                       <div className="flex flex-col items-center justify-center w-full lg:w-1/3 relative py-6">
                         <div className="relative w-64 h-64 flex items-center justify-center">
                           {/* Rotating concentric rings */}
                           <div className="absolute inset-0 rounded-full border border-dashed border-gray-600/35 animate-spin" style={{ animationDuration: '30s' }} />
-                          <div className={`absolute inset-4 rounded-full border border-double animate-spin transition-colors duration-300 ${ (hoveredMode || activeMode) === "game_manager" ? "border-cyber-yellow/30" : "border-cyber-purple/30" }`} style={{ animationDuration: '20s', animationDirection: 'reverse' }} />
-                          <div className={`absolute inset-10 rounded-full border border-dashed animate-spin transition-colors duration-300 ${ (hoveredMode || activeMode) === "game_manager" ? "border-cyber-yellow/50" : "border-cyber-purple/50" }`} style={{ animationDuration: '10s' }} />
+                          <div className={`absolute inset-4 rounded-full border border-double animate-spin transition-colors duration-300 ${ (hoveredMode || activeMode) === "game_manager" ? "border-cyber-yellow/30" : (hoveredMode || activeMode) === "stats" ? "border-cyber-purple/50" : "border-cyber-purple/30" }`} style={{ animationDuration: '20s', animationDirection: 'reverse' }} />
+                          <div className={`absolute inset-10 rounded-full border border-dashed animate-spin transition-colors duration-300 ${ (hoveredMode || activeMode) === "game_manager" ? "border-cyber-yellow/50" : (hoveredMode || activeMode) === "stats" ? "border-cyber-purple/70" : "border-cyber-purple/50" }`} style={{ animationDuration: '10s' }} />
                           
                           {/* Inner glowing core */}
-                          <div className={`absolute inset-16 rounded-full bg-[#050308]/90 border flex flex-col items-center justify-center transition-all duration-500 ${ (hoveredMode || activeMode) === "game_manager" ? "border-cyber-yellow shadow-[0_0_35px_rgba(255,183,0,0.3)] text-cyber-yellow" : "border-cyber-purple shadow-[0_0_35px_rgba(176,38,255,0.3)] text-cyber-purple" }`}>
+                          <div className={`absolute inset-16 rounded-full bg-[#050308]/90 border flex flex-col items-center justify-center transition-all duration-500 ${ (hoveredMode || activeMode) === "game_manager" ? "border-cyber-yellow shadow-[0_0_35px_rgba(255,183,0,0.3)] text-cyber-yellow" : (hoveredMode || activeMode) === "stats" ? "border-cyber-purple shadow-[0_0_35px_rgba(176,38,255,0.4)] text-cyber-purple" : "border-cyber-purple shadow-[0_0_35px_rgba(176,38,255,0.3)] text-cyber-purple" }`}>
                             {(hoveredMode || activeMode) === "game_manager" ? (
                               <GameModeIcon className="w-16 h-16 animate-pulse" />
+                            ) : (hoveredMode || activeMode) === "stats" ? (
+                              <BarChart2 className="w-16 h-16 animate-pulse text-cyber-purple" />
                             ) : (
                               <ObsidianIcon className="w-16 h-16 animate-pulse" />
                             )}
@@ -2998,10 +3439,10 @@ export default function App() {
                         
                         <div className="text-center mt-6">
                           <h3 className={`font-mono text-xs font-black tracking-[0.2em] transition-colors uppercase ${ (hoveredMode || activeMode) === "game_manager" ? "text-cyber-yellow" : "text-cyber-purple" }`}>
-                            {(hoveredMode || activeMode) === "game_manager" ? "Launcher Protocol Active" : "Notebook Workspace Active"}
+                            {(hoveredMode || activeMode) === "game_manager" ? t("Протокол Лаунчера Активен", "Launcher Protocol Active") : t("Рабочая Область Блокнота Активна", "Notebook Workspace Active")}
                           </h3>
                           <p className="text-[10px] text-gray-500 font-mono mt-1 tracking-wider">
-                            {(hoveredMode || activeMode) === "game_manager" ? "SECTOR: ENDFIELD_INDUSTRIES" : "SECTOR: LOCAL_VAULT_INDEXER"}
+                            {(hoveredMode || activeMode) === "game_manager" ? t("СЕКТОР: ИГРОВОЙ_ХАБ", "SECTOR: GAMING_HUB") : t("СЕКТОР: ИНДЕКСАТОР_ХРАНИЛИЩА", "SECTOR: VAULT_INDEXER")}
                           </p>
                         </div>
                       </div>
@@ -3009,38 +3450,30 @@ export default function App() {
                       {/* Right: Diagnostics & Telemetry */}
                       <div className="w-full lg:w-1/3 flex flex-col gap-6 font-mono text-[10px] select-none text-left">
                         <div className="bg-[#050308]/60 border border-cyber-purple/20 rounded-xl p-5 space-y-3">
-                          <div className="text-cyber-purple font-bold">// MODULE TELEMETRY</div>
+                          <div className="text-cyber-purple font-bold">{t("// ТЕЛЕМЕТРИЯ МОДУЛЯ", "// MODULE TELEMETRY")}</div>
                           <div className="flex justify-between">
-                            <span className="text-gray-500">T-SYNC STATUS:</span>
-                            <span className="text-cyber-green font-bold">100% SECURE</span>
+                            <span className="text-gray-500">{t("СТАТУС T-SYNC:", "T-SYNC STATUS:")}</span>
+                            <span className="text-cyber-green font-bold">{t("100% БЕЗОПАСНО", "100% SECURE")}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-500">SYSTEM CORES:</span>
-                            <span className="text-white">STAGE 2 COMPILED</span>
+                            <span className="text-gray-500">{t("ЯДРА СИСТЕМЫ:", "SYSTEM CORES:")}</span>
+                            <span className="text-white">{t("ЭТАП 2 СОБРАН", "STAGE 2 COMPILED")}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-500">UI RENDERING:</span>
+                            <span className="text-gray-500">{t("РЕНДЕРИНГ UI:", "UI RENDERING:")}</span>
                             <span className="text-white">TAURI-REACT RUNTIME</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-500">ACTIVE MODE:</span>
+                            <span className="text-gray-500">{t("АКТИВНЫЙ РЕЖИМ:", "ACTIVE MODE:")}</span>
                             <span className={`font-bold uppercase ${activeMode === "game_manager" ? "text-cyber-yellow" : "text-cyber-purple"}`}>
-                              {activeMode === "game_manager" ? "Game Manager" : "Notebook"}
+                              {activeMode === "game_manager" ? t("Игровой менеджер", "Game Manager") : t("Блокнот", "Notebook")}
                             </span>
                           </div>
                         </div>
 
-                        {/* Close button */}
-                        <button
-                          onClick={() => setMenuOpen(false)}
-                          className="w-full border border-red-500/40 bg-red-950/10 hover:bg-red-500/20 hover:border-red-500 rounded-xl py-3 text-center text-red-400 font-bold uppercase tracking-widest transition-all shadow-[0_0_10px_rgba(239,68,68,0.1)] hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]"
-                        >
-                          CLOSE PROTOCOL (ВЕРНУТЬСЯ)
-                        </button>
                       </div>
                     </motion.div>
-                  ) : activeMode === "game_manager" ? (
-                    selectedGameId !== null ? (
+                  ) : selectedGameId !== null ? (
                       (() => {
                         const activeGame = games.find(g => g.id === selectedGameId);
                         if (!activeGame) return null;
@@ -3079,46 +3512,46 @@ export default function App() {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -15 }}
                             transition={{ duration: 0.25 }}
-                            className="w-full h-full flex flex-col gap-5 max-w-6xl z-10 text-left overflow-y-auto pr-1 font-mono pb-8"
+                            className="w-full h-full flex flex-col gap-5 z-10 text-left overflow-y-auto pr-1 font-mono pb-8 min-w-0"
                           >
                             {/* Header Section */}
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4 shrink-0">
-                              <div className="flex items-center gap-4">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4 shrink-0 min-w-0">
+                              <div className="flex items-center gap-4 min-w-0 flex-1">
                                 <button
                                   onClick={() => setSelectedGameId(null)}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:border-cyber-yellow hover:text-cyber-yellow bg-white/5 hover:bg-cyber-yellow/5 transition-all text-xs"
+                                  className="btn-back-list flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all text-xs font-mono font-bold shrink-0"
                                 >
-                                  <ChevronLeft className="w-4 h-4" />
+                                  <ChevronLeft className="w-4 h-4 shrink-0" />
                                   <span>НАЗАД К СПИСКУ</span>
                                 </button>
                                 
-                                <div className="h-6 w-[1px] bg-white/10" />
+                                <div className="h-6 w-[1px] bg-white/10 shrink-0" />
 
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
                                   {activeGame.icon ? (
-                                    <img src={activeGame.icon} alt="" className="w-10 h-10 object-contain rounded-lg border border-white/10" />
+                                    <img src={activeGame.icon} alt="" className="w-10 h-10 object-contain rounded-lg border border-white/10 shrink-0" />
                                   ) : (
-                                    <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-500">
+                                    <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-500 shrink-0">
                                       <Gamepad2 className="w-6 h-6" />
                                     </div>
                                   )}
-                                  <div>
-                                    <div className="flex items-center gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 min-w-0">
                                       <h2 className="text-xl font-black text-white uppercase tracking-wide truncate max-w-[280px]">
                                         {activeGame.name}
                                       </h2>
-                                      <span className={`text-[8px] uppercase tracking-wider px-2 py-0.5 rounded border inline-block ${themeBadge}`}>
+                                      <span className={`text-[8px] uppercase tracking-wider px-2 py-0.5 rounded border inline-block shrink-0 ${themeBadge}`}>
                                         {activeGame.category}
                                       </span>
                                     </div>
-                                    <p className="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">
-                                      DIAGNOSTIC STATUS: <span className="text-cyber-green font-bold">ACTIVE</span> // SYSTEM ID: {activeGame.id}
+                                    <p className="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5 truncate">
+                                      СТАТУС ДИАГНОСТИКИ: <span className="text-cyber-green font-bold">АКТИВНО</span> // ID СИСТЕМЫ: {activeGame.id}
                                     </p>
                                   </div>
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-2.5">
+                              <div className="flex items-center gap-2.5 shrink-0">
                                 <button
                                   onClick={() => handleEditGameClick(activeGame)}
                                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-cyber-yellow/10 text-cyber-yellow transition-all text-xs"
@@ -3139,39 +3572,39 @@ export default function App() {
                               </div>
                             </div>
 
-                             {/* Game Launch and Quick Web Links Panel */}
-                            <div className="bg-[#0b0816]/65 border border-white/10 rounded-xl p-4.5 flex flex-col gap-4 relative overflow-hidden shrink-0">
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div className="space-y-1 text-left">
+                            {/* Game Launch and Quick Web Links Panel */}
+                            <div className="bg-[#0b0816]/65 border border-white/10 rounded-xl p-4 flex flex-col gap-4 relative overflow-hidden shrink-0 min-w-0">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
+                                <div className="space-y-1 text-left min-w-0 flex-1">
                                   <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
-                                    <Play className="w-4 h-4 text-cyber-green fill-current" />
-                                    LAUNCH CONTROL // УПРАВЛЕНИЕ ЗАПУСКОМ
+                                    <Play className="w-4 h-4 text-cyber-green fill-current shrink-0" />
+                                    УПРАВЛЕНИЕ ЗАПУСКОМ
                                   </h4>
-                                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">
-                                    Target Executable: <span className="text-gray-400 font-mono select-all">{activeGame.path}</span>
+                                  <p className="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1 min-w-0">
+                                    <span className="shrink-0">Исполняемый файл:</span> <span className="text-gray-400 font-mono select-all truncate inline-block min-w-0 flex-1" title={activeGame.path}>{activeGame.path}</span>
                                   </p>
                                 </div>
                                 {runningGames[activeGame.id] ? (
-                                  <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-3 shrink-0">
                                     <div className="font-mono text-xs text-cyber-yellow font-bold bg-cyber-yellow/10 border border-cyber-yellow/30 rounded px-2.5 py-1.5 flex items-center gap-1.5 animate-pulse shadow-[0_0_10px_rgba(255,183,0,0.1)]">
                                       <Clock className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '4s' }} />
                                       <span>{formatElapsed(Date.now() - runningGames[activeGame.id])}</span>
                                     </div>
                                     <button
                                       onClick={() => handleStopGame(activeGame)}
-                                      className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border border-red-500/40 bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:border-red-500 text-xs font-black uppercase tracking-widest transition-all shadow-md shadow-[0_0_15px_rgba(239,68,68,0.15)]"
+                                      className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border border-red-500/40 bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:border-red-500 text-xs font-black uppercase tracking-widest transition-all shadow-md shadow-[0_0_15px_rgba(239,68,68,0.15)] shrink-0"
                                     >
                                       <Square className="w-4 h-4 fill-current" />
-                                      <span>CLOSE (ЗАКРЫТЬ)</span>
+                                      <span>ЗАКРЫТЬ</span>
                                     </button>
                                   </div>
                                 ) : (
                                   <button
-                                    onClick={() => handleLaunchGame(activeGame, true, [])}
-                                    className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border text-xs font-black uppercase tracking-widest transition-all shadow-md ${ activeGame.coverTheme === "purple" ? "bg-cyber-purple/10 border-cyber-purple/40 text-cyber-purple hover:bg-cyber-purple/20 hover:border-cyber-purple shadow-[0_0_15px_rgba(188,19,254,0.15)]" : activeGame.coverTheme === "green" ? "bg-cyber-green/10 border-cyber-green/40 text-cyber-green hover:bg-cyber-green/20 hover:border-cyber-green shadow-[0_0_15px_rgba(0,255,102,0.15)]" : "bg-cyber-yellow/10 border-cyber-yellow/40 text-cyber-yellow hover:bg-cyber-yellow/20 hover:border-cyber-yellow shadow-[0_0_15px_rgba(255,183,0,0.15)]" }`}
+                                    onClick={() => setSelectedGameActions(activeGame)}
+                                    className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border text-xs font-black uppercase tracking-widest transition-all shadow-md shrink-0 ${ activeGame.coverTheme === "purple" ? "bg-cyber-purple/10 border-cyber-purple/40 text-cyber-purple hover:bg-cyber-purple/20 hover:border-cyber-purple shadow-[0_0_15px_rgba(188,19,254,0.15)]" : activeGame.coverTheme === "green" ? "bg-cyber-green/10 border-cyber-green/40 text-cyber-green hover:bg-cyber-green/20 hover:border-cyber-green shadow-[0_0_15px_rgba(0,255,102,0.15)]" : "bg-cyber-yellow/10 border-cyber-yellow/40 text-cyber-yellow hover:bg-cyber-yellow/20 hover:border-cyber-yellow shadow-[0_0_15px_rgba(255,183,0,0.15)]" }`}
                                   >
                                     <Play className="w-4.5 h-4.5 fill-current" />
-                                    <span>LAUNCH (ЗАПУСК)</span>
+                                    <span>ЗАПУСК</span>
                                   </button>
                                 )}
                               </div>
@@ -3179,7 +3612,7 @@ export default function App() {
                               {/* Web Resources Section */}
                               <div className="border-t border-white/5 pt-3.5 flex flex-col gap-3">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">// QUICK LINKS (РЕСУРСЫ И САЙТЫ)</span>
+                                  <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">// БЫСТРЫЕ ССЫЛКИ И РЕСУРСЫ</span>
                                 </div>
 
                                 <div className="flex flex-wrap gap-2.5">
@@ -3273,7 +3706,7 @@ export default function App() {
                                     }}
                                     className="bg-cyber-green hover:bg-[#15ff7a] text-black font-black text-xs px-3 py-1.5 rounded transition-all uppercase font-mono"
                                   >
-                                    + ADD (ДОБАВИТЬ)
+                                    + ДОБАВИТЬ
                                   </button>
                                 </div>
                               </div>
@@ -3539,7 +3972,7 @@ export default function App() {
                                 </div>
 
                                 {/* Right: My News Feed & Tasks */}
-                                <div className="flex-1 flex flex-col gap-3 h-[520px] shrink-0">
+                                <div className="flex-1 flex flex-col gap-3 h-[520px] shrink-0 min-w-0">
                                   {/* News feed list */}
                                   <div className="bg-[#06040c]/60 border border-white/5 rounded-xl p-4 flex flex-col gap-2.5 overflow-hidden h-[254px] shrink-0">
                                     <div className="text-xs uppercase tracking-widest text-cyber-yellow border-b border-white/5 pb-2 font-bold flex justify-between items-center select-none shrink-0">
@@ -3563,6 +3996,15 @@ export default function App() {
                                         <span>СИНХРОНИЗИРОВАТЬ ХРАНИЛИЩЕ</span>
                                       </button>
                                       
+                                      <button
+                                        onClick={handleCreateDailyNote}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-cyber-yellow/10 text-cyber-yellow transition-all text-[10px] tracking-wider font-bold uppercase shadow-[0_0_10px_rgba(255,183,0,0.02)] hover:shadow-[0_0_15px_rgba(255,183,0,0.2)]"
+                                        title="Создать или открыть сегодняшнюю заметку в папке новостей этой игры"
+                                      >
+                                        <Calendar className="w-3.5 h-3.5" />
+                                        <span>СЕГОДНЯШНЯЯ ЗАМЕТКА</span>
+                                      </button>
+
                                       <button
                                         onClick={() => setIsNewsPathPromptOpen(true)}
                                         className="flex items-center justify-center p-1.5 rounded-lg border border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-cyber-yellow/10 text-cyber-yellow transition-all"
@@ -3985,21 +4427,21 @@ export default function App() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -15 }}
                         transition={{ duration: 0.25 }}
-                        className="w-full h-full flex flex-col lg:flex-row gap-6 max-w-6xl z-10 select-none text-left"
+                        className="w-full h-full flex flex-col xl:flex-row gap-6 z-10 select-none text-left min-w-0"
                       >
                         {/* Left: Games Grid */}
                         <div className="flex-1 flex flex-col gap-4 min-w-0">
                           <div className="flex items-center justify-between">
                             <div className="font-mono text-xs text-cyber-yellow uppercase tracking-widest flex items-center gap-2">
                               <Sparkles className="w-3.5 h-3.5 text-cyber-yellow animate-pulse" />
-                              AVAILABLE SOFTWARE SYSTEMS
+                              ДОСТУПНЫЕ ИГРЫ И ПО
                             </div>
                             <div className="text-[10px] text-gray-500 font-mono">
-                              COUNT: {games.length} UNITS
+                              КОЛИЧЕСТВО: {games.length} ШТ.
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 overflow-y-auto max-h-[520px] pr-1">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4 overflow-y-auto max-h-[520px] pr-1">
                             {games.map(game => (
                               <div
                                 key={game.id}
@@ -4058,15 +4500,15 @@ export default function App() {
                                 <Plus className="w-5 h-5" />
                               </div>
                               <span className="font-mono text-xs font-bold text-gray-500 group-hover:text-cyber-yellow transition-all uppercase tracking-wider">
-                                ADD SYSTEM SOFTWARE
+                                ДОБАВИТЬ ПРОГРАММУ
                               </span>
                             </div>
                           </div>
                         </div>
 
                         {/* Right: Selected Game Details / Terminal Launcher */}
-                        <div className="w-full lg:w-80 shrink-0 flex flex-col gap-4">
-                          <div className="font-mono text-xs text-cyber-yellow uppercase tracking-widest">// TELEMETRY CONSOLE</div>
+                        <div className="w-full xl:w-72 shrink-0 flex flex-col gap-4 min-w-0">
+                          <div className="font-mono text-xs text-cyber-yellow uppercase tracking-widest">// КОНСОЛЬ ТЕЛЕМЕТРИИ</div>
                           
                           <div className="flex-1 bg-[#06040c]/60 border border-cyber-yellow/20 rounded-xl p-5 flex flex-col justify-between relative overflow-hidden shadow-2xl min-h-[300px]">
                             {/* Top diagnostic design */}
@@ -4081,21 +4523,21 @@ export default function App() {
                               </div>
 
                               <div className="text-center font-mono">
-                                <div className="text-[9px] text-gray-500 uppercase tracking-widest">SELECTED MODULE</div>
+                                <div className="text-[9px] text-gray-500 uppercase tracking-widest">ВЫБРАННЫЙ МОДУЛЬ</div>
                                 <h3 className="text-lg font-black text-white mt-1 neon-text-yellow truncate max-w-[240px]" title="Launcher Software">
-                                  {games.length > 0 ? games[0].name.toUpperCase() : "NO GAMES ADDED"}
+                                  {games.length > 0 ? games[0].name.toUpperCase() : "ИГРЫ НЕ ДОБАВЛЕНЫ"}
                                 </h3>
                               </div>
 
                               <div className="border-t border-cyber-yellow/10 pt-4 space-y-2.5 font-mono text-[9px]">
                                 <div className="flex justify-between">
-                                  <span className="text-gray-500">DIAGNOSTIC STATUS:</span>
-                                  <span className="text-cyber-green font-bold">READY</span>
+                                  <span className="text-gray-500">СТАТУС ДИАГНОСТИКИ:</span>
+                                  <span className="text-cyber-green font-bold">ГОТОВО</span>
                                 </div>
                                 <div className="flex flex-col gap-1">
-                                  <span className="text-gray-500">LAUNCH PATH TARGET:</span>
+                                  <span className="text-gray-500">ПУТЬ К ИСПОЛНЯЕМОМУ ФАЙЛУ:</span>
                                   <span className="text-white break-all bg-[#050308] p-1.5 rounded border border-white/5 select-text text-[8px] leading-normal font-mono cursor-text">
-                                    {games.length > 0 ? games[0].path : "No path configured"}
+                                    {games.length > 0 ? games[0].path : "Путь не настроен"}
                                   </span>
                                 </div>
                               </div>
@@ -4104,8 +4546,8 @@ export default function App() {
                             <div className="space-y-3 pt-4 border-t border-cyber-yellow/10">
                               {/* Fake stats */}
                               <div className="flex justify-between font-mono text-[9px]">
-                                <span className="text-gray-500">HOST INTEGRITY:</span>
-                                <span className="text-cyber-green font-bold">100% ONLINE</span>
+                                <span className="text-gray-500">ЦЕЛОСТНОСТЬ СИСТЕМЫ:</span>
+                                <span className="text-cyber-green font-bold">100% ОНЛАЙН</span>
                               </div>
                               
                               <button
@@ -4119,135 +4561,15 @@ export default function App() {
                                 className="w-full border border-cyber-yellow bg-cyber-yellow/10 hover:bg-cyber-yellow hover:text-[#06040c] rounded-xl py-3 font-mono font-bold text-xs text-cyber-yellow tracking-widest transition-all shadow-[0_0_12px_rgba(255,183,0,0.2)] hover:shadow-[0_0_22px_rgba(255,183,0,0.5)] flex items-center justify-center gap-2"
                               >
                                 <Eye className="w-4 h-4 text-cyber-yellow group-hover:text-black transition-colors" />
-                                OPEN MODULE INTERFACE
+                                ОТКРЫТЬ ИНТЕРФЕЙС ИГРЫ
                               </button>
                             </div>
                           </div>
                         </div>
                       </motion.div>
                     )
-                  ) : selectedFile ? (
-                    // Cyberpunk Text Editor View (Original Notebook Editor)
-                    <motion.div
-                      key="notebook-editor"
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -12 }}
-                      transition={{ duration: 0.25 }}
-                      className="w-full max-w-3xl h-full flex flex-col bg-cyber-sidebar/65 border border-cyber-purple/20 rounded-lg p-6 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-md relative overflow-hidden z-10 text-left"
-                    >
-                      {/* Corner Glowing Accents */}
-                      <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-cyber-green" />
-                      <div className="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-cyber-green" />
-                      <div className="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-cyber-green" />
-                      <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-cyber-green" />
-
-                      <div className="flex items-center justify-between border-b border-cyber-purple/10 pb-3 mb-4 font-mono select-none">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-cyber-green">FILENAME:</span>
-                            <span className="text-sm font-bold text-gray-100">{selectedFile.split('/').pop()}</span>
-                          </div>
-                          {/* Sync status badge */}
-                          <div className={`flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border transition-all ${ savingState === "saving" ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/10" : savingState === "saved" ? "text-cyber-green border-cyber-green/30 bg-cyber-green/10 shadow-[0_0_8px_rgba(0,255,102,0.15)]" : "text-red-400 border-red-500/30 bg-red-950/20" }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${ savingState === "saving" ? "bg-cyber-purple animate-pulse" : savingState === "saved" ? "bg-cyber-green" : "bg-red-500" }`} />
-                            {savingState}
-                          </div>
-                        </div>
-
-                        {/* Tab Toggles: EDIT vs PREVIEW */}
-                        <div className="flex items-center gap-3">
-                          <div className="flex bg-[#06040c]/60 border border-cyber-purple/20 p-0.5 rounded font-mono">
-                            <button
-                              type="button"
-                              onClick={() => setEditMode("edit")}
-                              className={`px-2.5 py-1 text-[10px] rounded transition-all ${ editMode === "edit" ? "bg-cyber-green/10 border border-cyber-green/30 text-cyber-green shadow-[0_0_8px_rgba(0,255,102,0.2)] font-bold" : "border border-transparent text-gray-400 hover:text-white" }`}
-                            >
-                              EDIT
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setEditMode("preview")}
-                              className={`px-2.5 py-1 text-[10px] rounded transition-all ${ editMode === "preview" ? "bg-cyber-purple/15 border border-cyber-purple/30 text-cyber-purple shadow-[0_0_8px_rgba(176,38,255,0.2)] font-bold" : "border border-transparent text-gray-400 hover:text-white" }`}
-                            >
-                              PREVIEW
-                            </button>
-                          </div>
-                          <div className="text-[10px] text-gray-500 font-mono hidden md:inline">
-                            PATH: {selectedFile}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Cyberpunk Text Editor View / Preview View */}
-                      <div className="flex-1 flex flex-col font-mono text-sm text-gray-300 overflow-hidden relative">
-                        {editMode === "edit" ? (
-                          <>
-                            <div className="absolute top-2 right-4 flex gap-1.5 pointer-events-none opacity-40 z-20">
-                              <span className="text-[9px] text-cyber-purple uppercase tracking-widest font-mono select-none">
-                                UTF-8 Markdown Editor
-                              </span>
-                            </div>
-                            <textarea
-                              ref={textareaRef}
-                              value={selectedFileContent}
-                              onChange={(e) => handleContentChange(e.target.value)}
-                              onKeyDown={handleEditorKeyDown}
-                              className="flex-1 w-full bg-[#050308]/65 border border-cyber-purple/20 focus:border-cyber-green/55 focus:ring-1 focus:ring-cyber-green/20 rounded-md p-5 text-xs font-mono text-gray-200 focus:outline-none resize-none overflow-y-auto leading-relaxed shadow-[inset_0_2px_12px_rgba(0,0,0,0.9)] cursor-text select-text z-10"
-                              placeholder="Start typing your notes here in Markdown format..."
-                            />
-                          </>
-                        ) : (
-                          <div className="flex-1 w-full bg-[#050308]/40 border border-cyber-purple/10 rounded-md p-5 text-xs text-gray-300 overflow-y-auto leading-relaxed shadow-[inset_0_2px_12px_rgba(0,0,0,0.7)] z-10 selection:bg-cyber-purple/25 font-sans select-text cursor-default">
-                            {parseMarkdown(selectedFileContent)}
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  ) : (
-                    // Original Notebook Awaiting Connection Dashboard
-                    <motion.div
-                      key="notebook-awaiting"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ duration: 0.25 }}
-                      className="flex flex-col xl:flex-row gap-8 items-center justify-center max-w-5xl w-full z-10"
-                    >
-                      <div 
-                        onClick={() => setMenuOpen(true)}
-                        className="text-center max-w-sm p-8 rounded-2xl bg-[#0e091a]/40 border border-cyber-purple/20 hover:border-cyber-purple/55 hover:bg-[#0c0817]/65 backdrop-blur-md shadow-[0_15px_35px_rgba(0,0,0,0.4)] flex-shrink-0 group transition-all duration-300 select-none"
-                      >
-                        <motion.div
-                          animate={{
-                            scale: [1, 1.03, 1],
-                            rotateY: [0, 6, 0],
-                          }}
-                          transition={{
-                            duration: 6,
-                            repeat: Infinity,
-                            ease: "easeInOut",
-                          }}
-                          className="w-40 h-40 mx-auto mb-6 relative group-hover:shadow-[0_0_35px_rgba(176,38,255,0.25)] rounded-full transition-all duration-300"
-                        >
-                          <div className="absolute inset-0 rounded-full border border-cyber-purple/40 group-hover:border-cyber-purple/70 animate-spin" style={{ animationDuration: '12s' }} />
-                          <div className="absolute inset-2.5 rounded-full border border-dashed border-cyber-green/45 group-hover:border-cyber-green/75 animate-spin" style={{ animationDuration: '18s', animationDirection: 'reverse' }} />
-                          <div className="absolute inset-7 rounded-full bg-cyber-sidebar/85 border border-cyber-purple/45 flex items-center justify-center shadow-[0_0_40px_rgba(176,38,255,0.3)] group-hover:bg-[#150f26] transition-all">
-                            <ObsidianIcon className="w-16 h-16 text-cyber-purple animate-pulse filter drop-shadow-[0_0_10px_rgba(176,38,255,0.6)]" />
-                          </div>
-                        </motion.div>
-                        <h2 className="text-xl font-black tracking-widest text-cyber-purple font-mono uppercase mb-2 neon-text-purple">
-                          Awaiting Connection
-                        </h2>
-                        <p className="text-[11px] text-gray-400 font-mono leading-relaxed px-2 mb-5">
-                          Enter your Obsidian Vault local folder path in the sidebar and press Connect to initialize the workspace indexer.
-                        </p>
-                        <div className="text-[9px] font-mono text-cyber-purple/70 border border-cyber-purple/35 py-1.5 px-3 rounded bg-cyber-purple/5 inline-block animate-pulse tracking-widest uppercase shadow-[0_0_10px_rgba(176,38,255,0.1)]">
-                          [ Click to Select System Mode ]
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
+                  })()
+                ) : null}
                 </AnimatePresence>
               </div>
             </main>
@@ -4259,123 +4581,258 @@ export default function App() {
             </AnimatePresence>
           </motion.div>
 
-          {/* Game Action Selection Modal */}
+          {/* Game Action Selection Modal / Экран «Перед запуском» */}
           <AnimatePresence>
-            {selectedGameActions && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/85 backdrop-blur-md z-[99997] flex items-center justify-center p-6 select-none font-mono"
-              >
+            {selectedGameActions && (() => {
+              const game = selectedGameActions;
+              const logs = gameActivities[game.id] || [];
+              const tasks = gameTasks[game.id] || [];
+              const posts = gameNews[game.id] || [];
+              
+              const lastSession = logs.length > 0 ? logs[0] : null;
+              const pendingTasks = tasks.filter(t => !t.completed);
+              const completedTasksCount = tasks.filter(t => t.completed).length;
+              const lastNote = posts.length > 0 ? posts[0] : null;
+              
+              // Determine elapsed time since last launch or session
+              let timeSinceLast = "Ранее не запускалась";
+              if (lastSession?.date || game.lastPlayed) {
+                const dateStr = lastSession?.date || game.lastPlayed;
+                if (dateStr && dateStr !== "Ни разу") {
+                  const past = new Date(dateStr);
+                  if (!isNaN(past.getTime())) {
+                    const diffMs = Date.now() - past.getTime();
+                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    if (diffDays === 0 && diffHours === 0) {
+                      timeSinceLast = "Сегодня";
+                    } else if (diffDays === 0) {
+                      timeSinceLast = `${diffHours} ч. назад`;
+                    } else if (diffDays === 1) {
+                      timeSinceLast = `Вчера (${diffHours > 0 ? diffHours + ' ч.' : ''})`;
+                    } else {
+                      timeSinceLast = `${diffDays} дн. назад`;
+                    }
+                  }
+                }
+              }
+
+              return (
                 <motion.div
-                  initial={{ scale: 0.95, y: 15 }}
-                  animate={{ scale: 1, y: 0 }}
-                  exit={{ scale: 0.95, y: 15 }}
-                  className="w-full max-w-sm bg-cyber-sidebar border border-cyber-yellow/45 rounded-2xl p-6 shadow-[0_15px_40px_rgba(0,0,0,0.7)] relative text-left"
-                  style={{
-                    borderColor: selectedGameActions.coverTheme === "purple" 
-                      ? "rgba(188,19,254,0.45)" 
-                      : selectedGameActions.coverTheme === "green" 
-                        ? "rgba(0,255,102,0.45)" 
-                        : "rgba(255,183,0,0.45)"
-                  }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/85 backdrop-blur-md z-[99997] flex items-center justify-center p-4 sm:p-6 select-none font-mono"
                 >
-                  <div className="flex flex-col items-center text-center gap-4 py-2">
-                    {selectedGameActions.icon ? (
-                      <img 
-                        src={selectedGameActions.icon} 
-                        alt="" 
-                        className="w-20 h-20 object-contain rounded-2xl shadow-[0_0_25px_rgba(0,0,0,0.5)] border border-white/5" 
-                      />
-                    ) : (
-                      <div className={`w-20 h-20 rounded-2xl border flex items-center justify-center bg-white/5 border-white/10 text-gray-400 ${ selectedGameActions.coverTheme === "purple" ? "text-cyber-purple border-cyber-purple/30" : selectedGameActions.coverTheme === "green" ? "text-cyber-green border-cyber-green/30" : "text-cyber-yellow border-cyber-yellow/30" }`}>
-                        <Gamepad2 className="w-10 h-10" />
-                      </div>
-                    )}
-                    
-                    <div className="space-y-1">
-                      <span className={`text-[8px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border inline-block ${ selectedGameActions.coverTheme === "purple" ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/5" : selectedGameActions.coverTheme === "green" ? "text-cyber-green border-cyber-green/30 bg-cyber-green/5" : "text-cyber-yellow border-cyber-yellow/30 bg-cyber-yellow/5" }`}>
-                        {selectedGameActions.category}
-                      </span>
-                      <h3 className="text-xl font-black text-white mt-1 uppercase tracking-wide truncate max-w-[280px]">
-                        {selectedGameActions.name}
-                      </h3>
-                      <div className="text-[10px] text-gray-500 font-mono flex items-center justify-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        <span>СЫГРАНО: {formatPlayTime(selectedGameActions.playTime)}</span>
+                  <motion.div
+                    initial={{ scale: 0.95, y: 15 }}
+                    animate={{ scale: 1, y: 0 }}
+                    exit={{ scale: 0.95, y: 15 }}
+                    className="w-full max-w-xl bg-cyber-sidebar border rounded-2xl p-5 sm:p-6 shadow-[0_15px_40px_rgba(0,0,0,0.7)] relative text-left max-h-[90vh] flex flex-col overflow-hidden"
+                    style={{
+                      borderColor: game.coverTheme === "purple" 
+                        ? "rgba(188,19,254,0.45)" 
+                        : game.coverTheme === "green" 
+                          ? "rgba(0,255,102,0.45)" 
+                          : "rgba(255,183,0,0.45)"
+                    }}
+                  >
+                    {/* Header: Game basic info & Time elapsed */}
+                    <div className="flex items-center gap-4 pb-4 border-b border-white/10 shrink-0">
+                      {game.icon ? (
+                        <img 
+                          src={game.icon} 
+                          alt="" 
+                          className="w-16 h-16 object-contain rounded-xl shadow-[0_0_20px_rgba(0,0,0,0.5)] border border-white/5 shrink-0" 
+                        />
+                      ) : (
+                        <div className={`w-16 h-16 rounded-xl border flex items-center justify-center bg-white/5 border-white/10 text-gray-400 shrink-0 ${ game.coverTheme === "purple" ? "text-cyber-purple border-cyber-purple/30" : game.coverTheme === "green" ? "text-cyber-green border-cyber-green/30" : "text-cyber-yellow border-cyber-yellow/30" }`}>
+                          <Gamepad2 className="w-8 h-8" />
+                        </div>
+                      )}
+                      
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`text-[8px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border inline-block ${ game.coverTheme === "purple" ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/5" : game.coverTheme === "green" ? "text-cyber-green border-cyber-green/30 bg-cyber-green/5" : "text-cyber-yellow border-cyber-yellow/30 bg-cyber-yellow/5" }`}>
+                            ПЕРЕД ЗАПУСКОМ
+                          </span>
+                          <span className="text-[10px] text-gray-400 font-mono flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-cyber-yellow" />
+                            {timeSinceLast}
+                          </span>
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-wide truncate">
+                          {game.name}
+                        </h3>
+                        <div className="text-[10px] text-gray-500 font-mono flex items-center gap-3">
+                          <span>Категория: {game.category}</span>
+                          <span>|</span>
+                          <span>Сыграно: {formatPlayTime(game.playTime)}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Actions checklist */}
-                  <div className="mt-4 border-t border-b border-white/5 py-3.5 space-y-3 font-mono">
-                    <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">
-                      Выбор действий (Select Actions):
-                    </div>
-                    
-                    {/* Launch Executable option */}
-                    <label className="flex items-center gap-3.5 text-gray-300 hover:text-white select-none text-xs font-bold">
-                      <input 
-                        type="checkbox"
-                        checked={executeLaunchGame}
-                        onChange={(e) => setExecuteLaunchGame(e.target.checked)}
-                        className={`rounded border-white/10 bg-black/40 focus:ring-0 focus:ring-offset-0 w-5 h-5 ${ selectedGameActions.coverTheme === "purple" ? "text-cyber-purple accent-cyber-purple" : selectedGameActions.coverTheme === "green" ? "text-cyber-green accent-cyber-green" : "text-cyber-yellow accent-cyber-yellow" }`}
-                      />
-                      <span>Запустить игру ({selectedGameActions.name})</span>
-                    </label>
+                    {/* Content Scrollable Body */}
+                    <div className="overflow-y-auto py-4 space-y-4 pr-1 scrollbar-thin flex-1 min-h-0 text-xs">
+                      {/* 1. Последняя сессия & Где остановился */}
+                      <div className="bg-black/40 border border-white/5 rounded-xl p-3.5 space-y-2">
+                        <div className="text-[10px] text-cyber-yellow font-bold uppercase tracking-wider flex items-center gap-1.5">
+                          <Activity className="w-3.5 h-3.5" />
+                          <span>Прошлая сессия и остановка</span>
+                        </div>
+                        {lastSession ? (
+                          <div className="space-y-1 pl-1">
+                            <div className="text-gray-300 font-bold flex items-center justify-between">
+                              <span>Где ты остановился:</span>
+                              <span className="text-[10px] text-gray-500 font-mono">{lastSession.date} ({formatPlayTime(lastSession.hours)})</span>
+                            </div>
+                            <p className="text-gray-400 text-xs bg-white/5 p-2 rounded-lg border border-white/5 leading-relaxed">
+                              «{lastSession.notes}»
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-gray-500 text-[11px] italic pl-1">
+                            Нет записей о предыдущих сессиях. Выберите или добавьте новую цель!
+                          </p>
+                        )}
+                      </div>
 
-                    {/* URLs auto-open options */}
-                    {selectedGameActions.urls && selectedGameActions.urls.map((url, index) => {
-                      // Get clean domain for label
-                      let domain = url;
-                      try {
-                        domain = new URL(url).hostname.replace("www.", "");
-                      } catch(_) {}
-                      return (
-                        <label key={index} className="flex items-center gap-3.5 text-gray-300 hover:text-white select-none text-xs font-bold">
+                      {/* 2. Текущая цель сессии & Незавершённые задачи */}
+                      <div className="bg-black/40 border border-white/5 rounded-xl p-3.5 space-y-2.5">
+                        <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                          <div className="text-[10px] text-cyber-green font-bold uppercase tracking-wider flex items-center gap-1.5">
+                            <CheckSquare className="w-3.5 h-3.5" />
+                            <span>Цель сессии и незавершённые задачи ({pendingTasks.length})</span>
+                          </div>
+                          {tasks.length > 0 && (
+                            <span className="text-[9px] text-gray-500 font-mono">Выполнено: {completedTasksCount}/{tasks.length}</span>
+                          )}
+                        </div>
+
+                        {/* Top priority item as Current Goal */}
+                        {pendingTasks.length > 0 ? (
+                          <div className="bg-cyber-green/5 border border-cyber-green/20 rounded-lg p-2.5 space-y-1">
+                            <span className="text-[9px] text-cyber-green font-bold uppercase tracking-wider block">
+                              🎯 ТЕКУЩАЯ ГЛАВНАЯ ЦЕЛЬ:
+                            </span>
+                            <p className="text-white font-bold text-xs truncate">
+                              {pendingTasks[0].text}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="bg-white/5 border border-white/5 rounded-lg p-2 text-gray-400 text-[11px]">
+                            Все задачи выполнены! Отличный прогресс.
+                          </div>
+                        )}
+
+                        {/* List of remaining tasks */}
+                        {pendingTasks.length > 1 && (
+                          <div className="space-y-1.5 pt-1">
+                            <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block">Остальные задачи:</span>
+                            <div className="space-y-1">
+                              {pendingTasks.slice(1, 4).map(task => (
+                                <div key={task.id} className="flex items-center gap-2 text-gray-300 text-[11px] bg-white/5 px-2.5 py-1.5 rounded">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-cyber-yellow shrink-0" />
+                                  <span className="truncate">{task.text}</span>
+                                </div>
+                              ))}
+                              {pendingTasks.length > 4 && (
+                                <span className="text-[9px] text-gray-500 italic block pl-1">...и ещё {pendingTasks.length - 4} задач(и)</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 3. Последняя заметка */}
+                      {lastNote && (
+                        <div className="bg-black/40 border border-white/5 rounded-xl p-3.5 space-y-1.5">
+                          <div className="text-[10px] text-cyber-purple font-bold uppercase tracking-wider flex items-center gap-1.5">
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>Последняя заметка</span>
+                          </div>
+                          <div className="bg-cyber-purple/5 border border-cyber-purple/20 rounded-lg p-2.5 flex items-center justify-between gap-2">
+                            <span className="text-white font-bold text-xs truncate">{lastNote.title}</span>
+                            <button
+                              onClick={() => {
+                                setSelectedNewsPost(lastNote);
+                                setSelectedGameActions(null);
+                              }}
+                              className="text-[9px] font-bold text-cyber-purple hover:underline shrink-0 uppercase tracking-wider"
+                            >
+                              Открыть →
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 4. Запуск и действия */}
+                      <div className="border-t border-white/10 pt-3 space-y-2.5">
+                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                          Параметры запуска:
+                        </div>
+                        
+                        <label className="flex items-center gap-3 text-gray-300 hover:text-white select-none text-xs font-bold cursor-pointer bg-white/5 p-2 rounded-lg border border-white/5">
                           <input 
                             type="checkbox"
-                            checked={!!executeUrls[index]}
-                            onChange={(e) => {
-                              setExecuteUrls(prev => ({
-                                ...prev,
-                                [index]: e.target.checked
-                              }));
-                            }}
-                            className={`rounded border-white/10 bg-black/40 focus:ring-0 focus:ring-offset-0 w-5 h-5 ${ selectedGameActions.coverTheme === "purple" ? "text-cyber-purple accent-cyber-purple" : selectedGameActions.coverTheme === "green" ? "text-cyber-green accent-cyber-green" : "text-cyber-yellow accent-cyber-yellow" }`}
+                            checked={executeLaunchGame}
+                            onChange={(e) => setExecuteLaunchGame(e.target.checked)}
+                            className={`rounded border-white/10 bg-black/40 focus:ring-0 focus:ring-offset-0 w-4 h-4 ${ game.coverTheme === "purple" ? "text-cyber-purple accent-cyber-purple" : game.coverTheme === "green" ? "text-cyber-green accent-cyber-green" : "text-cyber-yellow accent-cyber-yellow" }`}
                           />
-                          <span className="truncate max-w-[280px]">Открыть сайт: {domain}</span>
+                          <span className="truncate">Запустить исполняемый файл игры ({game.name})</span>
                         </label>
-                      );
-                    })}
-                  </div>
 
-                  <div className="mt-6 space-y-3">
-                    <button
-                      disabled={!executeLaunchGame && !Object.values(executeUrls).some(Boolean)}
-                      onClick={() => {
-                        const game = selectedGameActions;
-                        const urlsToOpen = (game.urls || []).filter((_, idx) => executeUrls[idx]);
-                        setSelectedGameActions(null);
-                        handleLaunchGame(game, executeLaunchGame, urlsToOpen);
-                      }}
-                      className={`w-full rounded-xl py-3 text-center font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 border ${ (!executeLaunchGame && !Object.values(executeUrls).some(Boolean)) ? "bg-gray-800/10 border-white/5 text-gray-600 cursor-not-allowed opacity-50" : selectedGameActions.coverTheme === "purple" ? "bg-cyber-purple/10 border-cyber-purple/40 text-cyber-purple hover:bg-cyber-purple/20 hover:border-cyber-purple shadow-[0_0_15px_rgba(188,19,254,0.15)] hover:shadow-[0_0_25px_rgba(188,19,254,0.3)]" : selectedGameActions.coverTheme === "green" ? "bg-cyber-green/10 border-cyber-green/40 text-cyber-green hover:bg-cyber-green/20 hover:border-cyber-green shadow-[0_0_15px_rgba(0,255,102,0.15)] hover:shadow-[0_0_25px_rgba(0,255,102,0.3)]" : "bg-cyber-yellow/10 border-cyber-yellow/40 text-cyber-yellow hover:bg-cyber-yellow/20 hover:border-cyber-yellow shadow-[0_0_15px_rgba(255,183,0,0.15)] hover:shadow-[0_0_25px_rgba(255,183,0,0.3)]" }`}
-                    >
-                      <Play className="w-4 h-4 fill-current" />
-                      START (СТАРТ)
-                    </button>
+                        {game.urls && game.urls.map((url, index) => {
+                          let domain = url;
+                          try {
+                            domain = new URL(url).hostname.replace("www.", "");
+                          } catch(_) {}
+                          return (
+                            <label key={index} className="flex items-center gap-3 text-gray-300 hover:text-white select-none text-xs font-bold cursor-pointer bg-white/5 p-2 rounded-lg border border-white/5">
+                              <input 
+                                type="checkbox"
+                                checked={!!executeUrls[index]}
+                                onChange={(e) => {
+                                  setExecuteUrls(prev => ({
+                                    ...prev,
+                                    [index]: e.target.checked
+                                  }));
+                                }}
+                                className={`rounded border-white/10 bg-black/40 focus:ring-0 focus:ring-offset-0 w-4 h-4 ${ game.coverTheme === "purple" ? "text-cyber-purple accent-cyber-purple" : game.coverTheme === "green" ? "text-cyber-green accent-cyber-green" : "text-cyber-yellow accent-cyber-yellow" }`}
+                              />
+                              <span className="truncate">Открыть веб-сайт: {domain}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-                    <button
-                      onClick={() => setSelectedGameActions(null)}
-                      className="w-full border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase transition-all text-xs"
-                    >
-                      CLOSE (ЗАКРЫТЬ)
-                    </button>
-                  </div>
+                    {/* Footer launch button */}
+                    <div className="mt-4 pt-3 border-t border-white/10 flex items-center gap-3 shrink-0">
+                      <button
+                        onClick={() => setSelectedGameActions(null)}
+                        className="flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-3 text-center text-gray-400 font-bold uppercase transition-all text-xs tracking-wider"
+                      >
+                        ОТМЕНА
+                      </button>
+
+                      <button
+                        disabled={!executeLaunchGame && !Object.values(executeUrls).some(Boolean)}
+                        onClick={() => {
+                          const urlsToOpen = (game.urls || []).filter((_, idx) => executeUrls[idx]);
+                          setSelectedGameActions(null);
+                          handleLaunchGame(game, executeLaunchGame, urlsToOpen);
+                        }}
+                        className={`flex-[2] rounded-xl py-3 text-center font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 border text-xs shadow-lg ${ (!executeLaunchGame && !Object.values(executeUrls).some(Boolean)) ? "bg-gray-800/10 border-white/5 text-gray-600 cursor-not-allowed opacity-50" : game.coverTheme === "purple" ? "bg-cyber-purple/10 border-cyber-purple/40 text-cyber-purple hover:bg-cyber-purple/20 hover:border-cyber-purple shadow-[0_0_15px_rgba(188,19,254,0.15)] hover:shadow-[0_0_25px_rgba(188,19,254,0.3)]" : game.coverTheme === "green" ? "bg-cyber-green/10 border-cyber-green/40 text-cyber-green hover:bg-cyber-green/20 hover:border-cyber-green shadow-[0_0_15px_rgba(0,255,102,0.15)] hover:shadow-[0_0_25px_rgba(0,255,102,0.3)]" : "bg-cyber-yellow/10 border-cyber-yellow/40 text-cyber-yellow hover:bg-cyber-yellow/20 hover:border-cyber-yellow shadow-[0_0_15px_rgba(255,183,0,0.15)] hover:shadow-[0_0_25px_rgba(255,183,0,0.3)]" }`}
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                        НАЧАТЬ СЕССИЮ
+                      </button>
+                    </div>
+                  </motion.div>
                 </motion.div>
-              </motion.div>
-            )}
+              );
+            })()}
           </AnimatePresence>
 
           {/* Game Manager Launch Console Overlay */}
@@ -4393,21 +4850,21 @@ export default function App() {
                   
                   <div className="flex items-center gap-2 border-b border-cyber-yellow/20 pb-3 mb-4 text-cyber-yellow">
                     <Terminal className="w-5 h-5 animate-pulse" />
-                    <span className="text-xs font-bold uppercase tracking-widest">SYSTEM LAUNCH PROTOCOL ACTIVE</span>
+                    <span className="text-xs font-bold uppercase tracking-widest">ПРОТОКОЛ ЗАПУСКА АКТИВЕН</span>
                   </div>
                   
                   <div className="space-y-2.5 text-[11px] text-gray-300 text-left min-h-[160px] max-h-[220px] overflow-y-auto font-mono leading-relaxed">
                     {launchLogs.map((log, i) => (
-                      <div key={i} className={log.startsWith("SUCCESS") ? "text-cyber-green" : log.startsWith("CRITICAL") ? "text-red-500" : "text-cyber-yellow/90"}>
-                        {log.startsWith("SUCCESS") || log.startsWith("CRITICAL") ? "" : "> "}{log}
+                      <div key={i} className={log.startsWith("SUCCESS") || log.startsWith("УСПЕШНО") ? "text-cyber-green" : log.startsWith("CRITICAL") || log.startsWith("КРИТИЧЕСКАЯ") ? "text-red-500" : "text-cyber-yellow/90"}>
+                        {log.startsWith("SUCCESS") || log.startsWith("УСПЕШНО") || log.startsWith("CRITICAL") || log.startsWith("КРИТИЧЕСКАЯ") ? "" : "> "}{log}
                       </div>
                     ))}
                     <div className="w-1.5 h-3.5 bg-cyber-yellow/75 inline-block animate-pulse ml-0.5" />
                   </div>
                   
                   <div className="border-t border-cyber-yellow/10 pt-4 flex justify-between items-center text-[9px] text-gray-500">
-                    <span>SECTOR: CENTER_CONTROL</span>
-                    <span className="animate-pulse text-cyber-yellow">T-LAUNCH MODULE V2.1</span>
+                    <span>СЕКТОР: ЦЕНТР_УПРАВЛЕНИЯ</span>
+                    <span className="animate-pulse text-cyber-yellow">МОДУЛЬ ЗАПУСКА V2.1</span>
                   </div>
                 </div>
               </motion.div>
@@ -4432,7 +4889,7 @@ export default function App() {
                   <div className="flex items-center justify-between border-b border-cyber-yellow/20 pb-3 mb-4">
                     <span className="text-xs font-black text-cyber-yellow tracking-widest flex items-center gap-1.5">
                       <Gamepad className="w-4.5 h-4.5" />
-                      {editingGameId ? "EDIT SOFTWARE RUNTIME" : "ADD SOFTWARE RUNTIME"}
+                      {editingGameId ? "РЕДАКТИРОВАНИЕ ПРОГРАММЫ" : "ДОБАВЛЕНИЕ ПРОГРАММЫ"}
                     </span>
                     <button
                       onClick={() => setAddGameOpen(false)}
@@ -4468,7 +4925,7 @@ export default function App() {
                       <div className="border-b border-cyber-yellow/20 pb-3 mb-2 w-full flex items-center justify-between">
                         <span className="text-xs font-black text-cyber-yellow tracking-widest flex items-center gap-1.5 uppercase">
                           <Crop className="w-4.5 h-4.5 animate-pulse" />
-                          CROP GAME ICON (ОБРЕЗКА ИКОНКИ)
+                          ОБРЕЗКА ИКОНКИ
                         </span>
                         <button
                           type="button"
@@ -4510,7 +4967,7 @@ export default function App() {
 
                       <div className="w-full space-y-1.5 px-4">
                         <div className="flex justify-between text-[10px] text-gray-500 font-mono">
-                          <span>ZOOM (МАСШТАБ):</span>
+                          <span>МАСШТАБ:</span>
                           <span>{Math.round(zoom * 100)}%</span>
                         </div>
                         <input
@@ -4530,14 +4987,14 @@ export default function App() {
                           onClick={() => setCropSrc(null)}
                           className="flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase transition-all text-xs"
                         >
-                          CANCEL
+                          ОТМЕНА
                         </button>
                         <button
                           type="button"
                           onClick={handleCropSave}
                           className="flex-1 bg-cyber-yellow border border-cyber-yellow text-[#06040c] hover:bg-[#ffc800] rounded-xl py-2.5 text-center font-bold uppercase transition-all text-xs shadow-[0_0_12px_rgba(255,183,0,0.2)]"
                         >
-                          APPLY (ПРИМЕНИТЬ)
+                          ПРИМЕНИТЬ
                         </button>
                       </div>
                     </div>
@@ -4547,7 +5004,7 @@ export default function App() {
                         /* Parameters Tab */
                         <div className="space-y-4">
                           <div className="space-y-1.5">
-                            <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">GAME TITLE (ИМЯ ИГРЫ):</label>
+                            <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">НАЗВАНИЕ ИГРЫ:</label>
                             <input
                               type="text"
                               required
@@ -4559,7 +5016,7 @@ export default function App() {
                           </div>
 
                           <div className="space-y-1.5">
-                            <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">EXECUTABLE PATH (.EXE PATH):</label>
+                            <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">ПУТЬ К ФАЙЛУ (.EXE):</label>
                             <input
                               type="text"
                               required
@@ -4571,7 +5028,7 @@ export default function App() {
                           </div>
 
                           <div className="space-y-1.5">
-                            <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">CUSTOM ICON (СВОЯ ИКОНКА):</label>
+                            <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">СВОЯ ИКОНКА:</label>
                             <div className="flex items-center gap-3">
                               <input
                                 type="file"
@@ -4593,7 +5050,7 @@ export default function App() {
                                 htmlFor="custom-icon-upload"
                                 className="border border-dashed border-cyber-yellow/45 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 rounded px-4 py-2 text-[10px] font-bold text-cyber-yellow uppercase tracking-wider transition-all flex-1 text-center"
                               >
-                                {newGameIcon ? "Change Icon (Сменить)" : "Upload Image (Загрузить)"}
+                                {newGameIcon ? "Сменить иконку" : "Загрузить изображение"}
                               </label>
                               {newGameIcon && (
                                 <div className="relative">
@@ -4612,31 +5069,31 @@ export default function App() {
 
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                              <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">CATEGORY (ЖАНР):</label>
+                              <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">КАТЕГОРИЯ (ЖАНР):</label>
                               <select
                                 value={newGameCategory}
                                 onChange={(e) => setNewGameCategory(e.target.value)}
                                 className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
                               >
-                                <option value="RPG / Strategy">RPG / Strategy</option>
+                                <option value="RPG / Strategy">RPG / Стратегия</option>
                                 <option value="Action RPG">Action RPG</option>
-                                <option value="Shooter">Shooter</option>
-                                <option value="Simulation">Simulation</option>
-                                <option value="Action / Adventure">Action / Adventure</option>
-                                <option value="System Tool">System Tool</option>
+                                <option value="Shooter">Шутер</option>
+                                <option value="Simulation">Симулятор</option>
+                                <option value="Action / Adventure">Приключения / Экшен</option>
+                                <option value="System Tool">Системная утилита</option>
                               </select>
                             </div>
 
                             <div className="space-y-1.5">
-                              <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">COLOR ACCENT (ЦВЕТ):</label>
+                              <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">ЦВЕТОВОЙ АКЦЕНТ:</label>
                               <select
                                 value={newGameTheme}
                                 onChange={(e) => setNewGameTheme(e.target.value)}
                                 className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
                               >
-                                <option value="yellow">Yellow (Желтый)</option>
-                                <option value="purple">Purple (Фиолетовый)</option>
-                                <option value="green">Green (Зеленый)</option>
+                                <option value="yellow">Желтый</option>
+                                <option value="purple">Фиолетовый</option>
+                                <option value="green">Зеленый</option>
                               </select>
                             </div>
                           </div>
@@ -4645,9 +5102,9 @@ export default function App() {
                         /* Functions Tab */
                         <div className="space-y-4">
                           <div className="space-y-1 font-mono">
-                            <span className="block text-[10px] text-cyber-yellow uppercase tracking-wider font-bold">// AUTO-RUN ACTIONS (АВТОЗАПУСК ДЕЙСТВИЙ)</span>
+                            <span className="block text-[10px] text-cyber-yellow uppercase tracking-wider font-bold">// АВТОЗАПУСК ДЕЙСТВИЙ</span>
                             <p className="text-[9px] text-gray-500 leading-normal">
-                              Укажите URL-ссылки. При запуске игры Noklin Notes автоматически откроет каждую из них в вашем браузере по умолчанию.
+                              Укажите URL-ссылки. При запуске игры Noklin автоматически откроет каждую из них в вашем браузере по умолчанию.
                             </p>
                           </div>
 
@@ -4691,7 +5148,7 @@ export default function App() {
                             className="w-full border border-dashed border-cyber-yellow/30 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 rounded-xl py-2 text-[10px] font-bold text-cyber-yellow uppercase tracking-wider transition-all text-center flex items-center justify-center gap-1.5"
                           >
                             <Plus className="w-3.5 h-3.5" />
-                            Добавить ссылку (Add URL)
+                            Добавить ссылку
                           </button>
                         </div>
                       )}
@@ -4702,13 +5159,13 @@ export default function App() {
                           onClick={() => setAddGameOpen(false)}
                           className="flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase transition-all"
                         >
-                          CANCEL
+                          ОТМЕНА
                         </button>
                         <button
                           type="submit"
                           className="flex-1 bg-cyber-yellow border border-cyber-yellow text-[#06040c] hover:bg-[#ffc800] rounded-xl py-2.5 text-center font-bold uppercase transition-all shadow-[0_0_12px_rgba(255,183,0,0.2)]"
                         >
-                          {editingGameId ? "SAVE CHANGES" : "ADD SOFTWARE"}
+                          {editingGameId ? "СОХРАНИТЬ ИЗМЕНЕНИЯ" : "ДОБАВИТЬ ИГРУ"}
                         </button>
                       </div>
                     </form>
@@ -4729,12 +5186,12 @@ export default function App() {
           >
             {/* Top status */}
             <div className="text-center font-mono text-[10px] text-cyber-purple/50 tracking-[0.25em] uppercase select-none animate-pulse">
-              // DEEP SLEEP MODE ACTIVE
+              // РЕЖИМ ГЛУБОКОГО СОНА АКТИВЕН
             </div>
 
             {/* Bottom Wake Up Hint */}
             <div className="text-center font-mono text-[11px] text-cyber-green/70 tracking-[0.2em] uppercase select-none animate-pulse">
-              PRESS <span className="text-white border border-cyber-green/40 px-2 py-0.5 rounded bg-cyber-green/10 font-bold mx-1">ENTER</span> TO WAKE UP SYSTEM
+              НАЖМИТЕ <span className="text-white border border-cyber-green/40 px-2 py-0.5 rounded bg-cyber-green/10 font-bold mx-1">ENTER</span> ДЛЯ ПРОБУЖДЕНИЯ СИСТЕМЫ
             </div>
           </motion.div>
         )}
@@ -4952,7 +5409,7 @@ export default function App() {
                 <input
                   type="text"
                   placeholder="Например: C:\Vault\Лента новостей"
-                  value={obsidianNewsPath}
+                  value={currentObsidianNewsPath}
                   onChange={(e) => setObsidianNewsPath(e.target.value)}
                   className="w-full bg-[#06040c]/85 border border-cyber-yellow/20 focus:border-cyber-yellow text-cyber-yellow placeholder-gray-700 focus:ring-1 focus:ring-cyber-yellow rounded px-3 py-2 text-xs transition-all font-mono shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.6)] cursor-text"
                 />
@@ -4970,7 +5427,7 @@ export default function App() {
                   type="button"
                   onClick={() => {
                     setIsNewsPathPromptOpen(false);
-                    const pathParam = obsidianNewsPath ? `?path=${encodeURIComponent(obsidianNewsPath)}` : "";
+                    const pathParam = currentObsidianNewsPath ? `?path=${encodeURIComponent(currentObsidianNewsPath)}` : "";
                     invoke("open_url", { url: `obsidian://open${pathParam}` })
                       .catch(err => console.error("Failed to open Obsidian:", err));
                   }}
@@ -5032,6 +5489,93 @@ export default function App() {
                   className="flex-1 bg-red-950/20 border border-red-500/50 text-red-400 hover:bg-red-500/20 hover:border-red-500 rounded-xl py-2.5 text-center font-bold uppercase transition-all text-xs shadow-[0_0_15px_rgba(239,68,68,0.15)]"
                 >
                   УДАЛИТЬ
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Settings Modal */}
+      <AnimatePresence>
+        {showSettingsModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-md z-[99999] flex items-center justify-center p-6 select-none font-mono"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="w-full max-w-md bg-cyber-sidebar border border-cyber-green/40 rounded-2xl p-6 shadow-[0_15px_40px_rgba(0,255,102,0.15)] relative text-left"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-5">
+                <div className="flex items-center gap-2 text-cyber-green">
+                  <Settings className="w-5 h-5 text-cyber-green" />
+                  <span className="text-xs font-black uppercase tracking-widest">
+                    НАСТРОЙКИ ХРАНИЛИЩА И МЕДИА
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSettingsModal(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5 flex items-center gap-1.5">
+                    <Folder className="w-3.5 h-3.5 text-cyber-green" />
+                    Основной путь к Obsidian Vault
+                  </label>
+                  <input
+                    type="text"
+                    value={vaultPath}
+                    onChange={(e) => setVaultPath(e.target.value)}
+                    placeholder="C:\Users\Имя\Хранилище"
+                    className="w-full bg-[#06040c]/80 border border-cyber-green/30 text-cyber-green placeholder-gray-600 focus:outline-none focus:border-cyber-green rounded px-3 py-2 text-xs transition-all font-mono"
+                  />
+                  <span className="text-[10px] text-gray-500 mt-1 block">
+                    Папка вашего хранилища заметок .md
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5 flex items-center gap-1.5">
+                    <FolderOpen className="w-3.5 h-3.5 text-cyber-yellow" />
+                    Прямой путь к папке с изображениями (опционально)
+                  </label>
+                  <input
+                    type="text"
+                    value={customImagesPath}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCustomImagesPath(val);
+                      localStorage.setItem("cyber_custom_images_path", val);
+                      resolvedRef.current = {};
+                      setResolvedImageUrls({});
+                    }}
+                    placeholder="C:\Users\Имя\Хранилище\img"
+                    className="w-full bg-[#06040c]/80 border border-cyber-yellow/40 text-cyber-yellow placeholder-gray-600 focus:outline-none focus:border-cyber-yellow rounded px-3 py-2 text-xs transition-all font-mono"
+                  />
+                  <span className="text-[10px] text-cyber-yellow/70 mt-1 block">
+                    Укажите папки типа C:\Vault\img — фото будут грузиться напрямую и мгновенно!
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowSettingsModal(false)}
+                  className="w-full bg-cyber-green text-black font-black rounded-xl py-2.5 px-4 shadow-[0_0_15px_rgba(0,255,102,0.3)] hover:bg-[#15ff7a] transition-all text-xs font-mono uppercase"
+                >
+                  СОХРАНИТЬ И ЗАКРЫТЬ
                 </button>
               </div>
             </motion.div>

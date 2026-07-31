@@ -129,53 +129,38 @@ async fn write_file_content(vault_path: String, rel_path: String, content: Strin
         .map_err(|e| format!("Failed to write file: {}", e))
 }
 
-#[tauri::command]
-async fn read_image_base64(vault_path: String, filename: String) -> Result<String, String> {
-    let base = Path::new(&vault_path);
-    if !base.is_dir() {
-        return Err("Provided path is not a directory".to_string());
-    }
+use std::collections::HashMap;
 
-    let mut target_path = None;
-
-    fn find_file(dir: &Path, filename: &str, found: &mut Option<PathBuf>) {
-        if found.is_some() {
-            return;
-        }
+fn get_vault_image_index(base: &Path) -> HashMap<String, PathBuf> {
+    let mut index = HashMap::new();
+    fn scan(dir: &Path, map: &mut HashMap<String, PathBuf>) {
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.is_dir() {
                     if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                        if name.starts_with('.') {
+                        let lower = name.to_lowercase();
+                        if lower.starts_with('.') || lower == "node_modules" || lower == "target" || lower == "dist" || lower == "build" {
                             continue;
                         }
                     }
-                    find_file(&path, filename, found);
+                    scan(&path, map);
                 } else if path.is_file() {
                     if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                        if name.to_lowercase() == filename.to_lowercase() {
-                            *found = Some(path.to_path_buf());
-                            return;
-                        }
+                        let lower = name.to_lowercase();
+                        map.insert(lower, path);
                     }
                 }
             }
         }
     }
+    scan(base, &mut index);
+    index
+}
 
-    find_file(base, &filename, &mut target_path);
-
-    let img_path = target_path.ok_or_else(|| format!("File '{}' not found in vault", filename))?;
-
-    let bytes = fs::read(&img_path)
-        .map_err(|e| format!("Failed to read image file: {}", e))?;
-
-    let ext = img_path.extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("")
-        .to_lowercase();
-
+fn load_single_image_b64(img_path: &Path) -> Result<String, String> {
+    let bytes = fs::read(img_path).map_err(|e| format!("Failed to read image file: {}", e))?;
+    let ext = img_path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
     let mime = match ext.as_str() {
         "png" => "image/png",
         "jpg" | "jpeg" => "image/jpeg",
@@ -184,11 +169,307 @@ async fn read_image_base64(vault_path: String, filename: String) -> Result<Strin
         "svg" => "image/svg+xml",
         _ => "application/octet-stream",
     };
-
     use base64::{Engine as _, engine::general_purpose};
     let b64 = general_purpose::STANDARD.encode(&bytes);
-
     Ok(format!("data:{};base64,{}", mime, b64))
+}
+
+#[tauri::command]
+async fn resolve_image_path(
+    vault_path: String,
+    note_path: Option<String>,
+    img_ref: String,
+    custom_images_path: Option<String>,
+) -> Result<String, String> {
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "[IMAGE RUST INPUT] vault_path={:?}, note_path={:?}, image_reference={:?}",
+        vault_path,
+        note_path,
+        img_ref
+    );
+
+    let vault_dir = match fs::canonicalize(Path::new(&vault_path)) {
+        Ok(p) => p,
+        Err(_) => PathBuf::from(&vault_path),
+    };
+
+    if !vault_dir.is_dir() {
+        return Err("Provided vault path is not a directory".to_string());
+    }
+
+    let mut clean_ref = img_ref.trim().to_string();
+    if let Ok(decoded) = urlencoding::decode(&clean_ref) {
+        clean_ref = decoded.into_owned();
+    }
+    if clean_ref.starts_with("file:///") {
+        clean_ref = clean_ref.trim_start_matches("file:///").to_string();
+    } else if clean_ref.starts_with("file://") {
+        clean_ref = clean_ref.trim_start_matches("file://").to_string();
+    }
+
+    let clean_ref_path = Path::new(&clean_ref);
+
+    // Determine current note directory
+    let note_dir = if let Some(ref np) = note_path {
+        let np_path = Path::new(np);
+        let abs_note_path = if np_path.is_absolute() {
+            np_path.to_path_buf()
+        } else {
+            vault_dir.join(np_path)
+        };
+        abs_note_path.parent().map(|p| p.to_path_buf()).unwrap_or_else(|| vault_dir.clone())
+    } else {
+        vault_dir.clone()
+    };
+
+    let filename_only = clean_ref_path.file_name().and_then(|f| f.to_str()).unwrap_or(&clean_ref);
+
+    let candidates = vec![
+        note_dir.join(&clean_ref),
+        vault_dir.join(&clean_ref),
+        note_dir.join("img").join(&clean_ref),
+        vault_dir.join("img").join(&clean_ref),
+        note_dir.join(filename_only),
+        vault_dir.join(filename_only),
+        note_dir.join("img").join(filename_only),
+        vault_dir.join("img").join(filename_only),
+    ];
+
+    #[cfg(debug_assertions)]
+    for cand in &candidates {
+        eprintln!(
+            "[IMAGE RUST CANDIDATE] path={} exists={} is_file={}",
+            cand.display(),
+            cand.exists(),
+            cand.is_file()
+        );
+    }
+
+    let mut found: Option<PathBuf> = None;
+
+    for cand in candidates {
+        if cand.is_file() {
+            found = Some(cand);
+            break;
+        }
+    }
+
+    if found.is_none() {
+        if let Some(ref cip) = custom_images_path {
+            if !cip.trim().is_empty() {
+                let cip_dir = Path::new(cip);
+                let cip_cand = cip_dir.join(&clean_ref);
+                let cip_file = cip_dir.join(filename_only);
+                if cip_cand.is_file() {
+                    found = Some(cip_cand);
+                } else if cip_file.is_file() {
+                    found = Some(cip_file);
+                }
+            }
+        }
+    }
+
+    // Fallback: index lookup by filename
+    if found.is_none() {
+        let index = get_vault_image_index(&vault_dir);
+        let lookup_key = filename_only.to_lowercase();
+        if let Some(indexed_path) = index.get(&lookup_key) {
+            found = Some(indexed_path.clone());
+        }
+    }
+
+    let target_file = match found {
+        Some(p) => match fs::canonicalize(&p) {
+            Ok(cp) => cp,
+            Err(_) => p,
+        },
+        None => return Err(format!("File '{}' not found in vault", img_ref)),
+    };
+
+    // Security check: ensure target_file is within vault_dir, note_dir, or allowed custom_images_path
+    let allowed_custom = custom_images_path.as_ref().and_then(|p| fs::canonicalize(Path::new(p)).ok());
+    
+    let is_inside_vault = target_file.starts_with(&vault_dir);
+    let is_inside_custom = allowed_custom.as_ref().map(|c| target_file.starts_with(c)).unwrap_or(false);
+
+    if !is_inside_vault && !is_inside_custom {
+        return Err("Access denied: File is outside allowed vault directory".to_string());
+    }
+
+    let path_str = target_file.to_string_lossy().to_string();
+    let clean_abs_path = if path_str.starts_with(r"\\?\") {
+        path_str[4..].to_string()
+    } else {
+        path_str
+    };
+
+    Ok(clean_abs_path)
+}
+
+#[tauri::command]
+async fn load_note_image_bytes(
+    vault_path: String,
+    note_path: Option<String>,
+    img_ref: String,
+    custom_images_path: Option<String>,
+) -> Result<tauri::ipc::Response, String> {
+    let resolved_abs = resolve_image_path(vault_path, note_path, img_ref, custom_images_path).await?;
+    let bytes = fs::read(&resolved_abs).map_err(|e| format!("Failed to read image file: {}", e))?;
+    
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "[IMAGE RUST FOUND] path={} bytes={}",
+        resolved_abs,
+        bytes.len()
+    );
+
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "[IMAGE RUST RETURN] {} bytes",
+        bytes.len()
+    );
+
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
+#[tauri::command]
+async fn read_images_batch(
+    vault_path: String,
+    filenames: Vec<String>,
+    custom_images_path: Option<String>,
+) -> Result<HashMap<String, String>, String> {
+    let base = Path::new(&vault_path);
+    if !base.is_dir() {
+        return Err("Provided path is not a directory".to_string());
+    }
+
+    if filenames.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let mut results = HashMap::new();
+    let mut missing = Vec::new();
+
+    let custom_dir = custom_images_path.as_ref().map(|p| Path::new(p));
+
+    // 1. Fast direct checks
+    for filename in filenames {
+        let mut clean_filename = filename.replace("%20", " ");
+        if clean_filename.starts_with("file:///") {
+            clean_filename = clean_filename.trim_start_matches("file:///").to_string();
+        } else if clean_filename.starts_with("file://") {
+            clean_filename = clean_filename.trim_start_matches("file://").to_string();
+        }
+
+        let abs_path = Path::new(&clean_filename);
+        let custom_file = custom_dir.map(|d| d.join(&clean_filename));
+        let img_dir = base.join("img").join(&clean_filename);
+        let direct = base.join(&clean_filename);
+        let images_dir = base.join("images").join(&clean_filename);
+        let attachments = base.join("attachments").join(&clean_filename);
+        let assets = base.join("assets").join(&clean_filename);
+        let media = base.join("media").join(&clean_filename);
+        let resources = base.join("resources").join(&clean_filename);
+
+        let found_path = if abs_path.is_file() {
+            Some(abs_path.to_path_buf())
+        } else if let Some(ref c_path) = custom_file {
+            if c_path.is_file() {
+                Some(c_path.clone())
+            } else if img_dir.is_file() {
+                Some(img_dir)
+            } else if direct.is_file() {
+                Some(direct)
+            } else if images_dir.is_file() {
+                Some(images_dir)
+            } else if attachments.is_file() {
+                Some(attachments)
+            } else if assets.is_file() {
+                Some(assets)
+            } else if media.is_file() {
+                Some(media)
+            } else if resources.is_file() {
+                Some(resources)
+            } else {
+                None
+            }
+        } else if img_dir.is_file() {
+            Some(img_dir)
+        } else if direct.is_file() {
+            Some(direct)
+        } else if images_dir.is_file() {
+            Some(images_dir)
+        } else if attachments.is_file() {
+            Some(attachments)
+        } else if assets.is_file() {
+            Some(assets)
+        } else if media.is_file() {
+            Some(media)
+        } else if resources.is_file() {
+            Some(resources)
+        } else {
+            None
+        };
+
+        if let Some(img_path) = found_path {
+            if let Ok(data_url) = load_single_image_b64(&img_path) {
+                results.insert(filename, data_url);
+            } else {
+                results.insert(filename, "failed: read error".to_string());
+            }
+        } else {
+            missing.push((filename, clean_filename));
+        }
+    }
+
+    // 2. Slow path for nested subfolders only if missing from standard paths
+    if !missing.is_empty() {
+        let index = get_vault_image_index(base);
+        for (orig_filename, clean_filename) in missing {
+            let lookup_key = clean_filename.to_lowercase();
+            if let Some(img_path) = index.get(&lookup_key) {
+                if let Ok(data_url) = load_single_image_b64(img_path) {
+                    results.insert(orig_filename, data_url);
+                } else {
+                    results.insert(orig_filename, "failed: read error".to_string());
+                }
+            } else {
+                results.insert(orig_filename, "failed: not found".to_string());
+            }
+        }
+    }
+
+    Ok(results)
+}
+
+#[tauri::command]
+async fn read_image_base64(vault_path: String, filename: String) -> Result<String, String> {
+    let base = Path::new(&vault_path);
+    if !base.is_dir() {
+        return Err("Provided path is not a directory".to_string());
+    }
+
+    let direct = base.join(&filename);
+    let attachments = base.join("attachments").join(&filename);
+    let assets = base.join("assets").join(&filename);
+    let media = base.join("media").join(&filename);
+
+    let target_path = if direct.is_file() {
+        Some(direct)
+    } else if attachments.is_file() {
+        Some(attachments)
+    } else if assets.is_file() {
+        Some(assets)
+    } else if media.is_file() {
+        Some(media)
+    } else {
+        let index = get_vault_image_index(base);
+        let lookup_key = filename.to_lowercase();
+        index.get(&lookup_key).cloned()
+    }.ok_or_else(|| format!("File '{}' not found in vault", filename))?;
+
+    load_single_image_b64(&target_path)
 }
 
 #[tauri::command]
@@ -448,6 +729,9 @@ pub fn run() {
             read_file_content, 
             write_file_content,
             read_image_base64,
+            read_images_batch,
+            resolve_image_path,
+            load_note_image_bytes,
             exit_app,
             create_file,
             delete_file,

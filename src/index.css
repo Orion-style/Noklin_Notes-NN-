@@ -1,15 +1,101 @@
 @import "tailwindcss";
 
 @theme {
-  --color-cyber-green: #00ff66;
-  --color-cyber-purple: #b026ff;
-  --color-cyber-yellow: #ffb700;
-  --color-cyber-bg: #06040c;
-  --color-cyber-sidebar: #0e091a;
+  --color-cyber-green: var(--color-accent-green, #00ff66);
+  --color-cyber-purple: var(--color-accent-purple, #b026ff);
+  --color-cyber-yellow: var(--color-accent-primary, #ffb700);
+  --color-cyber-bg: var(--color-bg-app, #06040c);
+  --color-cyber-sidebar: var(--color-bg-sidebar, #0e091a);
   
   --animate-float-slow: float-slow 24s ease-in-out infinite;
   --animate-float-medium: float-medium 18s ease-in-out infinite;
   --animate-float-fast: float-fast 14s ease-in-out infinite;
+}
+
+:root, [data-theme="dark"], html.dark {
+  --color-bg-app: #06040c;
+  --color-bg-sidebar: #0e091a;
+  --color-bg-header: rgba(14, 9, 26, 0.65);
+  
+  --color-surface-primary: rgba(10, 6, 20, 0.6);
+  --color-surface-secondary: rgba(6, 4, 12, 0.6);
+  --color-surface-elevated: #0e091a;
+  --color-surface-hover: rgba(255, 183, 0, 0.05);
+  --color-surface-active: rgba(255, 183, 0, 0.15);
+
+  --color-text-primary: #F3F4F6;
+  --color-text-secondary: #D1D5DB;
+  --color-text-muted: #9CA3AF;
+  --color-text-disabled: #6B7280;
+  --color-text-inverse: #17202A;
+
+  --color-border-primary: rgba(255, 255, 255, 0.1);
+  --color-border-secondary: rgba(255, 255, 255, 0.05);
+  --color-border-focus: #ffb700;
+
+  --color-accent-primary: #ffb700;
+  --color-accent-primary-hover: #ffd000;
+  --color-accent-green: #00ff66;
+  --color-accent-purple: #b026ff;
+  --color-danger: #ef4444;
+
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-elevated: 0 15px 40px rgba(0, 0, 0, 0.7);
+  --overlay-background: rgba(6, 4, 12, 0.85);
+  --particle-opacity: 0.7;
+  --background-grid-opacity: 0.015;
+  --scrollbar-track: #06040c;
+  --scrollbar-thumb: #0e091a;
+}
+
+[data-theme="light"], html.light {
+  --color-bg-app: #F4F7FB;
+  --color-bg-sidebar: #EDF2F7;
+  --color-bg-header: #FFFFFF;
+
+  --color-surface-primary: #FFFFFF;
+  --color-surface-secondary: #F8FAFC;
+  --color-surface-tertiary: #F1F5F9;
+  --color-surface-elevated: #FFFFFF;
+  --color-surface-hover: #EAF0F6;
+  --color-surface-active: #E2EAF3;
+
+  --color-text-primary: #17202C;
+  --color-text-secondary: #3E4C5E;
+  --color-text-muted: #65758A;
+  --color-text-subtle: #7B899B;
+  --color-text-disabled: #A5AFBC;
+  --color-text-inverse: #FFFFFF;
+  --color-text-on-accent: #FFFFFF;
+
+  --color-icon-primary: #243244;
+  --color-icon-secondary: #596B80;
+  --color-icon-muted: #7B899B;
+
+  --color-border-primary: #D6DEE8;
+  --color-border-secondary: #E5EBF2;
+  --color-border-focus: #B8860B;
+
+  --color-accent-primary: #B8860B;
+  --color-accent-primary-hover: #9F7208;
+  --color-accent-primary-soft: #F6E7B8;
+
+  --color-accent-green: #0F9D74;
+  --color-accent-green-soft: #DDF6EE;
+
+  --color-accent-purple: #8A63D2;
+  --color-accent-purple-soft: #EEE6FB;
+
+  --color-danger: #D6455D;
+  --color-danger-soft: #FCE7EB;
+
+  --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.06), 0 10px 24px rgba(15, 23, 42, 0.05);
+  --shadow-elevated: 0 8px 30px rgba(15, 23, 42, 0.08);
+  --overlay-background: rgba(244, 247, 251, 0.85);
+  --particle-opacity: 0.25;
+  --background-grid-opacity: 0.04;
+  --scrollbar-track: #F4F7FB;
+  --scrollbar-thumb: #CBD5E1;
 }
 
 @layer base {
@@ -18,54 +104,198 @@
     padding: 0;
     width: 100%;
     height: 100%;
-    background-color: #06040c;
-    color: #f3f4f6;
+    background-color: var(--color-bg-app);
+    color: var(--color-text-primary);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     overflow: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 }
 
+[data-theme="light"] aside, html.light aside {
+  background-color: var(--color-bg-sidebar) !important;
+  border-right-color: var(--color-border-primary) !important;
+  box-shadow: 2px 0 12px rgba(15, 23, 42, 0.04) !important;
+}
+
+[data-theme="light"] header, html.light header {
+  background-color: var(--color-bg-header) !important;
+  border-bottom-color: var(--color-border-primary) !important;
+}
+
+[data-theme="light"] .system-control-widget, html.light .system-control-widget {
+  background-color: var(--color-surface-secondary) !important;
+  border-color: var(--color-border-primary) !important;
+}
+
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  color: var(--color-text-primary) !important;
+  background-color: var(--color-surface-secondary) !important;
+  border-color: var(--color-border-primary) !important;
+}
+
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: var(--color-text-subtle) !important;
+}
+
+[data-theme="light"] .bg-\[\#06040c\], html.light .bg-\[\#06040c\],
+[data-theme="light"] .bg-\[\#06040c\]\/50, html.light .bg-\[\#06040c\]\/50,
+[data-theme="light"] .bg-\[\#06040c\]\/60, html.light .bg-\[\#06040c\]\/60,
+[data-theme="light"] .bg-\[\#06040c\]\/70, html.light .bg-\[\#06040c\]\/70,
+[data-theme="light"] .bg-\[\#06040c\]\/80, html.light .bg-\[\#06040c\]\/80,
+[data-theme="light"] .bg-\[\#06040c\]\/90, html.light .bg-\[\#06040c\]\/90,
+[data-theme="light"] .bg-\[\#0a0614\]\/50, html.light .bg-\[\#0a0614\]\/50,
+[data-theme="light"] .bg-\[\#0b0816\]\/65, html.light .bg-\[\#0b0816\]\/65,
+[data-theme="light"] .bg-\[\#050308\]\/60, html.light .bg-\[\#050308\]\/60,
+[data-theme="light"] .bg-black\/30, html.light .bg-black\/30,
+[data-theme="light"] .bg-black\/40, html.light .bg-black\/40,
+[data-theme="light"] .bg-black\/50, html.light .bg-black\/50,
+[data-theme="light"] .bg-black\/60, html.light .bg-black\/60 {
+  background-color: var(--color-surface-primary) !important;
+  border-color: var(--color-border-primary);
+  box-shadow: var(--shadow-card);
+}
+
+[data-theme="light"] .bg-\[\#050308\], html.light .bg-\[\#050308\] {
+  background-color: var(--color-surface-secondary) !important;
+  color: var(--color-text-primary) !important;
+}
+
+[data-theme="light"] .bg-\[\#0e091a\], html.light .bg-\[\#0e091a\],
+[data-theme="light"] .bg-\[\#0e091a\]\/95, html.light .bg-\[\#0e091a\]\/95 {
+  background-color: var(--color-surface-elevated) !important;
+  box-shadow: var(--shadow-elevated);
+}
+
+[data-theme="light"] .border-white\/5, html.light .border-white\/5,
+[data-theme="light"] .border-white\/10, html.light .border-white\/10,
+[data-theme="light"] .border-white\/20, html.light .border-white\/20 {
+  border-color: var(--color-border-secondary) !important;
+}
+
+[data-theme="light"] .text-white, html.light .text-white,
+[data-theme="light"] .text-gray-100, html.light .text-gray-100,
+[data-theme="light"] .text-gray-200, html.light .text-gray-200 {
+  color: var(--color-text-primary) !important;
+}
+
+[data-theme="light"] .text-gray-300, html.light .text-gray-300 {
+  color: var(--color-text-secondary) !important;
+}
+
+[data-theme="light"] .text-gray-400, html.light .text-gray-400,
+[data-theme="light"] .text-gray-500, html.light .text-gray-500 {
+  color: var(--color-text-muted) !important;
+}
+
+[data-theme="light"] .text-gray-600, html.light .text-gray-600,
+[data-theme="light"] .text-gray-700, html.light .text-gray-700 {
+  color: var(--color-text-subtle) !important;
+}
+
+/* Explicit Back To List button styles for light theme */
+[data-theme="light"] .btn-back-list, html.light .btn-back-list {
+  background-color: #FFFFFF !important;
+  color: #3E4C5E !important;
+  border: 1px solid #D3DCE7 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06) !important;
+}
+
+[data-theme="light"] .btn-back-list:hover, html.light .btn-back-list:hover {
+  background-color: #F1F5F9 !important;
+  color: #17202C !important;
+  border-color: #B8C4D2 !important;
+}
+
+[data-theme="light"] .btn-back-list:focus-visible, html.light .btn-back-list:focus-visible {
+  outline: 2px solid rgba(184, 134, 11, 0.45) !important;
+  outline-offset: 2px !important;
+}
+
+/* Explicit Sidebar Game Items for light theme */
+[data-theme="light"] .sidebar-game-item, html.light .sidebar-game-item {
+  background-color: #FFFFFF !important;
+  border-color: #D6DEE8 !important;
+  opacity: 1 !important;
+}
+
+[data-theme="light"] .sidebar-game-item .sidebar-game-name, html.light .sidebar-game-item .sidebar-game-name {
+  color: #263445 !important;
+}
+
+[data-theme="light"] .sidebar-game-item .sidebar-game-category, html.light .sidebar-game-item .sidebar-game-category {
+  color: #65758A !important;
+}
+
+[data-theme="light"] .sidebar-game-item .sidebar-game-arrow, html.light .sidebar-game-item .sidebar-game-arrow {
+  color: #B07A08 !important;
+  opacity: 1 !important;
+}
+
+[data-theme="light"] .sidebar-game-item:hover, html.light .sidebar-game-item:hover {
+  background-color: #F4F7FA !important;
+  border-color: #C8D2DE !important;
+}
+
+[data-theme="light"] .sidebar-game-item:hover .sidebar-game-name, html.light .sidebar-game-item:hover .sidebar-game-name {
+  color: #17202C !important;
+}
+
+[data-theme="light"] .sidebar-game-item.is-selected, html.light .sidebar-game-item.is-selected {
+  background-color: #FFF8E8 !important;
+  border-color: #D7A326 !important;
+}
+
+[data-theme="light"] .sidebar-game-item.is-selected .sidebar-game-name, html.light .sidebar-game-item.is-selected .sidebar-game-name {
+  color: #17202C !important;
+}
+
+[data-theme="light"] .sidebar-game-item.is-selected .sidebar-game-category, html.light .sidebar-game-item.is-selected .sidebar-game-category {
+  color: #526378 !important;
+}
+
+[data-theme="light"] .sidebar-game-item.is-selected .sidebar-game-arrow, html.light .sidebar-game-item.is-selected .sidebar-game-arrow {
+  color: #A66F00 !important;
+}
+
 @utility neon-border-purple {
-  border: 1px solid rgba(176, 38, 255, 0.35);
-  box-shadow: 0 0 10px rgba(176, 38, 255, 0.25), inset 0 0 10px rgba(176, 38, 255, 0.25);
+  border: 1px solid var(--color-accent-purple);
+  box-shadow: 0 0 10px var(--color-accent-purple), inset 0 0 10px var(--color-accent-purple);
 }
 
 @utility neon-border-green {
-  border: 1px solid rgba(0, 255, 102, 0.35);
-  box-shadow: 0 0 10px rgba(0, 255, 102, 0.25), inset 0 0 10px rgba(0, 255, 102, 0.25);
+  border: 1px solid var(--color-accent-green);
+  box-shadow: 0 0 10px var(--color-accent-green), inset 0 0 10px var(--color-accent-green);
 }
 
 @utility neon-border-yellow {
-  border: 1px solid rgba(255, 183, 0, 0.35);
-  box-shadow: 0 0 10px rgba(255, 183, 0, 0.25), inset 0 0 10px rgba(255, 183, 0, 0.25);
+  border: 1px solid var(--color-accent-primary);
+  box-shadow: 0 0 10px var(--color-accent-primary), inset 0 0 10px var(--color-accent-primary);
 }
 
 @utility neon-text-green {
-  color: #00ff66;
-  text-shadow: 0 0 4px rgba(0, 255, 102, 0.6), 0 0 12px rgba(0, 255, 102, 0.3);
+  color: var(--color-accent-green);
 }
 
 @utility neon-text-purple {
-  color: #b026ff;
-  text-shadow: 0 0 4px rgba(176, 38, 255, 0.6), 0 0 12px rgba(176, 38, 255, 0.3);
+  color: var(--color-accent-purple);
 }
 
 @utility neon-text-yellow {
-  color: #ffb700;
-  text-shadow: 0 0 4px rgba(255, 183, 0, 0.6), 0 0 12px rgba(255, 183, 0, 0.3);
+  color: var(--color-accent-primary);
 }
 
 @utility neon-glow-hover {
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   
   &:hover {
-    border-color: #00ff66;
-    box-shadow: 0 0 15px rgba(0, 255, 102, 0.5), 0 0 30px rgba(176, 38, 255, 0.4), inset 0 0 8px rgba(0, 255, 102, 0.2);
-    text-shadow: 0 0 8px rgba(0, 255, 102, 0.8);
+    border-color: var(--color-accent-green);
+    box-shadow: 0 0 15px var(--color-accent-green);
   }
 }
-
-
 
 @keyframes float-slow {
   0%, 100% {
@@ -107,23 +337,23 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #06040c;
+  background: var(--scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #0e091a;
-  border: 1px solid rgba(176, 38, 255, 0.35);
+  background: var(--scrollbar-thumb);
+  border: 1px solid var(--color-border-primary);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #b026ff;
-  box-shadow: 0 0 8px #b026ff;
+  background: var(--color-accent-purple);
+  box-shadow: 0 0 8px var(--color-accent-purple);
 }
 
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: rgba(176, 38, 255, 0.35) transparent;
+  scrollbar-color: var(--color-border-primary) transparent;
 }
 
 .scrollbar-thin::-webkit-scrollbar {
@@ -136,14 +366,12 @@
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(176, 38, 255, 0.25);
-  border: 1px solid rgba(176, 38, 255, 0.15);
+  background: var(--color-border-primary);
+  border: 1px solid var(--color-border-secondary);
   border-radius: 9999px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: rgba(176, 38, 255, 0.6);
-  border-color: rgba(176, 38, 255, 0.55);
+  background: var(--color-accent-purple);
+  border-color: var(--color-accent-purple);
 }
-
-

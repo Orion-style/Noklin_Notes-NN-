@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tauri-app",
+  "productName": "Noklin",
   "version": "0.1.0",
   "identifier": "com.cybernotes.app",
   "build": {
@@ -12,7 +12,8 @@
   "app": {
     "windows": [
       {
-        "title": "tauri-app",
+        "label": "main",
+        "title": "Noklin",
         "width": 1280,
         "height": 720,
         "maximized": true
