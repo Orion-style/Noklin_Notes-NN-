@@ -142,6 +142,7 @@
 }
 
 [data-theme="light"] .bg-\[\#06040c\], html.light .bg-\[\#06040c\],
+[data-theme="light"] .bg-\[\#06040c\]\/40, html.light .bg-\[\#06040c\]\/40,
 [data-theme="light"] .bg-\[\#06040c\]\/50, html.light .bg-\[\#06040c\]\/50,
 [data-theme="light"] .bg-\[\#06040c\]\/60, html.light .bg-\[\#06040c\]\/60,
 [data-theme="light"] .bg-\[\#06040c\]\/70, html.light .bg-\[\#06040c\]\/70,
@@ -259,6 +260,18 @@
 
 [data-theme="light"] .sidebar-game-item.is-selected .sidebar-game-arrow, html.light .sidebar-game-item.is-selected .sidebar-game-arrow {
   color: #A66F00 !important;
+}
+
+/* Explicit Task Items for light theme */
+[data-theme="light"] .task-item, html.light .task-item {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-theme="light"] .task-item:hover, html.light .task-item:hover {
+  background-color: #F8FAFC !important;
+  border-color: #CBD5E1 !important;
 }
 
 @utility neon-border-purple {

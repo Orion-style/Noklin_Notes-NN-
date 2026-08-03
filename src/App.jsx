@@ -4,7 +4,6 @@ import { X, RefreshCw, BarChart2, Grid, Plus, Folder, FolderOpen, FileText, Cpu,
 import { motion, AnimatePresence } from "framer-motion";
 import InteractiveBackground from "./components/InteractiveBackground";
 import OnboardingWidget from "./components/OnboardingWidget";
-import ObsidianImage from "./components/ObsidianImage";
 
 // Obsidian crystalline SVG icon
 const ObsidianIcon = ({ className }) => (
@@ -242,12 +241,12 @@ export default function App() {
     localStorage.setItem("cyber_sidebar_tab", sidebarTab);
   }, [sidebarTab]);
 
-  const handleOpenSelectedInObsidian = () => {
-    if (!selectedFile) return;
-    let fullPath = selectedFile;
+  const openFileInObsidian = (relPath) => {
+    if (!relPath) return;
+    let fullPath = relPath;
     if (vaultPath) {
       const normalizedVault = vaultPath.replace(/\\/g, '/').replace(/\/$/, '');
-      const normalizedFile = selectedFile.replace(/\\/g, '/').replace(/^\//, '');
+      const normalizedFile = relPath.replace(/\\/g, '/').replace(/^\//, '');
       fullPath = `${normalizedVault}/${normalizedFile}`;
     }
     const pathParam = `?path=${encodeURIComponent(fullPath)}`;
@@ -256,6 +255,12 @@ export default function App() {
       invoke("open_url", { url: `obsidian://open${pathParam}` }).catch(err => console.error("Failed to open file in Obsidian:", err));
     } else {
       window.open(`obsidian://open${pathParam}`, '_blank');
+    }
+  };
+
+  const handleOpenSelectedInObsidian = () => {
+    if (selectedFile) {
+      openFileInObsidian(selectedFile);
     }
   };
 
@@ -2029,12 +2034,12 @@ export default function App() {
     }
 
     return (
-      <ObsidianImage
+      <img
         key={key}
         src={state.url}
         alt={altText || normalizedReference}
-        width={widthVal}
-        isError={false}
+        style={{ width: widthVal || 'auto' }}
+        className="max-w-full rounded block"
       />
     );
   };
@@ -2411,6 +2416,12 @@ export default function App() {
     const currentFolder = getFolderPath(node);
     
     switch (action) {
+      case "open-obsidian": {
+        if (node && node.path) {
+          openFileInObsidian(node.path);
+        }
+        break;
+      }
       case "new-note": {
         handleCreateFile(currentFolder);
         break;
@@ -3128,7 +3139,10 @@ export default function App() {
                               node={child}
                               depth={0}
                               selectedFile={selectedFile}
-                              onSelectFile={setSelectedFile}
+                              onSelectFile={(filePath) => {
+                                setSelectedFile(filePath);
+                                openFileInObsidian(filePath);
+                              }}
                               expandedFolders={expandedFolders}
                               onToggleFolder={handleToggleFolder}
                               onDragStart={handleDragStart}
@@ -3205,7 +3219,10 @@ export default function App() {
                               node={child}
                               depth={0}
                               selectedFile={selectedFile}
-                              onSelectFile={setSelectedFile}
+                              onSelectFile={(filePath) => {
+                                setSelectedFile(filePath);
+                                openFileInObsidian(filePath);
+                              }}
                               expandedFolders={expandedFolders}
                               onToggleFolder={handleToggleFolder}
                               onDragStart={handleDragStart}
@@ -3712,72 +3729,12 @@ export default function App() {
                               </div>
                             </div>
 
-                            {selectedNewsPost ? (
-                              /* News Post Full Tab View (вкладка) */
-                              <motion.div
-                                key={`news-detail-${selectedNewsPost.id}`}
-                                initial={{ opacity: 0, y: 15 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -15 }}
-                                transition={{ duration: 0.25 }}
-                                className="bg-[#06040c]/60 border border-cyber-yellow/20 rounded-xl p-6 flex flex-col gap-4 shrink-0 min-h-[400px]"
-                              >
-                                <div className="flex justify-between items-center border-b border-cyber-yellow/20 pb-3 select-none">
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      onClick={() => setSelectedNewsPost(null)}
-                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:border-cyber-yellow hover:text-cyber-yellow bg-white/5 hover:bg-cyber-yellow/5 transition-all text-xs"
-                                    >
-                                      <ChevronLeft className="w-4 h-4" />
-                                      <span>НАЗАД К СПИСКУ</span>
-                                    </button>
-                                    <div className="h-6 w-[1px] bg-white/10 mx-1" />
-                                    <span className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">{selectedNewsPost.date}</span>
-                                  </div>
-                                  <button
-                                    onClick={() => {
-                                      setGameNews(prev => {
-                                        const current = prev[selectedGameId] || [];
-                                        return {
-                                          ...prev,
-                                          [selectedGameId]: current.filter(item => item.id !== selectedNewsPost.id)
-                                        };
-                                      });
-                                      setSelectedNewsPost(null);
-                                    }}
-                                    className="text-red-500 hover:text-red-400 p-1.5 border border-transparent hover:border-red-500/20 hover:bg-red-500/10 rounded-lg transition-all flex items-center justify-center shrink-0"
-                                    title="Удалить запись"
-                                  >
-                                    <Trash2 className="w-4.5 h-4.5" />
-                                  </button>
-                                </div>
-
-                                <div className="overflow-y-auto space-y-4 pr-1 select-text h-[350px]">
-                                  <h2 className="text-lg font-black text-white uppercase tracking-wider">{selectedNewsPost.title}</h2>
-                                  
-                                  <div className="text-xs text-gray-300 leading-relaxed font-sans mt-2 pr-1">
-                                    {parseMarkdown(selectedNewsPost.text)}
-                                  </div>
-
-                                  {selectedNewsPost.imageUrl && (
-                                    <div className="border border-white/5 rounded-lg overflow-hidden bg-black/50 max-w-2xl mt-4">
-                                      <img
-                                        src={selectedNewsPost.imageUrl}
-                                        alt="Broadcast content"
-                                        className="w-full max-h-[350px] object-contain block select-all cursor-zoom-in"
-                                        title="Полный размер"
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                              </motion.div>
-                            ) : (
-                              /* Two Column Workspace Layout */
-                              <div className="flex flex-col lg:flex-row gap-5 shrink-0">
-                                {/* Left: Activity Tracker (Convenient Tracker) */}
-                                <div className="w-full lg:w-[40%] flex flex-col gap-4 h-[520px] shrink-0">
-                                  <div className="bg-[#06040c]/60 border border-white/5 rounded-xl p-4 flex flex-col gap-3 shrink-0">
-                                    <div className="text-xs uppercase tracking-widest text-cyber-yellow border-b border-white/5 pb-1.5 font-bold">// ACTIVITY MONITOR</div>
+                            /* Two Column Workspace Layout */
+                            <div className="flex flex-col lg:flex-row gap-5 shrink-0">
+                              {/* Left: Activity Tracker (Convenient Tracker) */}
+                              <div className="w-full lg:w-[40%] flex flex-col gap-4 h-[520px] shrink-0">
+                                <div className="bg-[#06040c]/60 border border-white/5 rounded-xl p-4 flex flex-col gap-3 shrink-0">
+                                  <div className="text-xs uppercase tracking-widest text-cyber-yellow border-b border-white/5 pb-1.5 font-bold">// ACTIVITY MONITOR</div>
                                     
                                       {/* Playtime stats display */}
                                       <div className="flex items-center justify-between bg-black/40 border border-white/5 rounded-lg p-2.5">
@@ -4180,7 +4137,6 @@ export default function App() {
                                   </div>
                                 </div>
                               </div>
-                            )}
 
                             {/* Activity Chart Section at the bottom */}
                             <div className="bg-[#06040c]/60 border border-white/5 rounded-xl p-4 shrink-0 flex flex-col gap-3 h-[180px] min-h-0">
@@ -4569,7 +4525,7 @@ export default function App() {
                       </motion.div>
                     )
                   })()
-                ) : null}
+                : null
                 </AnimatePresence>
               </div>
             </main>
@@ -5235,7 +5191,16 @@ export default function App() {
             onClick={(e) => e.stopPropagation()}
             onContextMenu={(e) => e.preventDefault()}
           >
-            {/* Top section: Creation */}
+            {/* Top section: Open in Obsidian & Creation */}
+            {contextMenu.node && contextMenu.node.type === "file" && (
+              <button
+                onClick={() => handleContextAction("open-obsidian")}
+                className="w-full text-left py-1.5 px-3 hover:bg-cyber-purple/20 hover:text-cyber-green rounded flex items-center gap-2 transition-colors font-bold text-cyber-green"
+              >
+                <ObsidianIcon className="w-3.5 h-3.5 text-cyber-green" />
+                <span>Открыть в Obsidian</span>
+              </button>
+            )}
             <button
               onClick={() => handleContextAction("new-note")}
               className="w-full text-left py-1.5 px-3 hover:bg-cyber-purple/15 hover:text-white rounded flex items-center gap-2 transition-colors"
