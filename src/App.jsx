@@ -243,18 +243,26 @@ export default function App() {
 
   const openFileInObsidian = (relPath) => {
     if (!relPath) return;
-    let fullPath = relPath;
+    
+    // Normalize path separators
+    const cleanRelPath = relPath.replace(/\\/g, '/').replace(/^\//, '');
+    let obsidianUrl = '';
+
     if (vaultPath) {
       const normalizedVault = vaultPath.replace(/\\/g, '/').replace(/\/$/, '');
-      const normalizedFile = relPath.replace(/\\/g, '/').replace(/^\//, '');
-      fullPath = `${normalizedVault}/${normalizedFile}`;
+      const fullPath = `${normalizedVault}/${cleanRelPath}`;
+      // Obsidian URI format 1: obsidian://open?path=C%3A%2Fpath%2Fto%2Ffile.md
+      obsidianUrl = `obsidian://open?path=${encodeURIComponent(fullPath)}`;
+    } else {
+      // Obsidian URI format 2: obsidian://open?file=file.md
+      obsidianUrl = `obsidian://open?file=${encodeURIComponent(cleanRelPath)}`;
     }
-    const pathParam = `?path=${encodeURIComponent(fullPath)}`;
+
     const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
     if (isTauri) {
-      invoke("open_url", { url: `obsidian://open${pathParam}` }).catch(err => console.error("Failed to open file in Obsidian:", err));
+      invoke("open_url", { url: obsidianUrl }).catch(err => console.error("Failed to open file in Obsidian:", err));
     } else {
-      window.open(`obsidian://open${pathParam}`, '_blank');
+      window.open(obsidianUrl, '_blank');
     }
   };
 
