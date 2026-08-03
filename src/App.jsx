@@ -3943,7 +3943,7 @@ export default function App() {
                                     <div className="text-xs uppercase tracking-widest text-cyber-yellow border-b border-white/5 pb-2 font-bold flex justify-between items-center select-none shrink-0">
                                       <span>// NEWS FEED // ЛЕНТА НОВОСТЕЙ</span>
                                       <button
-                                        onClick={handleOpenObsidian}
+                                        onClick={() => openFileInObsidian(selectedNewsPost?.id)}
                                         className="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-cyber-yellow/10 text-cyber-yellow transition-all text-[10px] tracking-wider"
                                       >
                                         <CornerUpRight className="w-3.5 h-3.5" />
