@@ -3306,7 +3306,7 @@ export default function App() {
             {/* Main Workspace Preview Pane */}
             <main className="flex-1 flex flex-col h-full relative z-0 min-w-0 overflow-hidden">
               {/* Workspace Top Header Bar */}
-              <header className={`h-16 border-b bg-cyber-sidebar/65 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10 relative transition-colors ${ activeMode === "game_manager" ? "border-cyber-yellow/20" : activeMode === "stats" ? "border-cyber-purple/20" : "border-cyber-purple/20" }`}>
+              <header data-tauri-drag-region className={`h-16 border-b bg-cyber-sidebar/65 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10 relative transition-colors ${ activeMode === "game_manager" ? "border-cyber-yellow/20" : activeMode === "stats" ? "border-cyber-purple/20" : "border-cyber-purple/20" }`}>
                 {activeMode === "game_manager" ? (
                   <div className="flex items-center gap-2 font-mono text-xs md:text-sm text-cyber-yellow truncate min-w-0">
                     <span className="text-cyber-yellow/60 whitespace-nowrap">режим_системы:</span>
@@ -3937,7 +3937,7 @@ export default function App() {
                                 </div>
 
                                 {/* Right: My News Feed & Tasks */}
-                                <div className="flex-1 flex flex-col gap-3 h-[520px] shrink-0 min-w-0">
+                                  <div className="flex-1 flex flex-col gap-3 h-[520px] shrink-0 min-w-0">
                                   {/* News feed list */}
                                   <div className="bg-[#06040c]/60 border border-white/5 rounded-xl p-4 flex flex-col gap-2.5 overflow-hidden h-[254px] shrink-0">
                                     <div className="text-xs uppercase tracking-widest text-cyber-yellow border-b border-white/5 pb-2 font-bold flex justify-between items-center select-none shrink-0">
@@ -3989,7 +3989,7 @@ export default function App() {
                                         gamePosts.map(post => (
                                           <button
                                             key={post.id}
-                                            onClick={() => setSelectedNewsPost(post)}
+                                            onClick={() => openFileInObsidian(post.id)}
                                             className={`w-full text-left border rounded-lg p-3 transition-all flex items-center justify-between group ${ selectedNewsPost?.id === post.id ? "border-cyber-yellow bg-cyber-yellow/10 text-white" : "border-cyber-yellow/15 bg-[#ffb700]/5 hover:border-cyber-yellow/45 text-gray-300 hover:text-white" }`}
                                           >
                                             <div className="flex items-center gap-2.5 min-w-0 flex-1">
