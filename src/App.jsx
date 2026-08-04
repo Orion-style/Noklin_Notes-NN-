@@ -3094,49 +3094,57 @@ export default function App() {
                   </AnimatePresence>
                 </div>
 
-                  {/* Sidebar Navigation Tabs */}
+                {/* Sidebar Navigation Tabs */}
+                <AnimatePresence mode="wait">
                   {!sidebarCollapsed ? (
                     <motion.div 
-                      key="expanded-body"
+                      key="expanded-tabs"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2, delay: 0.15 }}
-                      className="flex-1 flex flex-col min-h-0 w-full overflow-hidden"
+                      transition={{ duration: 0.2, delay: 0.12 }}
+                      className="flex items-center gap-1 bg-[#06040c]/70 p-1 rounded-lg border border-cyber-purple/20 mb-4 shrink-0 font-mono text-[10px] select-none shadow-inner"
                     >
-                      <div className="flex items-center gap-1 bg-[#06040c]/70 p-1 rounded-lg border border-cyber-purple/20 mb-4 shrink-0 font-mono text-[10px] select-none shadow-inner">
-                        <button
-                          type="button"
-                          onClick={() => setActiveMode("game_manager")}
-                          onMouseEnter={(e) => showGlobalTooltip(e, "Игровой менеджер", "yellow")}
-                          onMouseLeave={hideGlobalTooltip}
-                          className={`flex-1 h-8 px-2 rounded-md flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap border ${
-                            activeMode === "game_manager"
-                              ? "bg-cyber-yellow/20 text-cyber-yellow border-cyber-yellow/40 shadow-[0_0_8px_rgba(255,183,0,0.15)] font-bold"
-                              : "text-gray-400 hover:text-white border-transparent hover:bg-white/5"
-                          }`}
-                        >
-                          <Gamepad2 className="w-3.5 h-3.5 shrink-0" />
-                          <span className="truncate whitespace-nowrap">Игры</span>
-                        </button>
-                      </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-1.5 mb-3 shrink-0 select-none">
-                    <button
-                      type="button"
-                      onClick={() => setActiveMode("game_manager")}
-                      onMouseEnter={(e) => showGlobalTooltip(e, "ИГРОВОЙ МЕНЕДЖЕР", "yellow")}
-                      onMouseLeave={hideGlobalTooltip}
-                      className={`w-8 h-8 rounded border flex items-center justify-center transition-all ${
-                        activeMode === "game_manager"
-                          ? "border-cyber-yellow bg-cyber-yellow/20 text-cyber-yellow shadow-[0_0_8px_rgba(255,183,0,0.3)]"
-                          : "border-gray-700/40 text-gray-400 hover:text-white hover:border-gray-500"
-                      }`}
+                      <button
+                        type="button"
+                        onClick={() => setActiveMode("game_manager")}
+                        onMouseEnter={(e) => showGlobalTooltip(e, "Игровой менеджер", "yellow")}
+                        onMouseLeave={hideGlobalTooltip}
+                        className={`flex-1 h-8 px-2 rounded-md flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap border ${
+                          activeMode === "game_manager"
+                            ? "bg-cyber-yellow/20 text-cyber-yellow border-cyber-yellow/40 shadow-[0_0_8px_rgba(255,183,0,0.15)] font-bold"
+                            : "text-gray-400 hover:text-white border-transparent hover:bg-white/5"
+                        }`}
+                      >
+                        <Gamepad2 className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate whitespace-nowrap">Игры</span>
+                      </button>
+                    </motion.div>
+                  ) : (
+                    <motion.div 
+                      key="collapsed-tabs"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="flex flex-col items-center gap-1.5 mb-3 shrink-0 select-none"
                     >
-                      <Gamepad2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
+                      <button
+                        type="button"
+                        onClick={() => setActiveMode("game_manager")}
+                        onMouseEnter={(e) => showGlobalTooltip(e, "ИГРОВОЙ МЕНЕДЖЕР", "yellow")}
+                        onMouseLeave={hideGlobalTooltip}
+                        className={`w-8 h-8 rounded border flex items-center justify-center transition-all ${
+                          activeMode === "game_manager"
+                            ? "border-cyber-yellow bg-cyber-yellow/20 text-cyber-yellow shadow-[0_0_8px_rgba(255,183,0,0.3)]"
+                            : "border-gray-700/40 text-gray-400 hover:text-white hover:border-gray-500"
+                        }`}
+                      >
+                        <Gamepad2 className="w-4 h-4" />
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Sidebar Main Content */}
                 {activeMode === "game_manager" ? (
