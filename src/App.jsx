@@ -3147,20 +3147,6 @@ export default function App() {
                       transition={{ duration: 0.2, delay: 0.08 }}
                       className="flex-1 flex flex-col overflow-hidden select-none"
                     >
-                      <div className="flex items-center justify-between text-xs uppercase tracking-wider text-gray-400 font-mono mb-4 p-1 rounded border border-transparent hover:border-cyber-yellow/35 hover:bg-cyber-yellow/5 transition-all shrink-0 overflow-hidden">
-                        <span className="flex items-center gap-1.5 text-cyber-yellow font-bold">
-                          <Gamepad className="w-4 h-4" />
-                          СИСТЕМНЫЕ ИГРЫ
-                        </span>
-                        <button
-                          onClick={handleAddGameOpenClick}
-                          className="p-1 rounded border border-transparent hover:border-cyber-yellow/30 text-gray-400 hover:text-cyber-yellow hover:bg-cyber-yellow/5 transition-all flex items-center justify-center"
-                          title="Добавить новую игру"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      </div>
-
                       {/* Games list in sidebar */}
                       <div className="flex-1 overflow-y-auto space-y-2 pr-1 pb-2">
                         {/* Overview selector */}
@@ -3203,6 +3189,14 @@ export default function App() {
                             </div>
                           ))
                         )}
+
+                        <button
+                          onClick={handleAddGameOpenClick}
+                          className="w-full border border-dashed border-cyber-yellow/30 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 rounded p-2 flex items-center justify-center gap-2 text-xs font-mono text-gray-400 hover:text-cyber-yellow transition-all cursor-pointer mt-2"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>ДОБАВИТЬ ИГРУ</span>
+                        </button>
                       </div>
 
                       {/* User Profile & Hours Block (Moved to Bottom) */}
