@@ -3059,7 +3059,7 @@ export default function App() {
               className={`bg-cyber-sidebar/85 backdrop-blur-lg border-r border-cyber-purple/20 flex flex-col justify-between p-4 md:p-5 z-10 relative shadow-[5px_0_25px_rgba(0,0,0,0.5)] shrink-0 select-none overflow-hidden ${sidebarCollapsed ? "items-center px-2 py-4" : ""}`}
             >
               <div className="flex flex-col h-full w-full pt-1 overflow-hidden">
-                {/* App Header */}
+                {/* App Header (Stage 1 -> Stage 2 -> Stage 3) */}
                 <div 
                   onMouseEnter={(e) => showGlobalTooltip(e, activeMode === "game_manager" ? "CYBER-GAMES TERMINAL" : activeMode === "stats" ? "CYBER-STATS TERMINAL" : "CYBER-NOTES TERMINAL", activeMode === "game_manager" ? "yellow" : activeMode === "stats" ? "purple" : "green")}
                   onMouseLeave={hideGlobalTooltip}
@@ -3077,10 +3077,14 @@ export default function App() {
                   <AnimatePresence>
                     {!sidebarCollapsed && (
                       <motion.div 
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -10 }}
-                        transition={{ duration: 0.2, delay: 0.15 }}
+                        initial={{ opacity: 0, width: 0, height: 20 }}
+                        animate={{ opacity: 1, width: "auto", height: "auto" }}
+                        exit={{ opacity: 0, width: 0, height: 20 }}
+                        transition={{
+                          width: { duration: 0.25, ease: [0.25, 0.1, 0.25, 1.0] },
+                          height: { duration: 0.2, delay: 0.22, ease: "easeOut" },
+                          opacity: { duration: 0.2, delay: 0.15 }
+                        }}
                         className="overflow-hidden whitespace-nowrap"
                       >
                         <h1 className={`text-xl font-black tracking-widest font-mono transition-all ${activeMode === "game_manager" ? "neon-text-yellow" : activeMode === "stats" ? "neon-text-purple" : "neon-text-green"}`}>
@@ -3099,11 +3103,14 @@ export default function App() {
                   {!sidebarCollapsed ? (
                     <motion.div 
                       key="expanded-tabs"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2, delay: 0.12 }}
-                      className="flex items-center gap-1 bg-[#06040c]/70 p-1 rounded-lg border border-cyber-purple/20 mb-4 shrink-0 font-mono text-[10px] select-none shadow-inner"
+                      initial={{ opacity: 0, height: 32 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 32 }}
+                      transition={{
+                        height: { duration: 0.2, delay: 0.22, ease: "easeOut" },
+                        opacity: { duration: 0.2, delay: 0.1 }
+                      }}
+                      className="flex items-center gap-1 bg-[#06040c]/70 p-1 rounded-lg border border-cyber-purple/20 mb-4 shrink-0 font-mono text-[10px] select-none shadow-inner overflow-hidden"
                     >
                       <button
                         type="button"
@@ -3190,8 +3197,19 @@ export default function App() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex-1 flex flex-col overflow-hidden select-none">
-                      <div className="flex items-center justify-between text-xs uppercase tracking-wider text-gray-400 font-mono mb-4 p-1 rounded border border-transparent hover:border-cyber-yellow/35 hover:bg-cyber-yellow/5 transition-all shrink-0">
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2, delay: 0.1 }}
+                      className="flex-1 flex flex-col overflow-hidden select-none"
+                    >
+                      <motion.div 
+                        initial={{ height: 28 }}
+                        animate={{ height: "auto" }}
+                        transition={{ duration: 0.2, delay: 0.22 }}
+                        className="flex items-center justify-between text-xs uppercase tracking-wider text-gray-400 font-mono mb-4 p-1 rounded border border-transparent hover:border-cyber-yellow/35 hover:bg-cyber-yellow/5 transition-all shrink-0 overflow-hidden"
+                      >
                         <span className="flex items-center gap-1.5 text-cyber-yellow font-bold">
                           <Gamepad className="w-4 h-4" />
                           СИСТЕМНЫЕ ИГРЫ
@@ -3203,21 +3221,32 @@ export default function App() {
                         >
                           <Plus className="w-4 h-4" />
                         </button>
-                      </div>
+                      </motion.div>
 
                       {/* Games list in sidebar */}
                       <div className="flex-1 overflow-y-auto space-y-2 pr-1 pb-2">
                         {/* Overview selector */}
-                        <div
+                        <motion.div
                           onClick={() => setSelectedGameId(null)}
-                          className={`border rounded p-2 flex items-center gap-2.5 transition-colors group ${ selectedGameId === null ? "border-cyber-yellow bg-[#ffb700]/10 shadow-[0_0_10px_rgba(255,183,0,0.15)] text-white" : "border-cyber-yellow/15 bg-transparent hover:border-cyber-yellow/45 text-gray-400 hover:text-white" }`}
+                          initial={{ height: 32, padding: "4px 8px" }}
+                          animate={{ height: "auto", padding: "8px 10px" }}
+                          transition={{
+                            height: { duration: 0.2, delay: 0.25, ease: "easeOut" },
+                            padding: { duration: 0.2, delay: 0.22 }
+                          }}
+                          className={`border rounded flex items-center gap-2.5 transition-colors group overflow-hidden ${ selectedGameId === null ? "border-cyber-yellow bg-[#ffb700]/10 shadow-[0_0_10px_rgba(255,183,0,0.15)] text-white" : "border-cyber-yellow/15 bg-transparent hover:border-cyber-yellow/45 text-gray-400 hover:text-white" }`}
                         >
                           <Compass className="w-4 h-4 text-cyber-yellow shrink-0" />
-                          <div className="flex flex-col min-w-0">
+                          <motion.div 
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.18, delay: 0.25 }}
+                            className="flex flex-col min-w-0"
+                          >
                             <span className="font-mono text-xs font-bold truncate">ОБЗОР ВСЕХ ИГР</span>
                             <span className="text-[9px] text-gray-500 font-mono mt-0.5 uppercase tracking-wider">Все модули</span>
-                          </div>
-                        </div>
+                          </motion.div>
+                        </motion.div>
 
                         {games.length === 0 ? (
                           <div className="h-32 border border-dashed border-cyber-yellow/10 rounded flex flex-col items-center justify-center text-center p-4">
@@ -3328,7 +3357,7 @@ export default function App() {
                           <span className="text-white font-bold">{formatPlayTime(games.reduce((acc, g) => acc + (typeof g.playTime === 'number' ? g.playTime : 0), 0))}</span>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   )
                 ) : (
                   // File Tree View
