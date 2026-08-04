@@ -3285,8 +3285,9 @@ export default function App() {
                         </div>
                       </motion.div>
                     )}
-                  </div>
-                ) : (
+                  </AnimatePresence>
+                </div>
+              ) : (
                   // File Tree View
                   sidebarCollapsed ? (
                     <div className="flex-1 flex flex-col items-center gap-4 overflow-hidden mt-4 w-full">
