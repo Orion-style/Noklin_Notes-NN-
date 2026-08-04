@@ -3198,13 +3198,13 @@ export default function App() {
                     </div>
 
                     {/* User Profile & Hours Block (Moved to Bottom) */}
-                    <AnimatePresence>
+                    <AnimatePresence initial={false}>
                       {!sidebarCollapsed && (
                         <motion.div 
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
-                          transition={{ duration: 0.15 }}
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                           className="bg-[#ffcc00]/5 border border-cyber-yellow/20 rounded-xl p-3 mt-3 font-mono text-[10px] space-y-2.5 shrink-0 overflow-hidden"
                         >
                         {/* Profile Info: Avatar + Nickname & Birthday (2 lines) */}
