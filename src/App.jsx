@@ -3506,38 +3506,9 @@ export default function App() {
             <main className="flex-1 flex flex-col h-full relative z-0 min-w-0 overflow-hidden">
               {/* Workspace Top Header Bar */}
               <header data-tauri-drag-region className={`h-16 border-b bg-cyber-sidebar/65 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10 relative transition-colors ${ activeMode === "game_manager" ? "border-cyber-yellow/20" : activeMode === "stats" ? "border-cyber-purple/20" : "border-cyber-purple/20" }`}>
-                {activeMode === "game_manager" ? (
-                  <div className="flex items-center gap-2 font-mono text-xs md:text-sm text-cyber-yellow truncate min-w-0">
-                    <span className="text-cyber-yellow/60 whitespace-nowrap">режим_системы:</span>
-                    <span className="text-white font-bold tracking-widest uppercase whitespace-nowrap">ИГРОВОЙ МЕНЕДЖЕР</span>
-                  </div>
-                ) : activeMode === "stats" ? (
-                  <div className="flex items-center gap-2 font-mono text-xs md:text-sm text-cyber-purple truncate min-w-0">
-                    <span className="text-cyber-purple/60 whitespace-nowrap">режим_системы:</span>
-                    <span className="text-white font-bold tracking-widest uppercase whitespace-nowrap">ЦЕНТР СТАТИСТИКИ</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 font-mono text-xs md:text-sm truncate min-w-0">
-                    <span className="text-cyber-purple whitespace-nowrap">рабочая_область:</span>
-                    <span className="text-gray-400 whitespace-nowrap">/локальное-хранилище</span>
-                    {selectedFile && (
-                      <>
-                        <span className="text-cyber-purple">/</span>
-                        <span className="text-cyber-green font-bold truncate max-w-[150px] md:max-w-[280px] xl:max-w-[400px]">{selectedFile}</span>
-                      </>
-                    )}
-                  </div>
-                )}
+                <div className="min-w-0 flex-1" />
                 
                 <div className="flex items-center gap-2 md:gap-3 shrink-0">
-                  {/* System Mode Switcher */}
-                  <button
-                    onClick={() => setMenuOpen(true)}
-                    className={`h-8 px-3 rounded-lg font-mono text-xs flex items-center gap-1.5 transition-colors border whitespace-nowrap shrink-0 ${ activeMode === "game_manager" ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10 hover:border-cyber-yellow/50" : activeMode === "stats" ? "text-cyber-purple bg-cyber-purple/5 border-cyber-purple/20 hover:bg-cyber-purple/10 hover:border-cyber-purple/50" : "text-cyber-green bg-cyber-green/5 border-cyber-green/20 hover:bg-cyber-green/10 hover:border-cyber-green/50" }`}
-                  >
-                    {activeMode === "game_manager" ? <Gamepad2 className="w-3.5 h-3.5" /> : activeMode === "stats" ? <BarChart2 className="w-3.5 h-3.5 text-cyber-purple" /> : <ObsidianIcon className="w-3.5 h-3.5 text-cyber-green" />}
-                    <span>РЕЖИМ: {activeMode === "game_manager" ? "ИГРЫ" : activeMode === "stats" ? "СТАТИСТИКА" : "БЛОКНОТ"}</span>
-                  </button>
 
                   <button
                     onClick={() => setShowSettingsModal(true)}
