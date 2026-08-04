@@ -3049,11 +3049,16 @@ export default function App() {
             style={{ zoom: `${zoomPercent}%` }}
           >
             {/* Sidebar */}
-            <aside 
+            <motion.aside 
               onClick={handleSidebarBackgroundClick}
-              className={`bg-cyber-sidebar/85 backdrop-blur-lg border-r border-cyber-purple/20 flex flex-col justify-between p-4 md:p-5 z-10 relative shadow-[5px_0_25px_rgba(0,0,0,0.5)] shrink-0 transition-[width,padding] duration-300 ease-in-out ${sidebarCollapsed ? "w-16 md:w-20 items-center px-2 py-4" : "w-72"}`}
+              initial={false}
+              animate={{
+                width: sidebarCollapsed ? 64 : 288,
+              }}
+              transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1.0] }}
+              className={`bg-cyber-sidebar/85 backdrop-blur-lg border-r border-cyber-purple/20 flex flex-col justify-between p-4 md:p-5 z-10 relative shadow-[5px_0_25px_rgba(0,0,0,0.5)] shrink-0 select-none overflow-hidden ${sidebarCollapsed ? "items-center px-2 py-4" : ""}`}
             >
-              <div className="flex flex-col h-full w-full pt-1">
+              <div className="flex flex-col h-full w-full pt-1 overflow-hidden">
                 {/* App Header */}
                 <div 
                   onMouseEnter={(e) => showGlobalTooltip(e, activeMode === "game_manager" ? "CYBER-GAMES TERMINAL" : activeMode === "stats" ? "CYBER-STATS TERMINAL" : "CYBER-NOTES TERMINAL", activeMode === "game_manager" ? "yellow" : activeMode === "stats" ? "purple" : "green")}
@@ -3069,36 +3074,52 @@ export default function App() {
                       <Cpu className="w-6 h-6 text-cyber-green animate-pulse" />
                     )}
                   </div>
-                  {!sidebarCollapsed && (
-                    <div className="overflow-hidden whitespace-nowrap transition-all duration-300">
-                      <h1 className={`text-xl font-black tracking-widest font-mono transition-all ${activeMode === "game_manager" ? "neon-text-yellow" : activeMode === "stats" ? "neon-text-purple" : "neon-text-green"}`}>
-                        {activeMode === "game_manager" ? "CYBER-GAMES" : activeMode === "stats" ? "CYBER-STATS" : "CYBER-NOTES"}
-                      </h1>
-                      <p className="text-[10px] text-cyber-purple uppercase tracking-widest font-mono">
-                        {activeMode === "game_manager" ? "Launcher Module" : activeMode === "stats" ? "Analytics Hub" : "Stage 1 Terminal"}
-                      </p>
-                    </div>
-                  )}
+                  <AnimatePresence>
+                    {!sidebarCollapsed && (
+                      <motion.div 
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.2, delay: 0.15 }}
+                        className="overflow-hidden whitespace-nowrap"
+                      >
+                        <h1 className={`text-xl font-black tracking-widest font-mono transition-all ${activeMode === "game_manager" ? "neon-text-yellow" : activeMode === "stats" ? "neon-text-purple" : "neon-text-green"}`}>
+                          {activeMode === "game_manager" ? "CYBER-GAMES" : activeMode === "stats" ? "CYBER-STATS" : "CYBER-NOTES"}
+                        </h1>
+                        <p className="text-[10px] text-cyber-purple uppercase tracking-widest font-mono">
+                          {activeMode === "game_manager" ? "Launcher Module" : activeMode === "stats" ? "Analytics Hub" : "Stage 1 Terminal"}
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
-                {/* Sidebar Navigation Tabs */}
-                {!sidebarCollapsed ? (
-                  <div className="flex items-center gap-1 bg-[#06040c]/70 p-1 rounded-lg border border-cyber-purple/20 mb-4 shrink-0 font-mono text-[10px] select-none shadow-inner">
-                    <button
-                      type="button"
-                      onClick={() => setActiveMode("game_manager")}
-                      onMouseEnter={(e) => showGlobalTooltip(e, "Игровой менеджер", "yellow")}
-                      onMouseLeave={hideGlobalTooltip}
-                      className={`flex-1 h-8 px-2 rounded-md flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap border ${
-                        activeMode === "game_manager"
-                          ? "bg-cyber-yellow/20 text-cyber-yellow border-cyber-yellow/40 shadow-[0_0_8px_rgba(255,183,0,0.15)] font-bold"
-                          : "text-gray-400 hover:text-white border-transparent hover:bg-white/5"
-                      }`}
+                  {/* Sidebar Navigation Tabs */}
+                  {!sidebarCollapsed ? (
+                    <motion.div 
+                      key="expanded-body"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2, delay: 0.15 }}
+                      className="flex-1 flex flex-col min-h-0 w-full overflow-hidden"
                     >
-                      <Gamepad2 className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate whitespace-nowrap">Игры</span>
-                    </button>
-                  </div>
+                      <div className="flex items-center gap-1 bg-[#06040c]/70 p-1 rounded-lg border border-cyber-purple/20 mb-4 shrink-0 font-mono text-[10px] select-none shadow-inner">
+                        <button
+                          type="button"
+                          onClick={() => setActiveMode("game_manager")}
+                          onMouseEnter={(e) => showGlobalTooltip(e, "Игровой менеджер", "yellow")}
+                          onMouseLeave={hideGlobalTooltip}
+                          className={`flex-1 h-8 px-2 rounded-md flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap border ${
+                            activeMode === "game_manager"
+                              ? "bg-cyber-yellow/20 text-cyber-yellow border-cyber-yellow/40 shadow-[0_0_8px_rgba(255,183,0,0.15)] font-bold"
+                              : "text-gray-400 hover:text-white border-transparent hover:bg-white/5"
+                          }`}
+                        >
+                          <Gamepad2 className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate whitespace-nowrap">Игры</span>
+                        </button>
+                      </div>
                 ) : (
                   <div className="flex flex-col items-center gap-1.5 mb-3 shrink-0 select-none">
                     <button
@@ -3491,7 +3512,7 @@ export default function App() {
                   )
                 )}
               </div>
-            </aside>
+            </motion.aside>
 
             {/* Main Workspace Preview Pane */}
             <main className="flex-1 flex flex-col h-full relative z-0 min-w-0 overflow-hidden">
