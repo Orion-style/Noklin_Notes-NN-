@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
-import { X, RefreshCw, BarChart2, Grid, Plus, Folder, FolderOpen, FileText, Cpu, Terminal, Layers, Link, ShieldAlert, Check, HelpCircle, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Moon, Sun, LogOut, Bold, Italic, Highlighter, Heading1, Heading2, CheckSquare, Code, FilePlus, FolderPlus, Compass, Database, Copy, CornerUpRight, Search, Bookmark, Clipboard, Eye, Edit2, Trash2, Gamepad2, Swords, Play, Sparkles, Clock, Gamepad, Settings, Mail, Bell, Activity, HardDrive, Crop, Square, Calendar, Zap, Flame, Shuffle, Pause, RotateCcw } from "lucide-react";
+import { X, RefreshCw, BarChart2, Grid, Plus, Folder, FolderOpen, FileText, Cpu, Terminal, Layers, Link, ShieldAlert, Check, HelpCircle, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Moon, Sun, LogOut, Bold, Italic, Highlighter, Heading1, Heading2, CheckSquare, Code, FilePlus, FolderPlus, Compass, Database, Copy, CornerUpRight, Search, Bookmark, Clipboard, Eye, Edit2, Trash2, Gamepad2, Swords, Play, Sparkles, Clock, Gamepad, Settings, Mail, Bell, Activity, HardDrive, Crop, Square, Calendar, Zap, Flame, Shuffle, Pause, RotateCcw, User, Camera } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import InteractiveBackground from "./components/InteractiveBackground";
 import OnboardingWidget from "./components/OnboardingWidget";
@@ -955,6 +955,59 @@ export default function App() {
     }
   }, [selectedGameActions]);
 
+  // User Profile state
+  const [userProfile, setUserProfile] = useState(() => {
+    const saved = localStorage.getItem("cyber_user_profile");
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return {
+      nickname: "Пользователь",
+      birthDate: "",
+      avatar: null
+    };
+  });
+
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [tempProfileName, setTempProfileName] = useState("");
+  const [tempProfileBirthDate, setTempProfileBirthDate] = useState("");
+
+  const [cropTarget, setCropTarget] = useState("gameIcon"); // "gameIcon" | "userAvatar"
+
+  React.useEffect(() => {
+    localStorage.setItem("cyber_user_profile", JSON.stringify(userProfile));
+  }, [userProfile]);
+
+  const getDaysUntilBirthday = (birthDateStr) => {
+    if (!birthDateStr) return null;
+    const parts = birthDateStr.split("-");
+    if (parts.length !== 3) return null;
+    const birthMonth = parseInt(parts[1], 10) - 1;
+    const birthDay = parseInt(parts[2], 10);
+    if (isNaN(birthMonth) || isNaN(birthDay)) return null;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let nextBday = new Date(today.getFullYear(), birthMonth, birthDay);
+    if (nextBday < today) {
+      nextBday.setFullYear(today.getFullYear() + 1);
+    }
+
+    const diffTime = nextBday.getTime() - today.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const formatBirthDate = (birthDateStr) => {
+    if (!birthDateStr) return "";
+    const parts = birthDateStr.split("-");
+    if (parts.length === 3) {
+      return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    }
+    return birthDateStr;
+  };
+
   // Icon cropping states
   const [cropSrc, setCropSrc] = useState(null);
   const [imageAspect, setImageAspect] = useState(1);
@@ -1037,7 +1090,11 @@ export default function App() {
       ctx.drawImage(img, -renderW / 2, -renderH / 2, renderW, renderH);
 
       const croppedBase64 = canvas.toDataURL("image/png");
-      setNewGameIcon(croppedBase64);
+      if (cropTarget === "userAvatar") {
+        setUserProfile(prev => ({ ...prev, avatar: croppedBase64 }));
+      } else {
+        setNewGameIcon(croppedBase64);
+      }
       setCropSrc(null);
     };
   };
@@ -3128,27 +3185,6 @@ export default function App() {
                         </button>
                       </div>
 
-                      {/* Telemetry data */}
-                      <div className="bg-[#ffcc00]/5 border border-cyber-yellow/20 rounded p-3 mb-4 font-mono text-[10px] space-y-2 shrink-0">
-                        <div className="flex justify-between text-gray-400">
-                          <span>МЕТРИКИ СИСТЕМЫ:</span>
-                          <span className="text-cyber-yellow font-bold font-mono">АКТИВНО</span>
-                        </div>
-                        <div className="h-[1px] bg-cyber-yellow/10 w-full" />
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">ВСЕГО ЧАСОВ:</span>
-                          <span className="text-white font-bold">{formatPlayTime(games.reduce((acc, g) => acc + (typeof g.playTime === 'number' ? g.playTime : 0), 0))}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">СТАТУС СЕКТОРА:</span>
-                          <span className="text-cyber-green font-bold">ТРЕКИНГ АКТИВЕН</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">АКТИВНЫЕ ДНИ:</span>
-                          <span className="text-white font-bold">{activeDaysCount} дн.</span>
-                        </div>
-                      </div>
-
                       {/* Games list in sidebar */}
                       <div className="flex-1 overflow-y-auto space-y-2 pr-1 pb-2">
                         {/* Overview selector */}
@@ -3191,6 +3227,86 @@ export default function App() {
                             </div>
                           ))
                         )}
+                      </div>
+
+                      {/* User Profile & Hours Block (Moved to Bottom) */}
+                      <div className="bg-[#ffcc00]/5 border border-cyber-yellow/20 rounded-xl p-3 mt-3 font-mono text-[10px] space-y-2.5 shrink-0">
+                        {/* Profile Info: Avatar + Nickname & Birthday (2 lines) */}
+                        <div className="flex items-center gap-2.5">
+                          {/* Square photo with rounded corners spanning 2 lines height */}
+                          <div className="relative group w-10 h-10 rounded-lg bg-black/50 border border-cyber-yellow/30 overflow-hidden shrink-0 flex items-center justify-center shadow-inner">
+                            {userProfile.avatar ? (
+                              <img src={userProfile.avatar} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                              <User className="w-5 h-5 text-cyber-yellow/70" />
+                            )}
+                            {/* Hover Edit Overlay: edit icon centered */}
+                            <label
+                              className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer text-cyber-yellow"
+                              title="Изменить фото профиля"
+                            >
+                              <Camera className="w-4 h-4" />
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                      setCropTarget("userAvatar");
+                                      setCropSrc(reader.result);
+                                    };
+                                    reader.readAsDataURL(file);
+                                    e.target.value = "";
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+
+                          {/* Details: Row 1 Nickname & Edit, Row 2 Birthday & Countdown */}
+                          <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-bold text-white text-xs truncate leading-tight" title={userProfile.nickname || "Пользователь"}>
+                                {userProfile.nickname || "Пользователь"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTempProfileName(userProfile.nickname || "");
+                                  setTempProfileBirthDate(userProfile.birthDate || "");
+                                  setEditProfileOpen(true);
+                                }}
+                                className="p-0.5 text-gray-400 hover:text-cyber-yellow transition-colors shrink-0"
+                                title="Редактировать профиль"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+
+                            <div className="text-gray-400 text-[9px] truncate leading-tight">
+                              {userProfile.birthDate ? (
+                                (() => {
+                                  const formatted = formatBirthDate(userProfile.birthDate);
+                                  const days = getDaysUntilBirthday(userProfile.birthDate);
+                                  return `${formatted}${days !== null ? ` (до д/р ${days} дн.)` : ''}`;
+                                })()
+                              ) : (
+                                <span className="text-gray-500 italic">Д/Р не указан</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="h-[1px] bg-cyber-yellow/15 w-full" />
+
+                        {/* Row 3: Total Hours */}
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-500">ВСЕГО ЧАСОВ:</span>
+                          <span className="text-white font-bold">{formatPlayTime(games.reduce((acc, g) => acc + (typeof g.playTime === 'number' ? g.playTime : 0), 0))}</span>
+                        </div>
                       </div>
                     </div>
                   )
@@ -5376,6 +5492,188 @@ export default function App() {
                       </div>
                     </form>
                   )}
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <AnimatePresence>
+            {editProfileOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/85 backdrop-blur-md z-[99998] flex items-center justify-center p-6 select-none font-mono"
+              >
+                <motion.div
+                  initial={{ scale: 0.95, y: 15 }}
+                  animate={{ scale: 1, y: 0 }}
+                  exit={{ scale: 0.95, y: 15 }}
+                  className="w-full max-w-md bg-cyber-sidebar border border-cyber-yellow/45 rounded-2xl p-6 shadow-[0_15px_40px_rgba(0,0,0,0.7)] relative text-left"
+                >
+                  <div className="flex items-center justify-between border-b border-cyber-yellow/20 pb-3 mb-4">
+                    <span className="text-xs font-black text-cyber-yellow tracking-widest flex items-center gap-1.5 uppercase">
+                      <User className="w-4.5 h-4.5" />
+                      РЕДАКТИРОВАНИЕ ПРОФИЛЯ
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setEditProfileOpen(false)}
+                      className="text-gray-500 hover:text-white text-xs"
+                    >
+                      [ ESC ]
+                    </button>
+                  </div>
+
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      setUserProfile((prev) => ({
+                        ...prev,
+                        nickname: tempProfileName.trim() || "Пользователь",
+                        birthDate: tempProfileBirthDate
+                      }));
+                      setEditProfileOpen(false);
+                    }}
+                    className="space-y-4 text-xs"
+                  >
+                    <div className="space-y-1.5">
+                      <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">
+                        НИКНЕЙМ:
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={tempProfileName}
+                        onChange={(e) => setTempProfileName(e.target.value)}
+                        placeholder="Введите никнейм"
+                        className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">
+                        ДАТА РОЖДЕНИЯ:
+                      </label>
+                      <input
+                        type="date"
+                        value={tempProfileBirthDate}
+                        onChange={(e) => setTempProfileBirthDate(e.target.value)}
+                        className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="pt-3 flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setEditProfileOpen(false)}
+                        className="flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase transition-all text-xs"
+                      >
+                        ОТМЕНА
+                      </button>
+                      <button
+                        type="submit"
+                        className="flex-1 bg-cyber-yellow border border-cyber-yellow text-[#06040c] hover:bg-[#ffc800] rounded-xl py-2.5 text-center font-bold uppercase transition-all text-xs shadow-[0_0_12px_rgba(255,183,0,0.2)]"
+                      >
+                        СОХРАНИТЬ
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Avatar Crop Modal */}
+          <AnimatePresence>
+            {cropSrc && cropTarget === "userAvatar" && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/85 backdrop-blur-md z-[99999] flex items-center justify-center p-6 select-none font-mono"
+              >
+                <motion.div
+                  initial={{ scale: 0.95, y: 15 }}
+                  animate={{ scale: 1, y: 0 }}
+                  exit={{ scale: 0.95, y: 15 }}
+                  className="w-full max-w-md bg-cyber-sidebar border border-cyber-yellow/45 rounded-2xl p-6 shadow-[0_15px_40px_rgba(0,0,0,0.7)] relative text-left"
+                >
+                  <div className="space-y-5 text-center flex flex-col items-center py-2">
+                    <div className="border-b border-cyber-yellow/20 pb-3 mb-2 w-full flex items-center justify-between">
+                      <span className="text-xs font-black text-cyber-yellow tracking-widest flex items-center gap-1.5 uppercase">
+                        <Crop className="w-4.5 h-4.5 animate-pulse" />
+                        ОБРЕЗКА ФОТО ПРОФИЛЯ
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCropSrc(null)}
+                        className="text-gray-500 hover:text-white text-xs"
+                      >
+                        [ ESC ]
+                      </button>
+                    </div>
+
+                    <div
+                      className="relative w-40 h-40 overflow-hidden border border-cyber-yellow/45 rounded-2xl bg-black/40 select-none cursor-move shadow-[0_0_20px_rgba(255,183,0,0.15)] flex items-center justify-center"
+                      onMouseDown={handleMouseDown}
+                      onMouseMove={handleMouseMove}
+                      onMouseUp={handleMouseUp}
+                      onMouseLeave={handleMouseUp}
+                      onTouchStart={handleTouchStart}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleMouseUp}
+                    >
+                      <img
+                        src={cropSrc}
+                        alt="Crop Preview"
+                        draggable={false}
+                        style={{
+                          position: "absolute",
+                          left: "50%",
+                          top: "50%",
+                          width: imageAspect > 1 ? "auto" : "100%",
+                          height: imageAspect > 1 ? "100%" : "auto",
+                          maxWidth: "none",
+                          transform: `translate(-50%, -50%) translate(${dragPos.x}px, ${dragPos.y}px) scale(${zoom})`,
+                          pointerEvents: "none"
+                        }}
+                      />
+                      <div className="absolute inset-2 border-2 border-dashed border-cyber-yellow rounded-xl pointer-events-none opacity-50 shadow-[0_0_0_9999px_rgba(6,4,12,0.6)]" />
+                    </div>
+
+                    <div className="w-full space-y-1.5 px-4">
+                      <div className="flex justify-between text-[10px] text-gray-500 font-mono">
+                        <span>МАСШТАБ:</span>
+                        <span>{Math.round(zoom * 100)}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="1"
+                        max="4"
+                        step="0.05"
+                        value={zoom}
+                        onChange={(e) => setZoom(parseFloat(e.target.value))}
+                        className="w-full h-1 bg-[#050308] border border-cyber-yellow/20 rounded-lg appearance-none accent-cyber-yellow"
+                      />
+                    </div>
+
+                    <div className="pt-2 flex gap-3 w-full">
+                      <button
+                        type="button"
+                        onClick={() => setCropSrc(null)}
+                        className="flex-1 border border-white/10 hover:bg-white/5 rounded-xl py-2.5 text-center text-gray-400 font-bold uppercase transition-all text-xs"
+                      >
+                        ОТМЕНА
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCropSave}
+                        className="flex-1 bg-cyber-yellow border border-cyber-yellow text-[#06040c] hover:bg-[#ffc800] rounded-xl py-2.5 text-center font-bold uppercase transition-all text-xs shadow-[0_0_12px_rgba(255,183,0,0.2)]"
+                      >
+                        ПРИМЕНИТЬ
+                      </button>
+                    </div>
+                  </div>
                 </motion.div>
               </motion.div>
             )}
