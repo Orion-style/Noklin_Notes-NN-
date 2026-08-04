@@ -2857,6 +2857,13 @@ export default function App() {
     setTooltip(prev => ({ ...prev, visible: false }));
   };
 
+  const handleSidebarBackgroundClick = (e) => {
+    if (e.target.closest('button, input, textarea, form, a, [role="button"], .cursor-pointer')) {
+      return;
+    }
+    setSidebarCollapsed(prev => !prev);
+  };
+
   const handleCloseOnboarding = () => {
     localStorage.setItem("cyber_onboarding_done", "true");
     setShowOnboarding(false);
@@ -3042,15 +3049,10 @@ export default function App() {
             style={{ zoom: `${zoomPercent}%` }}
           >
             {/* Sidebar */}
-            <aside className={`bg-cyber-sidebar/85 backdrop-blur-lg border-r border-cyber-purple/20 flex flex-col justify-between p-4 md:p-5 z-10 relative shadow-[5px_0_25px_rgba(0,0,0,0.5)] shrink-0 transition-[width,padding] duration-300 ease-in-out ${sidebarCollapsed ? "w-16 md:w-20 items-center px-2 py-4" : "w-72"}`}>
-              {/* Toggle Button */}
-              <button
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="absolute top-6 -right-3 w-6 h-6 rounded-full border border-cyber-purple/30 bg-cyber-sidebar flex items-center justify-center hover:bg-cyber-purple/20 hover:border-cyber-purple/65 transition-all text-cyber-purple hover:text-white z-50 shadow-[0_0_8px_rgba(0,0,0,0.5)]"
-              >
-                {sidebarCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
-              </button>
-
+            <aside 
+              onClick={handleSidebarBackgroundClick}
+              className={`bg-cyber-sidebar/85 backdrop-blur-lg border-r border-cyber-purple/20 flex flex-col justify-between p-4 md:p-5 z-10 relative shadow-[5px_0_25px_rgba(0,0,0,0.5)] shrink-0 transition-[width,padding] duration-300 ease-in-out ${sidebarCollapsed ? "w-16 md:w-20 items-center px-2 py-4" : "w-72"}`}
+            >
               <div className="flex flex-col h-full w-full pt-1">
                 {/* App Header */}
                 <div 
