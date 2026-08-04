@@ -3099,108 +3099,114 @@ export default function App() {
                 {/* Sidebar Main Content */}
                 {activeMode === "game_manager" ? (
                   // Game Manager Mode Sidebar
-                  sidebarCollapsed ? (
-                    <div className="flex-1 flex flex-col items-center gap-4 mt-4 w-full select-none">
-                      <div className="flex-1 w-full overflow-y-auto space-y-3 flex flex-col items-center pl-2 pr-1 pb-2">
-                        {/* Overview switcher button */}
-                        <button
-                          onClick={() => setSelectedGameId(null)}
-                          onMouseEnter={(e) => showGlobalTooltip(e, "ОБЗОР (ВСЕ ИГРЫ)", "yellow")}
-                          onMouseLeave={hideGlobalTooltip}
-                          className={`w-8 h-8 rounded border flex items-center justify-center transition-all duration-300 shrink-0 ${ selectedGameId === null ? "border-cyber-yellow bg-cyber-yellow/15 shadow-[0_0_8px_rgba(255,183,0,0.3)] text-cyber-yellow" : "border-cyber-yellow/20 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 text-cyber-yellow" }`}
-                        >
-                          <Compass className="w-4 h-4" />
-                        </button>
-                        
-                        <div className="w-6 h-[1px] bg-cyber-yellow/20 my-1 shrink-0" />
+                  <div className="flex-1 flex flex-col overflow-hidden select-none">
+                    {/* Games list in sidebar */}
+                    <div className="flex-1 overflow-y-auto space-y-2 pr-1 pb-2 pt-2">
+                      {/* Overview selector */}
+                      <button
+                        onClick={() => setSelectedGameId(null)}
+                        onMouseEnter={(e) => sidebarCollapsed && showGlobalTooltip(e, "ОБЗОР (ВСЕ ИГРЫ)", "yellow")}
+                        onMouseLeave={hideGlobalTooltip}
+                        className={`w-full h-10 border rounded px-2 flex items-center gap-2.5 transition-colors group overflow-hidden shrink-0 ${ selectedGameId === null ? "border-cyber-yellow bg-[#ffb700]/10 shadow-[0_0_10px_rgba(255,183,0,0.15)] text-white" : "border-cyber-yellow/15 bg-transparent hover:border-cyber-yellow/45 text-gray-400 hover:text-white" }`}
+                      >
+                        <Compass className="w-5 h-5 text-cyber-yellow shrink-0" />
+                        <AnimatePresence>
+                          {!sidebarCollapsed && (
+                            <motion.div 
+                              initial={{ opacity: 0, width: 0 }}
+                              animate={{ opacity: 1, width: "auto" }}
+                              exit={{ opacity: 0, width: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="flex flex-col min-w-0 overflow-hidden text-left whitespace-nowrap"
+                            >
+                              <span className="font-mono text-xs font-bold truncate">ОБЗОР ВСЕХ ИГР</span>
+                              <span className="text-[9px] text-gray-500 font-mono mt-0.5 uppercase tracking-wider">Все модули</span>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </button>
 
-                        {games.map(game => (
-                          <button
-                            key={game.id}
-                            onClick={() => setSelectedGameId(selectedGameId === game.id ? null : game.id)}
-                            onMouseEnter={(e) => showGlobalTooltip(e, `ОТКРЫТЬ: ${game.name}`, "yellow")}
-                            onMouseLeave={hideGlobalTooltip}
-                            className={`w-8 h-8 rounded border flex items-center justify-center transition-all duration-300 relative group shrink-0 overflow-hidden ${ selectedGameId === game.id ? "border-cyber-yellow bg-cyber-yellow/15 shadow-[0_0_8px_rgba(255,183,0,0.3)] text-cyber-yellow" : "border-cyber-yellow/20 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 text-cyber-yellow" }`}
-                          >
-                            {game.icon ? (
-                              <img src={game.icon} alt="" className="w-5 h-5 object-contain rounded" />
-                            ) : (
-                              <Gamepad2 className="w-4 h-4" />
-                            )}
-                          </button>
-                        ))}
-                        <button
-                          onClick={handleAddGameOpenClick}
-                          onMouseEnter={(e) => showGlobalTooltip(e, "ДОБАВИТЬ ИГРУ", "yellow")}
-                          onMouseLeave={hideGlobalTooltip}
-                          className="w-8 h-8 rounded border border-dashed border-cyber-yellow/30 hover:border-cyber-yellow text-gray-500 hover:text-cyber-yellow flex items-center justify-center transition-all shrink-0"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <motion.div 
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2, delay: 0.08 }}
-                      className="flex-1 flex flex-col overflow-hidden select-none"
-                    >
-                      {/* Games list in sidebar */}
-                      <div className="flex-1 overflow-y-auto space-y-2 pr-1 pb-2">
-                        {/* Overview selector */}
-                        <div
-                          onClick={() => setSelectedGameId(null)}
-                          className={`border rounded p-2 flex items-center gap-2.5 transition-colors group overflow-hidden ${ selectedGameId === null ? "border-cyber-yellow bg-[#ffb700]/10 shadow-[0_0_10px_rgba(255,183,0,0.15)] text-white" : "border-cyber-yellow/15 bg-transparent hover:border-cyber-yellow/45 text-gray-400 hover:text-white" }`}
-                        >
-                          <Compass className="w-4 h-4 text-cyber-yellow shrink-0" />
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-mono text-xs font-bold truncate">ОБЗОР ВСЕХ ИГР</span>
-                            <span className="text-[9px] text-gray-500 font-mono mt-0.5 uppercase tracking-wider">Все модули</span>
-                          </div>
-                        </div>
+                      <div className="w-full h-[1px] bg-cyber-yellow/20 my-1 shrink-0" />
 
-                        {games.length === 0 ? (
+                      {games.length === 0 ? (
+                        !sidebarCollapsed && (
                           <div className="h-32 border border-dashed border-cyber-yellow/10 rounded flex flex-col items-center justify-center text-center p-4">
                             <Gamepad className="w-8 h-8 text-gray-600 mb-2" />
                             <p className="text-xs text-gray-500 font-mono">Нет установленных игр.</p>
                           </div>
-                        ) : (
-                          games.map(game => (
-                            <div 
-                              key={game.id}
-                              onClick={() => setSelectedGameId(selectedGameId === game.id ? null : game.id)}
-                              onContextMenu={(e) => handleGameContextMenu(e, game)}
-                              className={`sidebar-game-item border rounded p-2 flex items-center justify-between transition-colors group cursor-pointer ${ selectedGameId === game.id ? "is-selected border-cyber-yellow bg-[#ffb700]/10 shadow-[0_0_10px_rgba(255,183,0,0.15)]" : "border-cyber-yellow/15 bg-[#ffb700]/5 hover:border-cyber-yellow/45" }`}
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                {game.icon ? (
-                                  <img src={game.icon} alt="" className="w-5 h-5 object-contain rounded shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.3)]" />
-                                ) : (
-                                  <Gamepad className="w-5 h-5 text-cyber-yellow/60 shrink-0" />
+                        )
+                      ) : (
+                        games.map(game => (
+                          <div 
+                            key={game.id}
+                            onClick={() => setSelectedGameId(selectedGameId === game.id ? null : game.id)}
+                            onContextMenu={(e) => handleGameContextMenu(e, game)}
+                            onMouseEnter={(e) => sidebarCollapsed && showGlobalTooltip(e, `ОТКРЫТЬ: ${game.name}`, "yellow")}
+                            onMouseLeave={hideGlobalTooltip}
+                            className={`sidebar-game-item w-full h-10 border rounded px-2 flex items-center justify-between transition-colors group cursor-pointer shrink-0 overflow-hidden ${ selectedGameId === game.id ? "is-selected border-cyber-yellow bg-[#ffb700]/10 shadow-[0_0_10px_rgba(255,183,0,0.15)]" : "border-cyber-yellow/15 bg-[#ffb700]/5 hover:border-cyber-yellow/45" }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
+                              {game.icon ? (
+                                <img src={game.icon} alt="" className="w-5 h-5 object-contain rounded shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.3)]" />
+                              ) : (
+                                <Gamepad className="w-5 h-5 text-cyber-yellow/60 shrink-0" />
+                              )}
+                              <AnimatePresence>
+                                {!sidebarCollapsed && (
+                                  <motion.div 
+                                    initial={{ opacity: 0, width: 0 }}
+                                    animate={{ opacity: 1, width: "auto" }}
+                                    exit={{ opacity: 0, width: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="flex flex-col min-w-0 overflow-hidden text-left whitespace-nowrap"
+                                  >
+                                    <span className="sidebar-game-name font-mono text-xs font-bold text-gray-200 truncate">{game.name}</span>
+                                    <span className="sidebar-game-category text-[9px] text-gray-500 font-mono mt-0.5 uppercase tracking-wider">{game.category}</span>
+                                  </motion.div>
                                 )}
-                                <div className="flex flex-col min-w-0">
-                                  <span className="sidebar-game-name font-mono text-xs font-bold text-gray-200 truncate">{game.name}</span>
-                                  <span className="sidebar-game-category text-[9px] text-gray-500 font-mono mt-0.5 uppercase tracking-wider">{game.category}</span>
-                                </div>
-                              </div>
-                              <ChevronRight className="sidebar-game-arrow w-4 h-4 text-cyber-yellow/40 group-hover:text-cyber-yellow group-hover:translate-x-0.5 transition-all shrink-0" />
+                              </AnimatePresence>
                             </div>
-                          ))
-                        )}
+                            {!sidebarCollapsed && (
+                              <ChevronRight className="sidebar-game-arrow w-4 h-4 text-cyber-yellow/40 group-hover:text-cyber-yellow group-hover:translate-x-0.5 transition-all shrink-0" />
+                            )}
+                          </div>
+                        ))
+                      )}
 
-                        <button
-                          onClick={handleAddGameOpenClick}
-                          className="w-full border border-dashed border-cyber-yellow/30 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 rounded p-2 flex items-center justify-center gap-2 text-xs font-mono text-gray-400 hover:text-cyber-yellow transition-all cursor-pointer mt-2"
+                      {/* Add game button */}
+                      <button
+                        onClick={handleAddGameOpenClick}
+                        onMouseEnter={(e) => sidebarCollapsed && showGlobalTooltip(e, "ДОБАВИТЬ ИГРУ", "yellow")}
+                        onMouseLeave={hideGlobalTooltip}
+                        className={`w-full h-10 border border-dashed border-cyber-yellow/30 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 rounded px-2 flex items-center ${sidebarCollapsed ? "justify-center" : "justify-center gap-2"} text-xs font-mono text-gray-400 hover:text-cyber-yellow transition-all cursor-pointer shrink-0 overflow-hidden`}
+                      >
+                        <Plus className="w-4 h-4 shrink-0" />
+                        <AnimatePresence>
+                          {!sidebarCollapsed && (
+                            <motion.span
+                              initial={{ opacity: 0, width: 0 }}
+                              animate={{ opacity: 1, width: "auto" }}
+                              exit={{ opacity: 0, width: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="whitespace-nowrap overflow-hidden"
+                            >
+                              ДОБАВИТЬ ИГРУ
+                            </motion.span>
+                          )}
+                        </AnimatePresence>
+                      </button>
+                    </div>
+
+                    {/* User Profile & Hours Block (Moved to Bottom) */}
+                    <AnimatePresence>
+                      {!sidebarCollapsed && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="bg-[#ffcc00]/5 border border-cyber-yellow/20 rounded-xl p-3 mt-3 font-mono text-[10px] space-y-2.5 shrink-0 overflow-hidden"
                         >
-                          <Plus className="w-4 h-4" />
-                          <span>ДОБАВИТЬ ИГРУ</span>
-                        </button>
-                      </div>
-
-                      {/* User Profile & Hours Block (Moved to Bottom) */}
-                      <div className="bg-[#ffcc00]/5 border border-cyber-yellow/20 rounded-xl p-3 mt-3 font-mono text-[10px] space-y-2.5 shrink-0">
                         {/* Profile Info: Avatar + Nickname & Birthday (2 lines) */}
                         <div className="flex items-center gap-2.5">
                           {/* Square photo with rounded corners spanning 2 lines height */}
@@ -3277,9 +3283,9 @@ export default function App() {
                           <span className="text-gray-500">ВСЕГО ЧАСОВ:</span>
                           <span className="text-white font-bold">{formatPlayTime(games.reduce((acc, g) => acc + (typeof g.playTime === 'number' ? g.playTime : 0), 0))}</span>
                         </div>
-                      </div>
-                    </motion.div>
-                  )
+                      </motion.div>
+                    )}
+                  </div>
                 ) : (
                   // File Tree View
                   sidebarCollapsed ? (
