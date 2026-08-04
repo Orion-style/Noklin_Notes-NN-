@@ -3051,7 +3051,7 @@ export default function App() {
                 {sidebarCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
               </button>
 
-              <div className="flex flex-col h-full w-full overflow-hidden pt-1">
+              <div className="flex flex-col h-full w-full pt-1">
                 {/* App Header */}
                 <div 
                   onMouseEnter={(e) => showGlobalTooltip(e, activeMode === "game_manager" ? "CYBER-GAMES TERMINAL" : activeMode === "stats" ? "CYBER-STATS TERMINAL" : "CYBER-NOTES TERMINAL", activeMode === "game_manager" ? "yellow" : activeMode === "stats" ? "purple" : "green")}
@@ -3119,18 +3119,7 @@ export default function App() {
                 {activeMode === "game_manager" ? (
                   // Game Manager Mode Sidebar
                   sidebarCollapsed ? (
-                    <div className="flex-1 flex flex-col items-center gap-4 overflow-hidden mt-4 w-full select-none">
-                      <div 
-                        onMouseEnter={(e) => showGlobalTooltip(e, `ИГРОВОЙ ХАБ (${games.length})`, "yellow")}
-                        onMouseLeave={hideGlobalTooltip}
-                        className="relative group flex items-center justify-center w-10 h-10 rounded border border-cyber-yellow/20 bg-cyber-yellow/5 text-cyber-yellow shrink-0"
-                      >
-                        <Gamepad2 className="w-5 h-5" />
-                        <span className="absolute bg-cyber-yellow/10 text-cyber-yellow font-bold text-[9px] -bottom-1 -right-1 px-1 rounded border border-cyber-yellow/30">
-                          {games.length}
-                        </span>
-                      </div>
-                      
+                    <div className="flex-1 flex flex-col items-center gap-4 mt-4 w-full select-none">
                       <div className="flex-1 w-full overflow-y-auto space-y-3 flex flex-col items-center pl-2 pr-1 pb-2">
                         {/* Overview switcher button */}
                         <button
