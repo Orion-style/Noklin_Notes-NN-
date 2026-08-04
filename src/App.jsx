@@ -3060,7 +3060,7 @@ export default function App() {
                 >
                   <div className={`w-10 h-10 rounded border flex items-center justify-center shrink-0 transition-all ${ activeMode === "game_manager" ? "border-cyber-yellow bg-cyber-yellow/10 shadow-[0_0_10px_rgba(255,183,0,0.3)]" : activeMode === "stats" ? "border-cyber-purple bg-cyber-purple/10 shadow-[0_0_10px_rgba(176,38,255,0.3)]" : "border-cyber-green bg-cyber-green/10 shadow-[0_0_10px_rgba(0,255,102,0.3)]" }`}>
                     {activeMode === "game_manager" ? (
-                      <Gamepad2 className="w-6 h-6 text-cyber-yellow animate-pulse" />
+                      <Layers className="w-6 h-6 text-cyber-yellow animate-pulse" />
                     ) : activeMode === "stats" ? (
                       <BarChart2 className="w-6 h-6 text-cyber-purple animate-pulse" />
                     ) : (
