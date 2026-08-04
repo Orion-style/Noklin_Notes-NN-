@@ -3056,7 +3056,7 @@ export default function App() {
                 width: sidebarCollapsed ? 64 : 288,
               }}
               transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-              className={`bg-cyber-sidebar/85 backdrop-blur-lg border-r border-cyber-purple/20 flex flex-col justify-between z-10 relative shadow-[5px_0_25px_rgba(0,0,0,0.5)] shrink-0 select-none overflow-hidden ${sidebarCollapsed ? "items-center p-2 md:p-2" : "p-4 md:p-5"}`}
+              className={`bg-cyber-sidebar/85 backdrop-blur-lg border-r border-cyber-purple/20 flex flex-col justify-between z-10 relative shadow-[5px_0_25px_rgba(0,0,0,0.5)] shrink-0 select-none overflow-hidden py-4 md:py-5 ${sidebarCollapsed ? "items-center px-2 md:px-2" : "px-4 md:px-5"}`}
             >
               <div className="flex flex-col h-full w-full pt-1 overflow-hidden">
                 {/* App Header */}
