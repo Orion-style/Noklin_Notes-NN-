@@ -3063,7 +3063,7 @@ export default function App() {
                 <div 
                   onMouseEnter={(e) => showGlobalTooltip(e, activeMode === "game_manager" ? "CYBER-GAMES TERMINAL" : activeMode === "stats" ? "CYBER-STATS TERMINAL" : "CYBER-NOTES TERMINAL", activeMode === "game_manager" ? "yellow" : activeMode === "stats" ? "purple" : "green")}
                   onMouseLeave={hideGlobalTooltip}
-                  onClick={() => { if (activeMode === "game_manager") { setSelectedGameId(null); } }} className={`flex items-center gap-3 mb-8 shrink-0 cursor-pointer ${sidebarCollapsed ? "justify-center pt-1" : ""}`}
+                  onClick={() => { if (activeMode === "game_manager") { setSelectedGameId(null); } }} className="flex items-center gap-3 mb-8 shrink-0 cursor-pointer"
                 >
                   <div className={`w-10 h-10 rounded border flex items-center justify-center shrink-0 transition-all ${ activeMode === "game_manager" ? "border-cyber-yellow bg-cyber-yellow/10 shadow-[0_0_10px_rgba(255,183,0,0.3)]" : activeMode === "stats" ? "border-cyber-purple bg-cyber-purple/10 shadow-[0_0_10px_rgba(176,38,255,0.3)]" : "border-cyber-green bg-cyber-green/10 shadow-[0_0_10px_rgba(0,255,102,0.3)]" }`}>
                     {activeMode === "game_manager" ? (
