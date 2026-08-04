@@ -148,6 +148,8 @@
 [data-theme="light"] .bg-\[\#06040c\]\/70, html.light .bg-\[\#06040c\]\/70,
 [data-theme="light"] .bg-\[\#06040c\]\/80, html.light .bg-\[\#06040c\]\/80,
 [data-theme="light"] .bg-\[\#06040c\]\/90, html.light .bg-\[\#06040c\]\/90,
+[data-theme="light"] .bg-\[\#06040c\]\/95, html.light .bg-\[\#06040c\]\/95,
+[data-theme="light"] .bg-\[\#0a0614\], html.light .bg-\[\#0a0614\],
 [data-theme="light"] .bg-\[\#0a0614\]\/50, html.light .bg-\[\#0a0614\]\/50,
 [data-theme="light"] .bg-\[\#0b0816\]\/65, html.light .bg-\[\#0b0816\]\/65,
 [data-theme="light"] .bg-\[\#050308\]\/60, html.light .bg-\[\#050308\]\/60,
@@ -171,10 +173,37 @@
   box-shadow: var(--shadow-elevated);
 }
 
-[data-theme="light"] .border-white\/5, html.light .border-white\/5,
+/* Pure white launch console modal in light theme without grid/scanline overlay */
+[data-theme="light"] .launch-modal-card, html.light .launch-modal-card {
+  background-color: #FFFFFF !important;
+  background-image: none !important;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.15) !important;
+  border-color: var(--color-border-primary) !important;
+}
+
+[data-theme="light"] .launch-modal-scanlines, html.light .launch-modal-scanlines {
+  display: none !important;
+}
+
+[data-theme="light"] .border-white\/5, html.light .border-white\/5 {
+  border-color: #CBD5E1 !important;
+}
+
 [data-theme="light"] .border-white\/10, html.light .border-white\/10,
 [data-theme="light"] .border-white\/20, html.light .border-white\/20 {
   border-color: var(--color-border-secondary) !important;
+}
+
+[data-theme="light"] .bg-white\/5, html.light .bg-white\/5 {
+  background-color: #F1F5F9 !important;
+}
+
+[data-theme="light"] .text-white\/20, html.light .text-white\/20 {
+  color: #64748B !important;
+}
+
+[data-theme="light"] .text-white\/40, html.light .text-white\/40 {
+  color: #475569 !important;
 }
 
 [data-theme="light"] .text-white, html.light .text-white,

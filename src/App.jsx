@@ -495,6 +495,10 @@ export default function App() {
   const [newTaskText, setNewTaskText] = useState("");
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editingTaskText, setEditingTaskText] = useState("");
+  const [expandedTasks, setExpandedTasks] = useState({});
+
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [editingNoteTitle, setEditingNoteTitle] = useState("");
 
   const [obsidianNewsPaths, setObsidianNewsPaths] = useState(() => {
     try {
@@ -713,6 +717,85 @@ export default function App() {
       }
     } catch (err) {
       console.error("Failed to create or open daily note:", err);
+    }
+  };
+
+  const handleRenameNote = async (post, newTitle) => {
+    const trimmed = newTitle.trim();
+    if (!trimmed || trimmed === post.title) {
+      setEditingNoteId(null);
+      return;
+    }
+
+    const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
+    const isObsidianFile = post.id && post.id.endsWith(".md");
+
+    if (isTauri && isObsidianFile && currentObsidianNewsPath) {
+      try {
+        const parts = post.id.split('/');
+        parts[parts.length - 1] = `${trimmed}.md`;
+        const newRelPath = parts.join('/');
+
+        await invoke("rename_file", {
+          vaultPath: currentObsidianNewsPath,
+          oldRelPath: post.id,
+          newRelPath: newRelPath
+        });
+
+        try {
+          const content = await invoke("read_file_content", {
+            vaultPath: currentObsidianNewsPath,
+            relPath: newRelPath
+          });
+          const lines = content.split('\n');
+          if (lines.length > 0 && lines[0].startsWith('# ')) {
+            lines[0] = `# ${trimmed}`;
+            await invoke("write_file_content", {
+              vaultPath: currentObsidianNewsPath,
+              relPath: newRelPath,
+              content: lines.join('\n')
+            });
+          }
+        } catch (e) {
+          console.error("Failed to update H1 header in renamed note:", e);
+        }
+
+        await handleSyncObsidianNews();
+      } catch (err) {
+        console.error("Failed to rename note in Obsidian:", err);
+      }
+    } else {
+      setGameNews(prev => ({
+        ...prev,
+        [selectedGameId]: (prev[selectedGameId] || []).map(p =>
+          p.id === post.id ? { ...p, title: trimmed } : p
+        )
+      }));
+    }
+
+    setEditingNoteId(null);
+  };
+
+  const handleDeleteNote = async (post, e) => {
+    if (e) e.stopPropagation();
+    const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
+    const isObsidianFile = post.id && post.id.endsWith(".md");
+
+    if (isTauri && isObsidianFile && currentObsidianNewsPath) {
+      try {
+        await invoke("delete_file", {
+          vaultPath: currentObsidianNewsPath,
+          relPath: post.id
+        });
+        await handleSyncObsidianNews();
+      } catch (err) {
+        console.error("Failed to delete note from Obsidian:", err);
+      }
+    } else {
+      setGameNews(prev => ({
+        ...prev,
+        [selectedGameId]: (prev[selectedGameId] || []).filter(p => p.id !== post.id)
+      }));
     }
   };
 
@@ -3987,17 +4070,79 @@ export default function App() {
                                         </div>
                                       ) : (
                                         gamePosts.map(post => (
-                                          <button
+                                          <div
                                             key={post.id}
-                                            onClick={() => openFileInObsidian(post.id)}
-                                            className={`w-full text-left border rounded-lg p-3 transition-all flex items-center justify-between group ${ selectedNewsPost?.id === post.id ? "border-cyber-yellow bg-cyber-yellow/10 text-white" : "border-cyber-yellow/15 bg-[#ffb700]/5 hover:border-cyber-yellow/45 text-gray-300 hover:text-white" }`}
+                                            className={`w-full border rounded-lg p-2.5 transition-all flex items-center justify-between gap-2 group ${ selectedNewsPost?.id === post.id ? "border-cyber-yellow bg-cyber-yellow/10 text-white" : "border-cyber-yellow/15 bg-[#ffb700]/5 hover:border-cyber-yellow/45 text-gray-300 hover:text-white" }`}
                                           >
-                                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                              <FileText className="w-4 h-4 text-cyber-yellow/70 shrink-0" />
-                                              <span className="font-mono text-xs font-bold truncate">{post.title}</span>
-                                            </div>
-                                            <ChevronRight className="w-3.5 h-3.5 text-cyber-yellow/40 group-hover:text-cyber-yellow group-hover:translate-x-0.5 transition-all shrink-0" />
-                                          </button>
+                                            {editingNoteId === post.id ? (
+                                              <div className="flex-1 flex items-center gap-1.5 min-w-0" onClick={(e) => e.stopPropagation()}>
+                                                <input
+                                                  type="text"
+                                                  value={editingNoteTitle}
+                                                  onChange={(e) => setEditingNoteTitle(e.target.value)}
+                                                  className="flex-1 bg-black/60 border border-cyber-yellow/50 text-white rounded px-2 py-1 text-xs font-mono focus:outline-none focus:ring-0 cursor-text"
+                                                  autoFocus
+                                                  onKeyDown={(e) => {
+                                                    if (e.key === "Enter") {
+                                                      handleRenameNote(post, editingNoteTitle);
+                                                    } else if (e.key === "Escape") {
+                                                      setEditingNoteId(null);
+                                                    }
+                                                  }}
+                                                />
+                                                <button
+                                                  onClick={() => handleRenameNote(post, editingNoteTitle)}
+                                                  className="text-cyber-green hover:text-cyber-green/85 text-[10px] font-bold px-1.5 py-0.5 rounded border border-cyber-green/30 hover:bg-cyber-green/10"
+                                                >
+                                                  OK
+                                                </button>
+                                                <button
+                                                  onClick={() => setEditingNoteId(null)}
+                                                  className="text-gray-400 hover:text-white text-[10px] px-1"
+                                                >
+                                                  ✕
+                                                </button>
+                                              </div>
+                                            ) : (
+                                              <>
+                                                <div
+                                                  onClick={() => openFileInObsidian(post.id)}
+                                                  className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
+                                                >
+                                                  <FileText className="w-4 h-4 text-cyber-yellow/70 shrink-0" />
+                                                  <span className="font-mono text-xs font-bold truncate">{post.title}</span>
+                                                </div>
+
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                  <button
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setEditingNoteId(post.id);
+                                                      setEditingNoteTitle(post.title);
+                                                    }}
+                                                    className="text-cyber-yellow/75 hover:text-cyber-yellow p-1 rounded hover:bg-cyber-yellow/10 transition-colors"
+                                                    title="Переименовать заметку"
+                                                  >
+                                                    <Edit2 className="w-3.5 h-3.5" />
+                                                  </button>
+                                                  <button
+                                                    onClick={(e) => handleDeleteNote(post, e)}
+                                                    className="text-red-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 transition-colors"
+                                                    title="Удалить заметку"
+                                                  >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                  </button>
+                                                  <button
+                                                    onClick={() => openFileInObsidian(post.id)}
+                                                    className="text-cyber-yellow/40 group-hover:text-cyber-yellow p-1 hover:translate-x-0.5 transition-all"
+                                                    title="Открыть в Obsidian"
+                                                  >
+                                                    <ChevronRight className="w-3.5 h-3.5" />
+                                                  </button>
+                                                </div>
+                                              </>
+                                            )}
+                                          </div>
                                         ))
                                       )}
                                     </div>
@@ -4050,21 +4195,66 @@ export default function App() {
                                           <p className="text-[10px] text-gray-500 font-mono">Нет задач. Добавьте первую задачу выше!</p>
                                         </div>
                                       ) : (
-                                        gameTasks[selectedGameId].map(task => (
-                                          <div
-                                            key={task.id}
-                                            className="flex items-center justify-between border border-white/5 bg-[#06040c]/40 hover:border-cyber-yellow/20 rounded-lg p-2 transition-all gap-2"
-                                          >
-                                            {editingTaskId === task.id ? (
-                                              <div className="flex-1 flex items-center gap-1.5 min-w-0">
-                                                <input
-                                                  type="text"
-                                                  value={editingTaskText}
-                                                  onChange={(e) => setEditingTaskText(e.target.value)}
-                                                  className="flex-1 bg-black/60 border border-cyber-yellow/50 text-white rounded px-1.5 py-0.5 text-[11px] font-mono focus:outline-none focus:ring-0 cursor-text"
-                                                  autoFocus
-                                                  onKeyDown={(e) => {
-                                                    if (e.key === "Enter") {
+                                        gameTasks[selectedGameId].map(task => {
+                                          const isExpanded = !!expandedTasks[task.id];
+                                          const isLongText = task.text && task.text.length > 35;
+
+                                          const toggleExpand = (e) => {
+                                            const willExpand = !expandedTasks[task.id];
+                                            setExpandedTasks(prev => ({
+                                              ...prev,
+                                              [task.id]: willExpand
+                                            }));
+
+                                            if (willExpand && e?.currentTarget) {
+                                              const el = e.currentTarget.closest(".task-item");
+                                              setTimeout(() => {
+                                                if (el && el.parentElement) {
+                                                  const container = el.parentElement;
+                                                  const targetScrollTop = el.offsetTop + el.offsetHeight - container.clientHeight + 8;
+                                                  if (targetScrollTop > container.scrollTop) {
+                                                    container.scrollTo({ top: targetScrollTop, behavior: "smooth" });
+                                                  }
+                                                }
+                                              }, 150);
+                                            }
+                                          };
+
+                                          return (
+                                            <motion.div
+                                              key={task.id}
+                                              layout
+                                              initial={false}
+                                              animate={{ opacity: 1 }}
+                                              transition={{ duration: 0.25, ease: "easeInOut" }}
+                                              className={`task-item flex border border-white/5 bg-[#06040c]/40 hover:border-cyber-yellow/20 rounded-lg p-2 transition-colors gap-2 ${
+                                                isExpanded ? "ring-1 ring-cyber-yellow/30 items-start" : "items-center"
+                                              }`}
+                                            >
+                                              {editingTaskId === task.id ? (
+                                                <div className="flex-1 flex items-center gap-1.5 min-w-0">
+                                                  <input
+                                                    type="text"
+                                                    value={editingTaskText}
+                                                    onChange={(e) => setEditingTaskText(e.target.value)}
+                                                    className="flex-1 bg-black/60 border border-cyber-yellow/50 text-white rounded px-1.5 py-0.5 text-[11px] font-mono focus:outline-none focus:ring-0 cursor-text"
+                                                    autoFocus
+                                                    onKeyDown={(e) => {
+                                                      if (e.key === "Enter") {
+                                                        setGameTasks(prev => ({
+                                                          ...prev,
+                                                          [selectedGameId]: prev[selectedGameId].map(t =>
+                                                            t.id === task.id ? { ...t, text: editingTaskText.trim() } : t
+                                                          )
+                                                        }));
+                                                        setEditingTaskId(null);
+                                                      } else if (e.key === "Escape") {
+                                                        setEditingTaskId(null);
+                                                      }
+                                                    }}
+                                                  />
+                                                  <button
+                                                    onClick={() => {
                                                       setGameTasks(prev => ({
                                                         ...prev,
                                                         [selectedGameId]: prev[selectedGameId].map(t =>
@@ -4072,74 +4262,86 @@ export default function App() {
                                                         )
                                                       }));
                                                       setEditingTaskId(null);
-                                                    } else if (e.key === "Escape") {
-                                                      setEditingTaskId(null);
-                                                    }
-                                                  }}
-                                                />
-                                                <button
-                                                  onClick={() => {
-                                                    setGameTasks(prev => ({
-                                                      ...prev,
-                                                      [selectedGameId]: prev[selectedGameId].map(t =>
-                                                        t.id === task.id ? { ...t, text: editingTaskText.trim() } : t
-                                                      )
-                                                    }));
-                                                    setEditingTaskId(null);
-                                                  }}
-                                                  className="text-cyber-green hover:text-cyber-green/85 text-[10px] font-bold px-1"
-                                                >
-                                                  OK
-                                                </button>
-                                              </div>
-                                            ) : (
-                                              <>
-                                                <div className="flex items-center gap-2 min-w-0 flex-1">
-                                                  <input
-                                                    type="checkbox"
-                                                    checked={task.completed}
-                                                    onChange={() => {
-                                                      setGameTasks(prev => ({
-                                                        ...prev,
-                                                        [selectedGameId]: prev[selectedGameId].map(t =>
-                                                          t.id === task.id ? { ...t, completed: !t.completed } : t
-                                                        )
-                                                      }));
                                                     }}
-                                                    className="w-3.5 h-3.5 rounded border-white/10 bg-black/40 text-cyber-yellow focus:ring-0 focus:ring-offset-0"
-                                                  />
-                                                  <span className={`text-[11px] truncate font-mono ${task.completed ? "line-through text-gray-500" : "text-gray-300"}`}>
-                                                    {task.text}
-                                                  </span>
-                                                </div>
-                                                <div className="flex items-center gap-1.5 shrink-0">
-                                                  <button
-                                                    onClick={() => {
-                                                      setEditingTaskId(task.id);
-                                                      setEditingTaskText(task.text);
-                                                    }}
-                                                    className="text-cyber-yellow/75 hover:text-cyber-yellow p-1 rounded hover:bg-cyber-yellow/10 transition-colors"
-                                                    title="Редактировать задачу"
+                                                    className="text-cyber-green hover:text-cyber-green/85 text-[10px] font-bold px-1"
                                                   >
-                                                    <Edit2 className="w-3 h-3" />
-                                                  </button>
-                                                  <button
-                                                    onClick={() => {
-                                                      setGameTasks(prev => ({
-                                                        ...prev,
-                                                        [selectedGameId]: prev[selectedGameId].filter(t => t.id !== task.id)
-                                                      }));
-                                                    }}
-                                                    className="text-red-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 transition-colors"
-                                                    title="Удалить задачу"
-                                                  >
-                                                    <Trash2 className="w-3 h-3" />
+                                                    OK
                                                   </button>
                                                 </div>
-                                              </>
-                                            )}
-                                          </div>
-                                        ))
+                                              ) : (
+                                                <>
+                                                  <div className={`flex items-start gap-2 min-w-0 flex-1 ${isExpanded ? "pt-0.5" : ""}`}>
+                                                    <input
+                                                      type="checkbox"
+                                                      checked={task.completed}
+                                                      onChange={() => {
+                                                        setGameTasks(prev => ({
+                                                          ...prev,
+                                                          [selectedGameId]: prev[selectedGameId].map(t =>
+                                                            t.id === task.id ? { ...t, completed: !t.completed } : t
+                                                          )
+                                                        }));
+                                                      }}
+                                                      className="w-3.5 h-3.5 mt-0.5 rounded border-white/10 bg-black/40 text-cyber-yellow focus:ring-0 focus:ring-offset-0 shrink-0"
+                                                    />
+                                                    <motion.span
+                                                      layout="position"
+                                                      onClick={(e) => isLongText && toggleExpand(e)}
+                                                      className={`text-[11px] font-mono leading-snug transition-colors ${
+                                                        isLongText ? "cursor-pointer" : ""
+                                                      } ${
+                                                        isExpanded ? "whitespace-pre-wrap break-words select-text" : "truncate"
+                                                      } ${
+                                                        task.completed ? "line-through text-gray-500" : "text-gray-300 hover:text-white"
+                                                      }`}
+                                                      title={isLongText ? (isExpanded ? "Свернуть задачу" : "Развернуть полностью") : undefined}
+                                                    >
+                                                      {task.text}
+                                                    </motion.span>
+                                                  </div>
+                                                  <div className="flex items-center gap-1 shrink-0">
+                                                    {isLongText && (
+                                                      <button
+                                                        onClick={(e) => toggleExpand(e)}
+                                                        className="text-cyber-yellow/80 hover:text-cyber-yellow p-1 rounded hover:bg-cyber-yellow/10 transition-colors"
+                                                        title={isExpanded ? "Свернуть" : "Развернуть полностью"}
+                                                      >
+                                                        <motion.div
+                                                          animate={{ rotate: isExpanded ? 180 : 0 }}
+                                                          transition={{ duration: 0.25, ease: "easeInOut" }}
+                                                        >
+                                                          <ChevronDown className="w-3 h-3" />
+                                                        </motion.div>
+                                                      </button>
+                                                    )}
+                                                    <button
+                                                      onClick={() => {
+                                                        setEditingTaskId(task.id);
+                                                        setEditingTaskText(task.text);
+                                                      }}
+                                                      className="text-cyber-yellow/75 hover:text-cyber-yellow p-1 rounded hover:bg-cyber-yellow/10 transition-colors"
+                                                      title="Редактировать задачу"
+                                                    >
+                                                      <Edit2 className="w-3 h-3" />
+                                                    </button>
+                                                    <button
+                                                      onClick={() => {
+                                                        setGameTasks(prev => ({
+                                                          ...prev,
+                                                          [selectedGameId]: prev[selectedGameId].filter(t => t.id !== task.id)
+                                                        }));
+                                                      }}
+                                                      className="text-red-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 transition-colors"
+                                                      title="Удалить задачу"
+                                                    >
+                                                      <Trash2 className="w-3 h-3" />
+                                                    </button>
+                                                  </div>
+                                                </>
+                                              )}
+                                            </motion.div>
+                                          );
+                                        })
                                       )}
                                     </div>
                                   </div>
@@ -4244,15 +4446,52 @@ export default function App() {
 
                                       return (
                                         <div className="w-full h-full flex items-center justify-between px-6 select-none font-mono">
-                                          {/* Left side: Year (slides down) */}
-                                          <motion.div
-                                            initial={{ opacity: 0, y: -25 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ type: "spring", stiffness: 80, damping: 12 }}
-                                            className="text-xl md:text-2xl font-black text-white/20 select-none tracking-widest text-right pr-4 border-r border-white/5 flex items-center justify-end h-8"
-                                          >
-                                            {currentYear}
-                                          </motion.div>
+                                          {/* Left side: Year & optional Month when sidebar is expanded */}
+                                          {sidebarCollapsed ? (
+                                            <motion.div
+                                              key="left-year-collapsed"
+                                              initial={{ opacity: 0, y: -25 }}
+                                              animate={{ opacity: 1, y: 0 }}
+                                              transition={{ type: "spring", stiffness: 80, damping: 12 }}
+                                              className="text-xl md:text-2xl font-black text-cyber-yellow select-none tracking-widest text-right pr-4 border-r border-white/5 flex items-center justify-end h-8 shrink-0"
+                                            >
+                                              {currentYear}
+                                            </motion.div>
+                                          ) : (
+                                            <div className="flex flex-col items-center justify-center pr-4 border-r border-white/5 shrink-0 min-w-[70px]">
+                                              {/* Year in cyber yellow */}
+                                              <motion.div
+                                                key="left-year-expanded"
+                                                initial={{ opacity: 0, y: -15 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ type: "spring", stiffness: 80, damping: 12 }}
+                                                className="text-lg md:text-xl font-black text-cyber-yellow select-none tracking-widest leading-tight"
+                                              >
+                                                {currentYear}
+                                              </motion.div>
+
+                                              {/* Line appearing left-to-right */}
+                                              <motion.div
+                                                key="left-divider"
+                                                initial={{ scaleX: 0, opacity: 0 }}
+                                                animate={{ scaleX: 1, opacity: 1 }}
+                                                transition={{ duration: 0.3, ease: "easeOut" }}
+                                                style={{ originX: 0 }}
+                                                className="w-full h-[2px] bg-cyber-yellow/40 rounded-full my-1"
+                                              />
+
+                                              {/* Month appearing bottom-to-top after line animation finishes */}
+                                              <motion.div
+                                                key="left-month-expanded"
+                                                initial={{ opacity: 0, y: 12 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.3, delay: 0.28, ease: "easeOut" }}
+                                                className="text-xs md:text-sm font-black text-cyber-yellow select-none tracking-widest uppercase leading-tight"
+                                              >
+                                                {monthName}
+                                              </motion.div>
+                                            </div>
+                                          )}
 
                                           {/* Center: 2 Rows Grid */}
                                           <div className="flex flex-col gap-2 justify-center flex-1 mx-4">
@@ -4306,15 +4545,18 @@ export default function App() {
                                             </div>
                                           </div>
 
-                                          {/* Right side: Month (slides up) */}
-                                          <motion.div
-                                            initial={{ opacity: 0, y: 25 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ type: "spring", stiffness: 80, damping: 12 }}
-                                            className="text-xl md:text-2xl font-black text-cyber-yellow select-none tracking-widest text-left pl-4 border-l border-white/5 flex items-center justify-start h-8"
-                                          >
-                                            {monthName}
-                                          </motion.div>
+                                          {/* Right side: Month (only when sidebar is collapsed) */}
+                                          {sidebarCollapsed && (
+                                            <motion.div
+                                              key="right-month-collapsed"
+                                              initial={{ opacity: 0, y: 25 }}
+                                              animate={{ opacity: 1, y: 0 }}
+                                              transition={{ type: "spring", stiffness: 80, damping: 12 }}
+                                              className="text-xl md:text-2xl font-black text-cyber-yellow select-none tracking-widest text-left pl-4 border-l border-white/5 flex items-center justify-start h-8 shrink-0"
+                                            >
+                                              {monthName}
+                                            </motion.div>
+                                          )}
                                         </div>
                                       );
                                     }
@@ -4808,9 +5050,9 @@ export default function App() {
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 bg-[#06040c]/95 z-[99999] flex items-center justify-center p-6 font-mono select-none"
               >
-                <div className="w-full max-w-xl bg-[#0a0614] border border-cyber-yellow/40 rounded-2xl p-6 shadow-[0_0_50px_rgba(255,183,0,0.3)] relative overflow-hidden">
+                <div className="w-full max-w-xl bg-[#0a0614] launch-modal-card border border-cyber-yellow/40 rounded-2xl p-6 shadow-[0_0_50px_rgba(255,183,0,0.3)] relative overflow-hidden">
                   {/* Scanline overlay */}
-                  <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_4px,6px_100%] pointer-events-none" />
+                  <div className="launch-modal-scanlines absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_4px,6px_100%] pointer-events-none" />
                   
                   <div className="flex items-center gap-2 border-b border-cyber-yellow/20 pb-3 mb-4 text-cyber-yellow">
                     <Terminal className="w-5 h-5 animate-pulse" />
