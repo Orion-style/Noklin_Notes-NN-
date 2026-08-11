@@ -31,6 +31,15 @@ const GameModeIcon = ({ className }) => (
   </svg>
 );
 
+// Custom sidebar toggle icon matching user design
+const SidebarToggleIcon = ({ className }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <line x1="9" y1="3" x2="9" y2="21" />
+    <path d="M14 9l-3 3 3 3" />
+  </svg>
+);
+
 // Translation helper function
 const t = (ru, en) => ru || en;
 
@@ -1064,26 +1073,31 @@ export default function App() {
     const img = new Image();
     img.src = cropSrc;
     img.onload = () => {
+      const isAvatar = cropTarget === "userAvatar";
+      const cropW = isAvatar ? 160 : 200;
+      const cropH = isAvatar ? 160 : 300;
+      const canvasW = isAvatar ? 256 : 400;
+      const canvasH = isAvatar ? 256 : 600;
+
       const canvas = document.createElement('canvas');
-      canvas.width = 256;
-      canvas.height = 256;
+      canvas.width = canvasW;
+      canvas.height = canvasH;
       const ctx = canvas.getContext('2d');
 
       let renderW, renderH;
+      const targetAspect = cropW / cropH;
       const aspect = img.width / img.height;
-      if (aspect > 1) {
-        renderH = 160;
-        renderW = 160 * aspect;
+      if (aspect > targetAspect) {
+        renderH = cropH;
+        renderW = cropH * aspect;
       } else {
-        renderW = 160;
-        renderH = 160 / aspect;
+        renderW = cropW;
+        renderH = cropW / aspect;
       }
 
-      // Keep background transparent instead of black fill
-      ctx.clearRect(0, 0, 256, 256);
-
-      ctx.translate(128, 128);
-      const scale = 256 / 160;
+      ctx.clearRect(0, 0, canvasW, canvasH);
+      ctx.translate(canvasW / 2, canvasH / 2);
+      const scale = canvasW / cropW;
       ctx.translate(dragPos.x * scale, dragPos.y * scale);
       ctx.scale(zoom * scale, zoom * scale);
       
@@ -3048,435 +3062,67 @@ export default function App() {
             className="flex h-full w-full overflow-hidden"
             style={{ zoom: `${zoomPercent}%` }}
           >
-            {/* Sidebar */}
+            {/* Permanent Far-Left Column (uncollapsible) */}
+            <aside className="w-16 bg-cyber-sidebar/95 backdrop-blur-xl border-r border-cyber-purple/30 flex flex-col items-center py-4 gap-3 select-none z-20 shrink-0 h-full">
+              {/* Overview Icon Button (Compass) */}
+              <button
+                onClick={() => setSelectedGameId(null)}
+                className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
+                  selectedGameId === null 
+                    ? "border-cyber-yellow bg-cyber-yellow/20 text-cyber-yellow shadow-[0_0_12px_rgba(255,183,0,0.3)]" 
+                    : "border-cyber-yellow/20 bg-black/40 text-gray-400 hover:text-cyber-yellow hover:border-cyber-yellow/50"
+                }`}
+                title="Обзор всех программ"
+              >
+                <Compass className="w-5 h-5" />
+              </button>
+
+              <div className="w-8 h-[1px] bg-cyber-yellow/20 my-1" />
+
+              {/* Game Icons List */}
+              <div className="flex-1 w-full overflow-y-auto space-y-2 px-3 scrollbar-none flex flex-col items-center">
+                {games.map(game => (
+                  <button
+                    key={game.id}
+                    onClick={() => setSelectedGameId(selectedGameId === game.id ? null : game.id)}
+                    onContextMenu={(e) => handleGameContextMenu(e, game)}
+                    className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all overflow-hidden cursor-pointer ${
+                      selectedGameId === game.id 
+                        ? "border-cyber-yellow bg-cyber-yellow/20 shadow-[0_0_12px_rgba(255,183,0,0.3)]" 
+                        : "border-cyber-yellow/20 bg-black/40 hover:border-cyber-yellow/50"
+                    }`}
+                    title={game.name}
+                  >
+                    {game.icon ? (
+                      <img src={game.icon} alt={game.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Gamepad2 className="w-5 h-5 text-cyber-yellow" />
+                    )}
+                  </button>
+                ))}
+
+                {/* Add Game Button */}
+                <button
+                  onClick={handleAddGameOpenClick}
+                  className="w-10 h-10 rounded-xl border border-dashed border-cyber-yellow/40 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/15 flex items-center justify-center text-gray-400 hover:text-cyber-yellow transition-all cursor-pointer shrink-0 mt-1"
+                  title="Добавить программу"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              </div>
+            </aside>
+
+            {/* Clean Collapsible Sidebar */}
             <motion.aside 
               onClick={handleSidebarBackgroundClick}
               initial={false}
               animate={{
-                width: sidebarCollapsed ? 64 : 288,
+                width: sidebarCollapsed ? 0 : 260,
               }}
               transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-              className={`bg-cyber-sidebar/85 backdrop-blur-lg border-r border-cyber-purple/20 flex flex-col justify-between z-10 relative shadow-[5px_0_25px_rgba(0,0,0,0.5)] shrink-0 select-none overflow-hidden py-4 md:py-5 ${sidebarCollapsed ? "items-center px-2 md:px-2" : "px-4 md:px-5"}`}
+              className={`bg-cyber-sidebar/85 backdrop-blur-lg border-r border-cyber-purple/20 flex flex-col justify-between z-10 relative shadow-[5px_0_25px_rgba(0,0,0,0.5)] shrink-0 select-none overflow-hidden py-4 ${sidebarCollapsed ? "opacity-0 border-none pointer-events-none" : "px-4"}`}
             >
-              <div className="flex flex-col h-full w-full pt-1 overflow-hidden">
-                {/* App Header */}
-                <div 
-                  onMouseEnter={(e) => showGlobalTooltip(e, activeMode === "game_manager" ? "CYBER-GAMES TERMINAL" : activeMode === "stats" ? "CYBER-STATS TERMINAL" : "CYBER-NOTES TERMINAL", activeMode === "game_manager" ? "yellow" : activeMode === "stats" ? "purple" : "green")}
-                  onMouseLeave={hideGlobalTooltip}
-                  onClick={() => { if (activeMode === "game_manager") { setSelectedGameId(null); } }} className="flex items-center gap-3 mb-8 shrink-0 cursor-pointer"
-                >
-                  <div className={`w-10 h-10 rounded border flex items-center justify-center shrink-0 transition-all ${ activeMode === "game_manager" ? "border-cyber-yellow bg-cyber-yellow/10 shadow-[0_0_10px_rgba(255,183,0,0.3)]" : activeMode === "stats" ? "border-cyber-purple bg-cyber-purple/10 shadow-[0_0_10px_rgba(176,38,255,0.3)]" : "border-cyber-green bg-cyber-green/10 shadow-[0_0_10px_rgba(0,255,102,0.3)]" }`}>
-                    {activeMode === "game_manager" ? (
-                      <Layers className="w-6 h-6 text-cyber-yellow animate-pulse" />
-                    ) : activeMode === "stats" ? (
-                      <BarChart2 className="w-6 h-6 text-cyber-purple animate-pulse" />
-                    ) : (
-                      <Cpu className="w-6 h-6 text-cyber-green animate-pulse" />
-                    )}
-                  </div>
-                  <AnimatePresence>
-                    {!sidebarCollapsed && (
-                      <motion.div 
-                        initial={{ opacity: 0, x: -8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -8 }}
-                        transition={{ duration: 0.2, delay: 0.1 }}
-                        className="overflow-hidden whitespace-nowrap"
-                      >
-                        <h1 className={`text-xl font-black tracking-widest font-mono transition-all ${activeMode === "game_manager" ? "neon-text-yellow" : activeMode === "stats" ? "neon-text-purple" : "neon-text-green"}`}>
-                          {activeMode === "game_manager" ? "CYBER-GAMES" : activeMode === "stats" ? "CYBER-STATS" : "CYBER-NOTES"}
-                        </h1>
-                        <p className="text-[10px] text-cyber-purple uppercase tracking-widest font-mono">
-                          {activeMode === "game_manager" ? "Launcher Module" : activeMode === "stats" ? "Analytics Hub" : "Stage 1 Terminal"}
-                        </p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-
-
-                {/* Sidebar Main Content */}
-                {activeMode === "game_manager" ? (
-                  // Game Manager Mode Sidebar
-                  <div className="flex-1 flex flex-col overflow-hidden select-none">
-                    {/* Games list in sidebar */}
-                    <div className="flex-1 overflow-y-auto space-y-2 pr-1 pb-2 pt-2">
-                      {/* Overview selector */}
-                      <button
-                        onClick={() => setSelectedGameId(null)}
-                        onMouseEnter={(e) => sidebarCollapsed && showGlobalTooltip(e, "ОБЗОР (ВСЕ ИГРЫ)", "yellow")}
-                        onMouseLeave={hideGlobalTooltip}
-                        className={`w-full h-10 border rounded transition-colors group overflow-hidden shrink-0 ${sidebarCollapsed ? "flex items-center justify-center p-0" : "px-2.5 flex items-center gap-2.5"} ${ selectedGameId === null ? "border-cyber-yellow bg-[#ffb700]/10 shadow-[0_0_10px_rgba(255,183,0,0.15)] text-white" : "border-cyber-yellow/15 bg-transparent hover:border-cyber-yellow/45 text-gray-400 hover:text-white" }`}
-                      >
-                        <Compass className={`${sidebarCollapsed ? "w-6 h-6" : "w-5 h-5"} text-cyber-yellow shrink-0 transition-all`} />
-                        <AnimatePresence>
-                          {!sidebarCollapsed && (
-                            <motion.div 
-                              initial={{ opacity: 0, width: 0 }}
-                              animate={{ opacity: 1, width: "auto" }}
-                              exit={{ opacity: 0, width: 0 }}
-                              transition={{ duration: 0.2 }}
-                              className="flex flex-col min-w-0 overflow-hidden text-left whitespace-nowrap"
-                            >
-                              <span className="font-mono text-xs font-bold truncate">ОБЗОР ВСЕХ ИГР</span>
-                              <span className="text-[9px] text-gray-500 font-mono mt-0.5 uppercase tracking-wider">Все модули</span>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </button>
-
-                      <div className="w-full h-[1px] bg-cyber-yellow/20 my-1 shrink-0" />
-
-                      {games.length === 0 ? (
-                        !sidebarCollapsed && (
-                          <div className="h-32 border border-dashed border-cyber-yellow/10 rounded flex flex-col items-center justify-center text-center p-4">
-                            <Gamepad className="w-8 h-8 text-gray-600 mb-2" />
-                            <p className="text-xs text-gray-500 font-mono">Нет установленных игр.</p>
-                          </div>
-                        )
-                      ) : (
-                        games.map(game => (
-                          <div 
-                            key={game.id}
-                            onClick={() => setSelectedGameId(selectedGameId === game.id ? null : game.id)}
-                            onContextMenu={(e) => handleGameContextMenu(e, game)}
-                            onMouseEnter={(e) => sidebarCollapsed && showGlobalTooltip(e, `ОТКРЫТЬ: ${game.name}`, "yellow")}
-                            onMouseLeave={hideGlobalTooltip}
-                            className={`sidebar-game-item w-full h-10 border rounded transition-colors group cursor-pointer shrink-0 overflow-hidden ${sidebarCollapsed ? "flex items-center justify-center p-0" : "px-2.5 flex items-center justify-between gap-2.5"} ${ selectedGameId === game.id ? "is-selected border-cyber-yellow bg-[#ffb700]/10 shadow-[0_0_10px_rgba(255,183,0,0.15)]" : "border-cyber-yellow/15 bg-[#ffb700]/5 hover:border-cyber-yellow/45" }`}
-                          >
-                            <div className={`flex items-center ${sidebarCollapsed ? "justify-center" : "gap-2.5 min-w-0 flex-1 overflow-hidden"}`}>
-                              {game.icon ? (
-                                <img src={game.icon} alt="" className={`${sidebarCollapsed ? "w-6.5 h-6.5" : "w-5 h-5"} object-contain rounded shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.3)] transition-all`} />
-                              ) : (
-                                <Gamepad className={`${sidebarCollapsed ? "w-6 h-6" : "w-5 h-5"} text-cyber-yellow/60 shrink-0 transition-all`} />
-                              )}
-                              <AnimatePresence>
-                                {!sidebarCollapsed && (
-                                  <motion.div 
-                                    initial={{ opacity: 0, width: 0 }}
-                                    animate={{ opacity: 1, width: "auto" }}
-                                    exit={{ opacity: 0, width: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="flex flex-col min-w-0 overflow-hidden text-left whitespace-nowrap"
-                                  >
-                                    <span className="sidebar-game-name font-mono text-xs font-bold text-gray-200 truncate">{game.name}</span>
-                                    <span className="sidebar-game-category text-[9px] text-gray-500 font-mono mt-0.5 uppercase tracking-wider">{game.category}</span>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
-                            {!sidebarCollapsed && (
-                              <ChevronRight className="sidebar-game-arrow w-4 h-4 text-cyber-yellow/40 group-hover:text-cyber-yellow group-hover:translate-x-0.5 transition-all shrink-0" />
-                            )}
-                          </div>
-                        ))
-                      )}
-
-                      {/* Add game button */}
-                      <button
-                        onClick={handleAddGameOpenClick}
-                        onMouseEnter={(e) => sidebarCollapsed && showGlobalTooltip(e, "ДОБАВИТЬ ИГРУ", "yellow")}
-                        onMouseLeave={hideGlobalTooltip}
-                        className={`w-full h-10 border border-dashed border-cyber-yellow/30 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 rounded transition-all cursor-pointer shrink-0 overflow-hidden ${sidebarCollapsed ? "flex items-center justify-center p-0" : "px-2.5 flex items-center justify-center gap-2 text-xs font-mono text-gray-400 hover:text-cyber-yellow"}`}
-                      >
-                        <Plus className={`${sidebarCollapsed ? "w-6 h-6 text-gray-400 group-hover:text-cyber-yellow" : "w-4 h-4"} shrink-0 transition-all`} />
-                        <AnimatePresence>
-                          {!sidebarCollapsed && (
-                            <motion.span
-                              initial={{ opacity: 0, width: 0 }}
-                              animate={{ opacity: 1, width: "auto" }}
-                              exit={{ opacity: 0, width: 0 }}
-                              transition={{ duration: 0.2 }}
-                              className="whitespace-nowrap overflow-hidden text-xs font-mono text-gray-400 hover:text-cyber-yellow"
-                            >
-                              ДОБАВИТЬ ИГРУ
-                            </motion.span>
-                          )}
-                        </AnimatePresence>
-                      </button>
-                    </div>
-
-                    {/* User Profile & Hours Block (Moved to Bottom) */}
-                    <AnimatePresence initial={false}>
-                      {!sidebarCollapsed && (
-                        <motion.div 
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="bg-[#ffcc00]/5 border border-cyber-yellow/20 rounded-xl p-3 mt-3 font-mono text-[10px] space-y-2.5 shrink-0 overflow-hidden"
-                        >
-                        {/* Profile Info: Avatar + Nickname & Birthday (2 lines) */}
-                        <div className="flex items-center gap-2.5">
-                          {/* Square photo with rounded corners spanning 2 lines height */}
-                          <div className="relative group w-10 h-10 rounded-lg bg-black/50 border border-cyber-yellow/30 overflow-hidden shrink-0 flex items-center justify-center shadow-inner">
-                            {userProfile.avatar ? (
-                              <img src={userProfile.avatar} alt="Profile" className="w-full h-full object-cover" />
-                            ) : (
-                              <User className="w-5 h-5 text-cyber-yellow/70" />
-                            )}
-                            {/* Hover Edit Overlay: edit icon centered */}
-                            <label
-                              className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer text-cyber-yellow"
-                              title="Изменить фото профиля"
-                            >
-                              <Camera className="w-4 h-4" />
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    const reader = new FileReader();
-                                    reader.onloadend = () => {
-                                      setCropTarget("userAvatar");
-                                      setCropSrc(reader.result);
-                                    };
-                                    reader.readAsDataURL(file);
-                                    e.target.value = "";
-                                  }
-                                }}
-                              />
-                            </label>
-                          </div>
-
-                          {/* Details: Row 1 Nickname & Edit, Row 2 Birthday & Countdown */}
-                          <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="font-bold text-white text-xs truncate leading-tight" title={userProfile.nickname || "Пользователь"}>
-                                {userProfile.nickname || "Пользователь"}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setTempProfileName(userProfile.nickname || "");
-                                  setTempProfileBirthDate(userProfile.birthDate || "");
-                                  setEditProfileOpen(true);
-                                }}
-                                className="p-0.5 text-gray-400 hover:text-cyber-yellow transition-colors shrink-0"
-                                title="Редактировать профиль"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-
-                            <div className="text-gray-400 text-[9px] truncate leading-tight">
-                              {userProfile.birthDate ? (
-                                (() => {
-                                  const formatted = formatBirthDate(userProfile.birthDate);
-                                  const days = getDaysUntilBirthday(userProfile.birthDate);
-                                  return `${formatted}${days !== null ? ` (до д/р ${days} дн.)` : ''}`;
-                                })()
-                              ) : (
-                                <span className="text-gray-500 italic">Д/Р не указан</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="h-[1px] bg-cyber-yellow/15 w-full" />
-
-                        {/* Row 3: Total Hours */}
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-500">ВСЕГО ЧАСОВ:</span>
-                          <span className="text-white font-bold">{formatPlayTime(games.reduce((acc, g) => acc + (typeof g.playTime === 'number' ? g.playTime : 0), 0))}</span>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              ) : (
-                  // File Tree View
-                  sidebarCollapsed ? (
-                    <div className="flex-1 flex flex-col items-center gap-4 overflow-hidden mt-4 w-full">
-                      {/* Files Icon Header */}
-                      <div 
-                        onMouseEnter={(e) => showGlobalTooltip(e, `ДЕРЕВО ФАЙЛОВ (${files.length})`, "green")}
-                        onMouseLeave={hideGlobalTooltip}
-                        className="relative group flex items-center justify-center w-10 h-10 rounded border border-cyber-green/20 bg-cyber-green/5 text-cyber-green shrink-0"
-                      >
-                        <Folder className="w-5 h-5" />
-                        <span className="absolute bg-cyber-green/10 text-cyber-green font-bold text-[9px] -bottom-1 -right-1 px-1 rounded border border-cyber-green/30">
-                          {files.length}
-                        </span>
-                      </div>
-
-                      {/* Collapsed File Tree */}
-                      <div 
-                        onContextMenu={(e) => handleContextMenu(e, null)}
-                        className="flex-1 w-full overflow-y-auto space-y-2 flex flex-col items-start pl-2 pr-1 select-none pb-2"
-                      >
-                        {files.length === 0 ? (
-                          <div 
-                            onMouseEnter={(e) => showGlobalTooltip(e, "ХРАНИЛИЩЕ НЕ ПОДКЛЮЧЕНО", "purple")}
-                            onMouseLeave={hideGlobalTooltip}
-                            className="relative group w-10 h-10 rounded border border-dashed border-cyber-purple/20 flex items-center justify-center text-gray-600 shrink-0"
-                          >
-                            <FileText className="w-5 h-5" />
-                          </div>
-                        ) : (
-                          buildFileTree(files).children.map((child, idx) => (
-                            <FileTreeNode
-                              key={idx}
-                              node={child}
-                              depth={0}
-                              selectedFile={selectedFile}
-                              onSelectFile={(filePath) => {
-                                setSelectedFile(filePath);
-                                openFileInObsidian(filePath);
-                              }}
-                              expandedFolders={expandedFolders}
-                              onToggleFolder={handleToggleFolder}
-                              onDragStart={handleDragStart}
-                              onDragOver={handleDragOver}
-                              onDrop={handleDrop}
-                              sidebarCollapsed={true}
-                              showGlobalTooltip={showGlobalTooltip}
-                              hideGlobalTooltip={hideGlobalTooltip}
-                              onCreateFile={handleCreateFile}
-                              onContextMenu={handleContextMenu}
-                            />
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Files List Heading / Root Drop Zone */}
-                      <div
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, "")}
-                        onContextMenu={(e) => handleContextMenu(e, null)}
-                        className="flex items-center justify-between text-xs uppercase tracking-wider text-gray-400 font-mono mb-3 p-1 rounded border border-transparent hover:border-cyber-green/35 hover:bg-cyber-green/5 transition-all select-none shrink-0"
-                        title="Переместить в корень / Создать файл в корне"
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <Folder className="w-4 h-4 text-cyber-green" />
-                          Файлы хранилища
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {connected && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCreateFile("");
-                                }}
-                              className="p-1 rounded border border-transparent hover:border-cyber-green/30 text-gray-400 hover:text-cyber-green hover:bg-cyber-green/5 transition-all flex items-center justify-center"
-                              title="Создать новый файл в корне"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          <span className="text-cyber-green font-bold bg-cyber-green/10 px-1.5 py-0.5 rounded border border-cyber-green/20">
-                            {files.length}
-                          </span>
-                          {connected && (
-                            <button
-                              type="button"
-                              onClick={() => setShowConnection(!showConnection)}
-                              className={`p-1 rounded border transition-all ${ showConnection ? "bg-cyber-purple/20 border-cyber-purple/50 text-cyber-purple shadow-[0_0_8px_rgba(176,38,255,0.2)]" : "bg-transparent border-transparent text-gray-400 hover:text-cyber-green hover:border-cyber-green/30" }`}
-                              title={showConnection ? "Скрыть путь к хранилищу" : "Изменить путь к хранилищу"}
-                            >
-                              <Link className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Reactive File List (Tree View) */}
-                      <div 
-                        onContextMenu={(e) => handleContextMenu(e, null)}
-                        className="flex-1 overflow-y-auto space-y-1.5 pr-1 select-none pb-2"
-                      >
-                        {files.length === 0 ? (
-                          <div className="h-32 border border-dashed border-cyber-purple/10 rounded flex flex-col items-center justify-center text-center p-4">
-                            <FileText className="w-8 h-8 text-gray-600 mb-2" />
-                            <p className="text-xs text-gray-500 font-mono">Хранилище не подключено.</p>
-                          </div>
-                        ) : (
-                          buildFileTree(files).children.map((child, idx) => (
-                            <FileTreeNode
-                              key={idx}
-                              node={child}
-                              depth={0}
-                              selectedFile={selectedFile}
-                              onSelectFile={(filePath) => {
-                                setSelectedFile(filePath);
-                                openFileInObsidian(filePath);
-                              }}
-                              expandedFolders={expandedFolders}
-                              onToggleFolder={handleToggleFolder}
-                              onDragStart={handleDragStart}
-                              onDragOver={handleDragOver}
-                              onDrop={handleDrop}
-                              sidebarCollapsed={false}
-                              showGlobalTooltip={showGlobalTooltip}
-                              hideGlobalTooltip={hideGlobalTooltip}
-                              onCreateFile={handleCreateFile}
-                              onContextMenu={handleContextMenu}
-                            />
-                          ))
-                        )}
-                      </div>
-                    </>
-                  )
-                )}
-
-                {/* Separator (only shown if connection panel is visible) */}
-                {activeMode === "notebook" && shouldShowConnection && (
-                  <div className="h-[1px] bg-cyber-purple/10 w-full my-3 shrink-0" />
-                )}
-
-                {/* Connection Input Panel / Button */}
-                {activeMode === "notebook" && shouldShowConnection && (
-                  sidebarCollapsed ? (
-                    <div className="mb-6 flex justify-center shrink-0">
-                      <button
-                        onClick={() => setSidebarCollapsed(false)}
-                        onMouseEnter={(e) => showGlobalTooltip(e, "ПОДКЛЮЧИТЬ ХРАНИЛИЩЕ", "purple")}
-                        onMouseLeave={hideGlobalTooltip}
-                        className="w-10 h-10 rounded border bg-[#06040c]/40 hover:bg-cyber-purple/10 flex items-center justify-center transition-all group relative shrink-0 border-cyber-purple/30 text-cyber-purple shadow-[0_0_10px_rgba(176,38,255,0.15)]"
-                      >
-                        <Link className="w-5 h-5 transition-transform group-hover:scale-110" />
-                      </button>
-                    </div>
-                  ) : (
-                    <form onSubmit={handleConnect} className="mb-6 bg-[#06040c]/60 backdrop-blur-md p-4 rounded border border-cyber-purple/25 shadow-lg shrink-0">
-                      <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2 font-mono flex items-center gap-1.5">
-                        <Link className="w-3.5 h-3.5 text-cyber-purple" />
-                        Путь к хранилищу Obsidian
-                      </label>
-                      <div className="space-y-3">
-                        <input
-                          type="text"
-                          value={vaultPath}
-                          onChange={(e) => setVaultPath(e.target.value)}
-                          placeholder="C:\Users\Имя\Хранилище"
-                          className="w-full bg-[#06040c]/80 border border-cyber-purple/40 text-cyber-green placeholder-gray-600 focus:outline-none focus:border-cyber-green focus:ring-1 focus:ring-cyber-green rounded px-3 py-2 text-xs transition-all font-mono shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.6)]"
-                        />
-                        
-                        <button
-                          type="submit"
-                          disabled={loading}
-                          className="w-full bg-cyber-green text-[#06040c] font-black rounded py-2.5 px-4 shadow-[0_0_12px_rgba(0,255,102,0.35)] hover:shadow-[0_0_20px_rgba(0,255,102,0.65)] hover:bg-[#15ff7a] transition-all text-xs font-mono flex items-center justify-center gap-2"
-                        >
-                          {loading ? (
-                            <span className="w-4 h-4 border-2 border-[#06040c] border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <>
-                              <Terminal className="w-4 h-4" />
-                              ПОДКЛЮЧИТЬ ХРАНИЛИЩЕ
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </form>
-                  )
-                )}
-              </div>
+              <div className="flex flex-col h-full w-full pt-1 overflow-hidden" />
             </motion.aside>
 
             {/* Main Workspace Preview Pane */}
@@ -3500,12 +3146,19 @@ export default function App() {
                   </button>
 
                   <button
-                    onClick={() => setShowSettingsModal(true)}
-                    className={`h-8 px-3 rounded-lg font-mono text-xs flex items-center gap-1.5 transition-colors border whitespace-nowrap shrink-0 ${ activeMode === "game_manager" ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10" : "text-cyber-green bg-cyber-green/5 border-cyber-green/20 hover:bg-cyber-green/10" }`}
-                    title="Настройки хранилища и изображений"
+                    onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                    className="h-8 px-2.5 rounded-lg font-mono text-xs flex items-center justify-center transition-colors border whitespace-nowrap shrink-0 text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10"
+                    title={sidebarCollapsed ? "Раскрыть боковую панель" : "Скрыть боковую панель"}
                   >
-                    <Settings className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">НАСТРОЙКИ</span>
+                    <SidebarToggleIcon className="w-4 h-4 text-cyber-yellow" />
+                  </button>
+
+                  <button
+                    onClick={() => setShowSettingsModal(true)}
+                    className="h-8 w-8 rounded-lg font-mono text-xs flex items-center justify-center transition-colors border shrink-0 text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10"
+                    title="Настройки"
+                  >
+                    <Settings className="w-4 h-4 text-cyber-yellow" />
                   </button>
 
                   <button
@@ -3515,15 +3168,6 @@ export default function App() {
                     <HelpCircle className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">СПРАВКА</span>
                   </button>
-                  
-                  <div 
-                    className={`h-8 px-3 rounded-lg font-mono text-xs flex items-center gap-1.5 border whitespace-nowrap shrink-0 ${ activeMode === "game_manager" ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20" : "text-cyber-purple bg-cyber-purple/5 border-cyber-purple/20" }`}
-                    title="Серия ежедневных входов подряд"
-                  >
-                    <Flame className="w-3.5 h-3.5 text-cyber-yellow animate-pulse shrink-0" />
-                    <span className="hidden md:inline">СЕРИЯ ВХОДОВ: {consecutiveStreak} ДН.</span>
-                    <span className="md:hidden">{consecutiveStreak} ДН.</span>
-                  </div>
  
                   {/* System Control Widget */}
                   <div className={`h-8 flex items-center gap-1 bg-[#06040c]/50 px-1 rounded-lg font-mono border whitespace-nowrap shrink-0 system-control-widget ${ activeMode === "game_manager" ? "border-cyber-yellow/25" : "border-cyber-purple/25" }`}>
@@ -4723,65 +4367,40 @@ export default function App() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4 overflow-y-auto max-h-[520px] pr-1">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-5 overflow-y-auto max-h-[calc(100vh-160px)] pr-1">
                             {games.map(game => (
                               <div
                                 key={game.id}
                                 onClick={() => setSelectedGameId(game.id)}
                                 onContextMenu={(e) => handleGameContextMenu(e, game)}
-                                className={`group border rounded-xl p-5 bg-[#0a0614]/50 border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-[#ffb700]/5 transition-all duration-300 relative flex flex-col items-center justify-between min-h-[220px] shadow-[0_4px_12px_rgba(0,0,0,0.4)] ${ game.coverTheme === "purple" ? "hover:border-cyber-purple hover:bg-cyber-purple/5" : game.coverTheme === "green" ? "hover:border-cyber-green hover:bg-cyber-green/5" : "" }`}
+                                className={`group relative aspect-[2/3] w-full rounded-none overflow-hidden border border-cyber-yellow/20 hover:border-cyber-yellow shadow-lg transition-all duration-300 cursor-pointer bg-[#0a0614]/80 flex items-center justify-center ${ game.coverTheme === "purple" ? "hover:border-cyber-purple" : game.coverTheme === "green" ? "hover:border-cyber-green" : "" }`}
+                                title={game.name}
                               >
-                                {/* Category Badge on top */}
-                                <div className="w-full flex justify-center">
-                                  <span className={`text-[8px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border inline-block ${ game.coverTheme === "purple" ? "text-cyber-purple border-cyber-purple/30 bg-cyber-purple/5" : game.coverTheme === "green" ? "text-cyber-green border-cyber-green/30 bg-cyber-green/5" : "text-cyber-yellow border-cyber-yellow/30 bg-cyber-yellow/5" }`}>
-                                    {game.category}
-                                  </span>
-                                </div>
-
-                                {/* Center-aligned Game Icon (larger and slightly above center) */}
-                                <div className="flex-1 flex flex-col items-center justify-center mt-3.5 mb-1.5 gap-1.5 w-full">
-                                  {game.icon ? (
-                                    <img 
-                                      src={game.icon} 
-                                      alt="" 
-                                      className="w-24 h-24 object-cover rounded-2xl shadow-[0_0_20px_rgba(0,0,0,0.6)] group-hover:scale-105 transition-all duration-300 block" 
-                                      style={{
-                                        boxShadow: game.coverTheme === "purple" 
-                                          ? "0 0 20px rgba(188,19,254,0.15)" 
-                                          : game.coverTheme === "green" 
-                                            ? "0 0 20px rgba(0,255,102,0.15)" 
-                                            : "0 0 20px rgba(255,183,0,0.15)"
-                                      }}
-                                    />
-                                  ) : (
-                                    <div className={`w-24 h-24 rounded-2xl border flex items-center justify-center bg-white/5 border-white/10 text-gray-400 transition-all ${ game.coverTheme === "purple" ? "group-hover:text-cyber-purple group-hover:border-cyber-purple/30 group-hover:shadow-[0_0_20px_rgba(188,19,254,0.15)]" : game.coverTheme === "green" ? "group-hover:text-cyber-green group-hover:border-cyber-green/30 group-hover:shadow-[0_0_20px_rgba(0,255,102,0.15)]" : "group-hover:text-cyber-yellow group-hover:border-cyber-yellow/30 group-hover:shadow-[0_0_20px_rgba(255,183,0,0.15)]" }`}>
-                                      <Gamepad2 className="w-10 h-10" />
-                                    </div>
-                                  )}
-                                  <h4 className="text-base font-black text-gray-100 tracking-wide text-center group-hover:text-white truncate max-w-[150px] mt-0.5">
-                                    {game.name}
-                                  </h4>
-                                </div>
-
-                                {/* Footer: Playtime only */}
-                                <div className="w-full flex justify-center pt-2.5 border-t border-white/5 font-mono text-[9px] text-gray-500">
-                                  <div className="flex items-center gap-1.5">
-                                    <Clock className="w-3.5 h-3.5" />
-                                    <span>{formatPlayTime(game.playTime)}</span>
+                                {game.icon ? (
+                                  <img 
+                                    src={game.icon} 
+                                    alt={game.name} 
+                                    className="w-full h-full object-cover block rounded-none transition-transform duration-300 group-hover:scale-105" 
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-white/5 text-gray-400 group-hover:text-cyber-yellow transition-all rounded-none">
+                                    <Gamepad2 className="w-12 h-12 mb-2" />
+                                    <span className="text-xs font-mono font-bold truncate max-w-full px-1">{game.name}</span>
                                   </div>
-                                </div>
+                                )}
                               </div>
                             ))}
 
                             {/* Predefined Add Game Button in Grid */}
                             <div
                               onClick={handleAddGameOpenClick}
-                              className="border border-dashed rounded-xl p-4 bg-transparent border-cyber-yellow/15 hover:border-cyber-yellow hover:bg-cyber-yellow/5 transition-all duration-300 flex flex-col items-center justify-center gap-2.5 min-h-[140px] group shadow-lg"
+                              className="group relative aspect-[2/3] w-full rounded-none border border-dashed border-cyber-yellow/25 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 transition-all duration-300 flex flex-col items-center justify-center gap-3 cursor-pointer shadow-lg p-3"
+                              title="Добавить программу"
                             >
-                              <div className="w-10 h-10 rounded-full border border-dashed border-cyber-yellow/45 flex items-center justify-center text-gray-500 group-hover:text-cyber-yellow group-hover:border-cyber-yellow transition-all">
-                                <Plus className="w-5 h-5" />
+                              <div className="w-12 h-12 rounded-none border border-dashed border-cyber-yellow/45 flex items-center justify-center text-gray-400 group-hover:text-cyber-yellow group-hover:border-cyber-yellow transition-all">
+                                <Plus className="w-6 h-6" />
                               </div>
-                              <span className="font-mono text-xs font-bold text-gray-500 group-hover:text-cyber-yellow transition-all uppercase tracking-wider">
+                              <span className="font-mono text-xs font-bold text-gray-400 group-hover:text-cyber-yellow transition-all uppercase tracking-wider text-center">
                                 ДОБАВИТЬ ПРОГРАММУ
                               </span>
                             </div>
@@ -5219,7 +4838,7 @@ export default function App() {
                       </div>
 
                       <div 
-                        className="relative w-40 h-40 overflow-hidden border border-cyber-yellow/45 rounded-2xl bg-black/40 select-none cursor-move shadow-[0_0_20px_rgba(255,183,0,0.15)] flex items-center justify-center"
+                        className="relative w-[200px] h-[300px] overflow-hidden border border-cyber-yellow/45 rounded-none bg-black/40 select-none cursor-move shadow-[0_0_25px_rgba(255,183,0,0.2)] flex items-center justify-center"
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
@@ -5236,15 +4855,15 @@ export default function App() {
                             position: 'absolute',
                             left: '50%',
                             top: '50%',
-                            width: imageAspect > 1 ? 'auto' : '100%',
-                            height: imageAspect > 1 ? '100%' : 'auto',
+                            width: imageAspect > (2/3) ? 'auto' : '100%',
+                            height: imageAspect > (2/3) ? '100%' : 'auto',
                             maxWidth: 'none',
                             transform: `translate(-50%, -50%) translate(${dragPos.x}px, ${dragPos.y}px) scale(${zoom})`,
                             pointerEvents: 'none'
                           }}
                         />
-                        {/* Rounded-Square crop boundary overlay */}
-                        <div className="absolute inset-2 border-2 border-dashed border-cyber-yellow rounded-xl pointer-events-none opacity-50 shadow-[0_0_0_9999px_rgba(6,4,12,0.6)]" />
+                        {/* Rectangular poster crop boundary overlay */}
+                        <div className="absolute inset-2 border-2 border-dashed border-cyber-yellow rounded-none pointer-events-none opacity-50 shadow-[0_0_0_9999px_rgba(6,4,12,0.6)]" />
                       </div>
 
                       <div className="w-full space-y-1.5 px-4">
@@ -5254,9 +4873,9 @@ export default function App() {
                         </div>
                         <input
                           type="range"
-                          min="1"
+                          min="0.1"
                           max="4"
-                          step="0.05"
+                          step="0.01"
                           value={zoom}
                           onChange={(e) => setZoom(parseFloat(e.target.value))}
                           className="w-full h-1 bg-[#050308] border border-cyber-yellow/20 rounded-lg appearance-none accent-cyber-yellow"
@@ -5608,9 +5227,9 @@ export default function App() {
                       </div>
                       <input
                         type="range"
-                        min="1"
+                        min="0.1"
                         max="4"
-                        step="0.05"
+                        step="0.01"
                         value={zoom}
                         onChange={(e) => setZoom(parseFloat(e.target.value))}
                         className="w-full h-1 bg-[#050308] border border-cyber-yellow/20 rounded-lg appearance-none accent-cyber-yellow"

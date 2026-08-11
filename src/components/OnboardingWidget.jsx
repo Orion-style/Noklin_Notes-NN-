@@ -4,42 +4,42 @@ import { Cpu, Terminal, Folder, Layers, ChevronRight, ChevronLeft, X, HelpCircle
 
 const onboardingSteps = [
   {
-    icon: Cpu,
-    title: "ОБЗОР СИСТЕМЫ",
-    subtitle: "Кибернетический терминал заметок",
-    description: "Добро пожаловать в CYBER-NOTES — высокотехнологичный менеджер локальных заметок Obsidian. Система работает на базе сверхбыстрого движка Tauri и Rust, обеспечивая полную конфиденциальность и мгновенную загрузку ваших файлов.",
+    icon: Gamepad2,
+    title: "ОБЗОР NOKLIN",
+    subtitle: "Игровой хаб & Менеджер заметок",
+    description: "Добро пожаловать в Noklin — единую кибернетическую систему для управления вашей игровой библиотекой и заметками Obsidian. Отслеживайте игровое время, структурируйте прохождения и запускайте игры из удобного интерфейса.",
     colorClass: "text-cyber-green",
     borderColorClass: "border-cyber-green/30"
+  },
+  {
+    icon: Cpu,
+    title: "ИГРОВОЙ ТРЕКИНГ",
+    subtitle: "Запуск игр & Учет времени",
+    description: "Добавляйте игры в библиотеку, привязывайте исполняемые файлы или Steam-ссылки и запускайте их прямо из приложения. Noklin автоматически фиксирует время ваших игровых сессий и ведёт наглядную статистику.",
+    colorClass: "text-cyber-purple",
+    borderColorClass: "border-cyber-purple/30"
   },
   {
     icon: Terminal,
     title: "ПОДКЛЮЧЕНИЕ ХРАНИЛИЩА",
-    subtitle: "Инициализация локального пути",
-    description: "В боковой панели слева найдите поле ввода пути к вашему хранилищу (Путь к хранилищу Obsidian). Введите абсолютный путь (например, C:\\Users\\Имя\\Хранилище) и нажмите кнопку «ПОДКЛЮЧИТЬ ХРАНИЛИЩЕ» для запуска индексатора файлов.",
-    colorClass: "text-cyber-purple",
-    borderColorClass: "border-cyber-purple/30"
-  },
-  {
-    icon: Folder,
-    title: "ПРОВОДНИК ФАЙЛОВ",
-    subtitle: "Управление заметками",
-    description: "После успешной авторизации в списке «Файлы хранилища» отобразится дерево ваших заметок в формате Markdown. Вы можете мгновенно переключаться между файлами с помощью адаптивного курсора. Количество файлов выводится в индикаторе.",
+    subtitle: "Инициализация Obsidian Vault",
+    description: "Укажите абсолютный путь к вашему хранилищу Obsidian в боковой панели. Noklin проиндексирует ваше дерево Markdown-файлов для быстрой навигации, редактирования и предварительного просмотра.",
     colorClass: "text-cyber-green",
     borderColorClass: "border-cyber-green/30"
   },
   {
-    icon: Layers,
-    title: "ИНТЕРАКТИВНЫЙ РЕЖИМ",
-    subtitle: "Мониторинг и диагностика",
-    description: "Центральная панель служит вашим редактором и превьюером. Здесь вы увидите метаданные файлов, статус шифрования локального диска, системный лог целостности базы данных и интерактивные графики взаимосвязей.",
+    icon: Folder,
+    title: "ИГРОВЫЕ ЗАМЕТКИ",
+    subtitle: "Связывание заметок и логов",
+    description: "Привязывайте Markdown-заметки, логбуки и гайды к конкретным играм. Создавайте базы знаний, отслеживайте связанные задачи, используйте быстрые теги и систему поиска.",
     colorClass: "text-cyber-purple",
     borderColorClass: "border-cyber-purple/30"
   },
   {
-    icon: Gamepad2,
-    title: "ИГРОВОЙ МЕНЕДЖЕР",
-    subtitle: "Дорожная карта & Будущие фичи",
-    description: "На следующем этапе разработки приложение превратится в полноценный игровой хаб. Вы сможете автоматически отслеживать часы, проведенные в любимых играх на ПК, привязывать игровые заметки к внутриигровым локациям, датам и времени, а также сортировать и фильтровать ваши отчеты.",
+    icon: Layers,
+    title: "ПЕРСОНАЛИЗАЦИЯ И ТЕМЫ",
+    subtitle: "Полный контроль рабочей среды",
+    description: "Переключайтесь между тёмной и светлой неоновой темой, просматривайте системную диагностику, мониторинг базы данных и настройте рабочее пространство под свой стиль.",
     colorClass: "text-cyber-green",
     borderColorClass: "border-cyber-green/30"
   }
@@ -93,12 +93,12 @@ export default function OnboardingWidget({ onClose }) {
           <div className="flex items-center gap-2">
             <HelpCircle className="w-4.5 h-4.5 text-cyber-purple" />
             <span className="text-[11px] text-gray-400 font-mono tracking-widest uppercase">
-              РУКОВОДСТВО ПОЛЬЗОВАТЕЛЯ & ДОРОЖНАЯ КАРТА
+              РУКОВОДСТВО ПОЛЬЗОВАТЕЛЯ & NOKLIN HUB
             </span>
           </div>
           <button
             onClick={onClose}
-            className="magnetic-target w-6.5 h-6.5 rounded border border-cyber-purple/20 flex items-center justify-center hover:bg-cyber-purple/10 hover:border-cyber-purple/50 transition-all cursor-none"
+            className="magnetic-target w-6.5 h-6.5 rounded border border-cyber-purple/20 flex items-center justify-center hover:bg-cyber-purple/10 hover:border-cyber-purple/50 transition-all cursor-pointer"
             title="Закрыть"
           >
             <X className="w-4 h-4 text-gray-400 hover:text-white" />
@@ -157,7 +157,7 @@ export default function OnboardingWidget({ onClose }) {
               {currentStep > 0 && (
                 <button
                   onClick={handleBack}
-                  className="magnetic-target flex items-center gap-1.5 bg-transparent hover:bg-cyber-purple/10 border border-cyber-purple/30 text-gray-300 font-mono text-[10px] rounded px-3.5 py-2 transition-all cursor-none"
+                  className="magnetic-target flex items-center gap-1.5 bg-transparent hover:bg-cyber-purple/10 border border-cyber-purple/30 text-gray-300 font-mono text-[10px] rounded px-3.5 py-2 transition-all cursor-pointer"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                   НАЗАД
@@ -166,7 +166,7 @@ export default function OnboardingWidget({ onClose }) {
 
               <button
                 onClick={handleNext}
-                className="magnetic-target flex items-center gap-1.5 bg-cyber-green hover:bg-[#15ff7a] text-[#06040c] font-black font-mono text-[10px] rounded px-5 py-2 shadow-[0_0_10px_rgba(0,255,102,0.2)] hover:shadow-[0_0_15px_rgba(0,255,102,0.4)] transition-all cursor-none"
+                className="magnetic-target flex items-center gap-1.5 bg-cyber-green hover:bg-[#15ff7a] text-[#06040c] font-black font-mono text-[10px] rounded px-5 py-2 shadow-[0_0_10px_rgba(0,255,102,0.2)] hover:shadow-[0_0_15px_rgba(0,255,102,0.4)] transition-all cursor-pointer"
               >
                 {currentStep === onboardingSteps.length - 1 ? "ПОНЯТНО" : "ДАЛЕЕ"}
                 {currentStep < onboardingSteps.length - 1 && <ChevronRight className="w-3.5 h-3.5" />}
