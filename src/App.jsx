@@ -31,12 +31,11 @@ const GameModeIcon = ({ className }) => (
   </svg>
 );
 
-// Custom sidebar toggle icon matching user design
+// Custom sidebar toggle icon matching user design (no arrow)
 const SidebarToggleIcon = ({ className }) => (
   <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
     <line x1="9" y1="3" x2="9" y2="21" />
-    <path d="M14 9l-3 3 3 3" />
   </svg>
 );
 
@@ -4367,7 +4366,7 @@ export default function App() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-5 overflow-y-auto max-h-[calc(100vh-160px)] pr-1">
+                          <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,180px))] gap-5 overflow-y-auto max-h-[calc(100vh-160px)] pr-1">
                             {games.map(game => (
                               <div
                                 key={game.id}
@@ -4391,79 +4390,15 @@ export default function App() {
                               </div>
                             ))}
 
-                            {/* Predefined Add Game Button in Grid */}
+                            {/* Predefined Add Game Button in Grid (Plus icon only) */}
                             <div
                               onClick={handleAddGameOpenClick}
-                              className="group relative aspect-[2/3] w-full rounded-none border border-dashed border-cyber-yellow/25 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 transition-all duration-300 flex flex-col items-center justify-center gap-3 cursor-pointer shadow-lg p-3"
+                              className="group relative aspect-[2/3] w-full rounded-none border border-dashed border-cyber-yellow/25 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 transition-all duration-300 flex items-center justify-center cursor-pointer shadow-lg p-3"
                               title="Добавить программу"
                             >
                               <div className="w-12 h-12 rounded-none border border-dashed border-cyber-yellow/45 flex items-center justify-center text-gray-400 group-hover:text-cyber-yellow group-hover:border-cyber-yellow transition-all">
                                 <Plus className="w-6 h-6" />
                               </div>
-                              <span className="font-mono text-xs font-bold text-gray-400 group-hover:text-cyber-yellow transition-all uppercase tracking-wider text-center">
-                                ДОБАВИТЬ ПРОГРАММУ
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Right: Selected Game Details / Terminal Launcher */}
-                        <div className="w-full xl:w-72 shrink-0 flex flex-col gap-4 min-w-0">
-                          <div className="font-mono text-xs text-cyber-yellow uppercase tracking-widest">// КОНСОЛЬ ТЕЛЕМЕТРИИ</div>
-                          
-                          <div className="flex-1 bg-[#06040c]/60 border border-cyber-yellow/20 rounded-xl p-5 flex flex-col justify-between relative overflow-hidden shadow-2xl min-h-[300px]">
-                            {/* Top diagnostic design */}
-                            <div className="space-y-4">
-                              {/* Revolving Hologram circle */}
-                              <div className="w-24 h-24 mx-auto relative flex items-center justify-center my-4">
-                                <div className="absolute inset-0 rounded-full border border-dashed border-cyber-yellow/25 animate-spin" style={{ animationDuration: '15s' }} />
-                                <div className="absolute inset-2 rounded-full border border-double border-cyber-yellow/40 animate-spin" style={{ animationDuration: '8s', animationDirection: 'reverse' }} />
-                                <div className="absolute inset-5 rounded-full bg-cyber-yellow/10 border border-cyber-yellow/30 flex items-center justify-center shadow-[0_0_20px_rgba(255,183,0,0.25)]">
-                                  <Gamepad2 className="w-8 h-8 text-cyber-yellow animate-pulse animate-duration-2000" />
-                                </div>
-                              </div>
-
-                              <div className="text-center font-mono">
-                                <div className="text-[9px] text-gray-500 uppercase tracking-widest">ВЫБРАННЫЙ МОДУЛЬ</div>
-                                <h3 className="text-lg font-black text-white mt-1 neon-text-yellow truncate max-w-[240px]" title="Launcher Software">
-                                  {games.length > 0 ? games[0].name.toUpperCase() : "ИГРЫ НЕ ДОБАВЛЕНЫ"}
-                                </h3>
-                              </div>
-
-                              <div className="border-t border-cyber-yellow/10 pt-4 space-y-2.5 font-mono text-[9px]">
-                                <div className="flex justify-between">
-                                  <span className="text-gray-500">СТАТУС ДИАГНОСТИКИ:</span>
-                                  <span className="text-cyber-green font-bold">ГОТОВО</span>
-                                </div>
-                                <div className="flex flex-col gap-1">
-                                  <span className="text-gray-500">ПУТЬ К ИСПОЛНЯЕМОМУ ФАЙЛУ:</span>
-                                  <span className="text-white break-all bg-[#050308] p-1.5 rounded border border-white/5 select-text text-[8px] leading-normal font-mono cursor-text">
-                                    {games.length > 0 ? games[0].path : "Путь не настроен"}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="space-y-3 pt-4 border-t border-cyber-yellow/10">
-                              {/* Fake stats */}
-                              <div className="flex justify-between font-mono text-[9px]">
-                                <span className="text-gray-500">ЦЕЛОСТНОСТЬ СИСТЕМЫ:</span>
-                                <span className="text-cyber-green font-bold">100% ОНЛАЙН</span>
-                              </div>
-                              
-                              <button
-                                onClick={() => {
-                                  if (games.length > 0) {
-                                    setSelectedGameId(games[0].id);
-                                  } else {
-                                    handleAddGameOpenClick();
-                                  }
-                                }}
-                                className="w-full border border-cyber-yellow bg-cyber-yellow/10 hover:bg-cyber-yellow hover:text-[#06040c] rounded-xl py-3 font-mono font-bold text-xs text-cyber-yellow tracking-widest transition-all shadow-[0_0_12px_rgba(255,183,0,0.2)] hover:shadow-[0_0_22px_rgba(255,183,0,0.5)] flex items-center justify-center gap-2"
-                              >
-                                <Eye className="w-4 h-4 text-cyber-yellow group-hover:text-black transition-colors" />
-                                ОТКРЫТЬ ИНТЕРФЕЙС ИГРЫ
-                              </button>
                             </div>
                           </div>
                         </div>
