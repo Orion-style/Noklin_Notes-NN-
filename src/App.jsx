@@ -240,7 +240,7 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return localStorage.getItem("cyber_onboarding_done") !== "true";
   });
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [sidebarTab, setSidebarTab] = useState(() => {
     const saved = localStorage.getItem("cyber_sidebar_tab");
     return (saved && saved !== "tools") ? saved : "files";
@@ -466,6 +466,8 @@ export default function App() {
   const [newGameCategory, setNewGameCategory] = useState("RPG / Action");
   const [newGameTheme, setNewGameTheme] = useState("yellow");
   const [newGameIcon, setNewGameIcon] = useState(null);
+  const [newGameSideIcon, setNewGameSideIcon] = useState(null);
+  const [newGameHeader, setNewGameHeader] = useState(null);
   const [selectedGameActions, setSelectedGameActions] = useState(null);
   const [activeModalTab, setActiveModalTab] = useState("parameters");
   const [newGameUrls, setNewGameUrls] = useState([]);
@@ -1073,10 +1075,12 @@ export default function App() {
     img.src = cropSrc;
     img.onload = () => {
       const isAvatar = cropTarget === "userAvatar";
-      const cropW = isAvatar ? 160 : 200;
-      const cropH = isAvatar ? 160 : 300;
-      const canvasW = isAvatar ? 256 : 400;
-      const canvasH = isAvatar ? 256 : 600;
+      const isSideIcon = cropTarget === "sideIcon";
+      const isHeader = cropTarget === "gameHeader";
+      const cropW = isAvatar ? 320 : isSideIcon ? 400 : isHeader ? 1200 : 400;
+      const cropH = isAvatar ? 320 : isSideIcon ? 400 : isHeader ? 360 : 600;
+      const canvasW = isAvatar ? 512 : isSideIcon ? 512 : isHeader ? 1920 : 800;
+      const canvasH = isAvatar ? 512 : isSideIcon ? 512 : isHeader ? 576 : 1200;
 
       const canvas = document.createElement('canvas');
       canvas.width = canvasW;
@@ -1086,25 +1090,30 @@ export default function App() {
       let renderW, renderH;
       const targetAspect = cropW / cropH;
       const aspect = img.width / img.height;
-      if (aspect > targetAspect) {
-        renderH = cropH;
-        renderW = cropH * aspect;
-      } else {
+      if (aspect < targetAspect) {
         renderW = cropW;
         renderH = cropW / aspect;
+      } else {
+        renderH = cropH;
+        renderW = cropH * aspect;
       }
 
       ctx.clearRect(0, 0, canvasW, canvasH);
       ctx.translate(canvasW / 2, canvasH / 2);
       const scale = canvasW / cropW;
-      ctx.translate(dragPos.x * scale, dragPos.y * scale);
-      ctx.scale(zoom * scale, zoom * scale);
+      ctx.scale(scale, scale);
+      ctx.translate(dragPos.x, dragPos.y);
+      ctx.scale(zoom, zoom);
       
       ctx.drawImage(img, -renderW / 2, -renderH / 2, renderW, renderH);
 
       const croppedBase64 = canvas.toDataURL("image/png");
       if (cropTarget === "userAvatar") {
         setUserProfile(prev => ({ ...prev, avatar: croppedBase64 }));
+      } else if (cropTarget === "sideIcon") {
+        setNewGameSideIcon(croppedBase64);
+      } else if (cropTarget === "gameHeader") {
+        setNewGameHeader(croppedBase64);
       } else {
         setNewGameIcon(croppedBase64);
       }
@@ -1285,6 +1294,8 @@ export default function App() {
             category: newGameCategory,
             coverTheme: newGameTheme,
             icon: iconData || g.icon,
+            sideIcon: newGameSideIcon,
+            header: newGameHeader,
             urls: newGameUrls
           };
         }
@@ -1301,6 +1312,8 @@ export default function App() {
         lastPlayed: "Ни разу",
         coverTheme: newGameTheme,
         icon: iconData,
+        sideIcon: newGameSideIcon,
+        header: newGameHeader,
         urls: newGameUrls
       };
       setGames(prev => [...prev, newGame]);
@@ -1311,6 +1324,8 @@ export default function App() {
     setNewGameCategory("RPG / Strategy");
     setNewGameTheme("yellow");
     setNewGameIcon(null);
+    setNewGameSideIcon(null);
+    setNewGameHeader(null);
     setNewGameUrls([]);
     setActiveModalTab("parameters");
     setAddGameOpen(false);
@@ -1328,6 +1343,8 @@ export default function App() {
     setNewGameCategory("RPG / Strategy");
     setNewGameTheme("yellow");
     setNewGameIcon(null);
+    setNewGameSideIcon(null);
+    setNewGameHeader(null);
     setNewGameUrls([]);
     setActiveModalTab("parameters");
     setAddGameOpen(true);
@@ -1340,6 +1357,8 @@ export default function App() {
     setNewGameCategory(game.category);
     setNewGameTheme(game.coverTheme || "yellow");
     setNewGameIcon(game.icon || null);
+    setNewGameSideIcon(game.sideIcon || null);
+    setNewGameHeader(game.header || null);
     setNewGameUrls(game.urls || []);
     setActiveModalTab("parameters");
     setAddGameOpen(true);
@@ -3092,8 +3111,8 @@ export default function App() {
                     }`}
                     title={game.name}
                   >
-                    {game.icon ? (
-                      <img src={game.icon} alt={game.name} className="w-full h-full object-cover" />
+                    {game.sideIcon || game.icon ? (
+                      <img src={game.sideIcon || game.icon} alt={game.name} className="w-full h-full object-cover" />
                     ) : (
                       <Gamepad2 className="w-5 h-5 text-cyber-yellow" />
                     )}
@@ -3341,61 +3360,49 @@ export default function App() {
                             transition={{ duration: 0.25 }}
                             className="w-full h-full flex flex-col gap-5 z-10 text-left overflow-y-auto pr-1 font-mono pb-8 min-w-0"
                           >
-                            {/* Header Section */}
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4 shrink-0 min-w-0">
-                              <div className="flex items-center gap-4 min-w-0 flex-1">
+                            {/* Game Profile Header Banner */}
+                            <div className="relative w-full h-44 sm:h-52 md:h-60 rounded-2xl overflow-hidden border border-white/10 shrink-0 bg-[#090614]/80 shadow-lg group">
+                              {activeGame.header ? (
+                                <img
+                                  src={activeGame.header}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-r from-[#0d0722] via-[#160c38] to-[#0d0722] flex items-center justify-center opacity-40">
+                                  <div className="w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-900/30 via-transparent to-transparent" />
+                                </div>
+                              )}
+
+                              {/* Action Buttons Overlay (Icon-only) */}
+                              <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-20 pointer-events-auto">
                                 <button
                                   onClick={() => setSelectedGameId(null)}
-                                  className="btn-back-list flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all text-xs font-mono font-bold shrink-0"
+                                  title="Назад к списку"
+                                  className="p-2.5 rounded-xl bg-transparent hover:bg-black/40 text-white transition-all hover:scale-105"
                                 >
-                                  <ChevronLeft className="w-4 h-4 shrink-0" />
-                                  <span>НАЗАД К СПИСКУ</span>
+                                  <ChevronLeft className="w-5 h-5 shrink-0" />
                                 </button>
-                                
-                                <div className="h-6 w-[1px] bg-white/10 shrink-0" />
 
-                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                  {activeGame.icon ? (
-                                    <img src={activeGame.icon} alt="" className="w-10 h-10 object-contain rounded-lg border border-white/10 shrink-0" />
-                                  ) : (
-                                    <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-500 shrink-0">
-                                      <Gamepad2 className="w-6 h-6" />
-                                    </div>
-                                  )}
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <h2 className="text-xl font-black text-white uppercase tracking-wide truncate max-w-[280px]">
-                                        {activeGame.name}
-                                      </h2>
-                                      <span className={`text-[8px] uppercase tracking-wider px-2 py-0.5 rounded border inline-block shrink-0 ${themeBadge}`}>
-                                        {activeGame.category}
-                                      </span>
-                                    </div>
-                                    <p className="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5 truncate">
-                                      СТАТУС ДИАГНОСТИКИ: <span className="text-cyber-green font-bold">АКТИВНО</span> // ID СИСТЕМЫ: {activeGame.id}
-                                    </p>
-                                  </div>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => handleEditGameClick(activeGame)}
+                                    title="Изменить"
+                                    className="p-2.5 rounded-xl bg-transparent hover:bg-cyber-yellow/20 text-cyber-yellow transition-all hover:scale-105"
+                                  >
+                                    <Edit2 className="w-4 h-4 shrink-0" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setGameToDelete(activeGame);
+                                    }}
+                                    title="Удалить"
+                                    className="p-2.5 rounded-xl bg-transparent hover:bg-red-500/20 text-red-400 transition-all hover:scale-105"
+                                  >
+                                    <Trash2 className="w-4 h-4 shrink-0" />
+                                  </button>
                                 </div>
-                              </div>
-
-                              <div className="flex items-center gap-2.5 shrink-0">
-                                <button
-                                  onClick={() => handleEditGameClick(activeGame)}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-cyber-yellow/10 text-cyber-yellow transition-all text-xs"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                  <span>ИЗМЕНИТЬ</span>
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setGameToDelete(activeGame);
-                                  }}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-500/20 hover:border-red-500 hover:bg-red-500/10 text-red-400 transition-all text-xs"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>УДАЛИТЬ</span>
-                                </button>
                               </div>
                             </div>
 
@@ -4379,7 +4386,7 @@ export default function App() {
                                   <img 
                                     src={game.icon} 
                                     alt={game.name} 
-                                    className="w-full h-full object-cover block rounded-none transition-transform duration-300 group-hover:scale-105" 
+                                    className="w-full h-full object-cover block rounded-none transition-transform duration-300 scale-105" 
                                   />
                                 ) : (
                                   <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-white/5 text-gray-400 group-hover:text-cyber-yellow transition-all rounded-none">
@@ -4773,7 +4780,9 @@ export default function App() {
                       </div>
 
                       <div 
-                        className="relative w-[200px] h-[300px] overflow-hidden border border-cyber-yellow/45 rounded-none bg-black/40 select-none cursor-move shadow-[0_0_25px_rgba(255,183,0,0.2)] flex items-center justify-center"
+                        className={`relative overflow-hidden border border-cyber-yellow/45 bg-black/40 select-none cursor-move shadow-[0_0_25px_rgba(255,183,0,0.2)] flex items-center justify-center ${
+                          cropTarget === "sideIcon" ? "w-[200px] h-[200px] rounded-xl" : cropTarget === "gameHeader" ? "w-[360px] h-[108px] rounded-xl" : "w-[200px] h-[300px] rounded-none"
+                        }`}
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
@@ -4790,15 +4799,17 @@ export default function App() {
                             position: 'absolute',
                             left: '50%',
                             top: '50%',
-                            width: imageAspect > (2/3) ? 'auto' : '100%',
-                            height: imageAspect > (2/3) ? '100%' : 'auto',
+                            width: imageAspect < (cropTarget === "sideIcon" ? 1 : cropTarget === "gameHeader" ? 3.33 : 2/3) ? '100%' : 'auto',
+                            height: imageAspect < (cropTarget === "sideIcon" ? 1 : cropTarget === "gameHeader" ? 3.33 : 2/3) ? 'auto' : '100%',
                             maxWidth: 'none',
                             transform: `translate(-50%, -50%) translate(${dragPos.x}px, ${dragPos.y}px) scale(${zoom})`,
                             pointerEvents: 'none'
                           }}
                         />
-                        {/* Rectangular poster crop boundary overlay */}
-                        <div className="absolute inset-2 border-2 border-dashed border-cyber-yellow rounded-none pointer-events-none opacity-50 shadow-[0_0_0_9999px_rgba(6,4,12,0.6)]" />
+                        {/* Crop boundary overlay */}
+                        <div className={`absolute inset-2 border-2 border-dashed border-cyber-yellow pointer-events-none opacity-50 shadow-[0_0_0_9999px_rgba(6,4,12,0.6)] ${
+                          cropTarget === "sideIcon" || cropTarget === "gameHeader" ? "rounded-lg" : "rounded-none"
+                        }`} />
                       </div>
 
                       <div className="w-full space-y-1.5 px-4">
@@ -4864,7 +4875,7 @@ export default function App() {
                           </div>
 
                           <div className="space-y-1.5">
-                            <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">СВОЯ ИКОНКА:</label>
+                            <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">ОСНОВНАЯ ИКОНКА (КАРТОЧКА):</label>
                             <div className="flex items-center gap-3">
                               <input
                                 type="file"
@@ -4874,6 +4885,7 @@ export default function App() {
                                   if (file) {
                                     const reader = new FileReader();
                                     reader.onloadend = () => {
+                                      setCropTarget("gameIcon");
                                       setCropSrc(reader.result);
                                     };
                                     reader.readAsDataURL(file);
@@ -4884,7 +4896,7 @@ export default function App() {
                               />
                               <label
                                 htmlFor="custom-icon-upload"
-                                className="border border-dashed border-cyber-yellow/45 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 rounded px-4 py-2 text-[10px] font-bold text-cyber-yellow uppercase tracking-wider transition-all flex-1 text-center"
+                                className="border border-dashed border-cyber-yellow/45 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 rounded px-4 py-2 text-[10px] font-bold text-cyber-yellow uppercase tracking-wider transition-all flex-1 text-center cursor-pointer"
                               >
                                 {newGameIcon ? "Сменить иконку" : "Загрузить изображение"}
                               </label>
@@ -4894,6 +4906,88 @@ export default function App() {
                                   <button
                                     type="button"
                                     onClick={() => setNewGameIcon(null)}
+                                    className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-[9px] font-bold hover:bg-red-600"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">ИКОНКА ЛЕВОЙ ПАНЕЛИ (БОКОВАЯ):</label>
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                      setCropTarget("sideIcon");
+                                      setCropSrc(reader.result);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                                id="custom-side-icon-upload"
+                                className="hidden"
+                              />
+                              <label
+                                htmlFor="custom-side-icon-upload"
+                                className="border border-dashed border-cyber-yellow/45 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 rounded px-4 py-2 text-[10px] font-bold text-cyber-yellow uppercase tracking-wider transition-all flex-1 text-center cursor-pointer"
+                              >
+                                {newGameSideIcon ? "Сменить боковую иконку" : "Загрузить боковое фото"}
+                              </label>
+                              {newGameSideIcon && (
+                                <div className="relative">
+                                  <img src={newGameSideIcon} alt="Side Icon Preview" className="w-9 h-9 object-contain rounded-lg border border-cyber-yellow/25 bg-[#050308]" />
+                                  <button
+                                    type="button"
+                                    onClick={() => setNewGameSideIcon(null)}
+                                    className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-[9px] font-bold hover:bg-red-600"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">ШАПКА ПРОФИЛЯ ИГРЫ (ОБЛОЖКА):</label>
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                      setCropTarget("gameHeader");
+                                      setCropSrc(reader.result);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                                id="custom-header-upload"
+                                className="hidden"
+                              />
+                              <label
+                                htmlFor="custom-header-upload"
+                                className="border border-dashed border-cyber-yellow/45 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 rounded px-4 py-2 text-[10px] font-bold text-cyber-yellow uppercase tracking-wider transition-all flex-1 text-center cursor-pointer"
+                              >
+                                {newGameHeader ? "Сменить шапку" : "Загрузить шапку профиля"}
+                              </label>
+                              {newGameHeader && (
+                                <div className="relative">
+                                  <img src={newGameHeader} alt="Header Preview" className="w-16 h-8 object-cover rounded-lg border border-cyber-yellow/25 bg-[#050308]" />
+                                  <button
+                                    type="button"
+                                    onClick={() => setNewGameHeader(null)}
                                     className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-[9px] font-bold hover:bg-red-600"
                                   >
                                     ×
