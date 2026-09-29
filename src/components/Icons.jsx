@@ -25,3 +25,62 @@ export const GameModeIcon = ({ className }) => (
     <circle cx="50" cy="50" r="6" fill="currentColor" />
   </svg>
 );
+
+// Youtube icon outline (unfilled)
+export const YoutubeOutlineIcon = ({ className = "w-4 h-4", style }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    className={className} 
+    style={style} 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+  >
+    <path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" />
+    <path d="m10 15 5-3-5-3z" />
+  </svg>
+);
+
+// Code "</>" icon (<ms> tag style)
+export const CodeTagIcon = ({ className = "w-4 h-4", style }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    className={className} 
+    style={style} 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+  >
+    <polyline points="16 18 22 12 16 6" />
+    <polyline points="8 6 2 12 8 18" />
+  </svg>
+);
+
+// CyberCamera / Aperture Icon for Aktogram
+export const CyberCameraIcon = ({ className = "w-5 h-5", style }) => (
+  <svg 
+    viewBox="0 0 100 100" 
+    className={className} 
+    style={style} 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    {/* Outer Cyber Rounded Body */}
+    <rect x="8" y="20" width="84" height="68" rx="16" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
+    {/* Viewfinder notch top */}
+    <path d="M34 20L38 12H62L66 20" stroke="currentColor" strokeWidth="4" strokeLinejoin="round" />
+    {/* Sensor Flash / Status LED */}
+    <circle cx="76" cy="34" r="4" fill="currentColor" />
+    {/* Outer Lens Ring */}
+    <circle cx="50" cy="54" r="24" stroke="currentColor" strokeWidth="5" strokeDasharray="8 4" />
+    {/* Aperture Iris Blades */}
+    <circle cx="50" cy="54" r="14" stroke="currentColor" strokeWidth="3" />
+    <path d="M50 40L58 48M64 54L56 62M50 68L42 60M36 54L44 46" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    {/* Central Core Dot */}
+    <circle cx="50" cy="54" r="3.5" fill="currentColor" />
+  </svg>
+);

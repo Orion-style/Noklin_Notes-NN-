@@ -41,16 +41,25 @@ export default function InteractiveBackground({ isSleeping = false }) {
 
     const handleResize = () => {
       if (!canvas) return;
-      const oldWidth = width;
-      const oldHeight = height;
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
+      const oldWidth = width || window.innerWidth || 1;
+      const oldHeight = height || window.innerHeight || 1;
+      width = canvas.width = window.innerWidth || 1280;
+      height = canvas.height = window.innerHeight || 720;
       
       particles.forEach((p) => {
-        p.x = (p.x / oldWidth) * width;
-        p.y = (p.y / oldHeight) * height;
+        if (oldWidth > 0 && oldHeight > 0) {
+          p.x = (p.x / oldWidth) * width;
+          p.y = (p.y / oldHeight) * height;
+        } else {
+          p.x = Math.random() * width;
+          p.y = Math.random() * height;
+        }
       });
     };
+
+    requestAnimationFrame(() => {
+      handleResize();
+    });
 
     const handleMouseMove = (e) => {
       mouse.x = e.clientX;

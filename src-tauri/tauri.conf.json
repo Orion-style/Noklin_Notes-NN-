@@ -16,6 +16,7 @@
         "title": "Noklin",
         "width": 1280,
         "height": 720,
+        "decorations": false,
         "maximized": true
       }
     ],
