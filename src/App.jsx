@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
-import { X, RefreshCw, BarChart2, Grid, Plus, Folder, FolderOpen, FileText, Cpu, Terminal, Layers, Link, ShieldAlert, Check, HelpCircle, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Moon, Sun, LogOut, Bold, Italic, Highlighter, Heading1, Heading2, CheckSquare, Code, FilePlus, FolderPlus, Compass, Database, Copy, CornerUpRight, Search, Bookmark, Clipboard, Eye, Edit2, Trash2, Gamepad2, Swords, Play, Sparkles, Clock, Gamepad, Settings, Mail, Bell, Activity, HardDrive, Crop, Square, Calendar, Zap, Flame, Shuffle, Pause, RotateCcw, User, Camera } from "lucide-react";
+import { X, RefreshCw, BarChart2, Grid, Plus, Folder, FolderOpen, FileText, Cpu, Terminal, Layers, Link, ShieldAlert, Check, HelpCircle, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Moon, Sun, LogOut, Bold, Italic, Highlighter, Heading1, Heading2, CheckSquare, Code, FilePlus, FolderPlus, Compass, Database, Copy, CornerUpRight, Search, Bookmark, Clipboard, Eye, Edit2, Trash2, Gamepad2, Swords, Play, Sparkles, Clock, Gamepad, Settings, Mail, Bell, Activity, HardDrive, Crop, Square, Calendar, Zap, Flame, Shuffle, Pause, RotateCcw, User, Camera, Smartphone, Archive } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import InteractiveBackground from "./components/InteractiveBackground";
 import OnboardingWidget from "./components/OnboardingWidget";
+import GlobalNotesModal from "./components/GlobalNotesModal";
+import AktogramView from "./components/AktogramView";
+import { CyberCameraIcon } from "./components/Icons";
 
 // Obsidian crystalline SVG icon
 const ObsidianIcon = ({ className }) => (
@@ -31,14 +34,6 @@ const GameModeIcon = ({ className }) => (
   </svg>
 );
 
-// Custom sidebar toggle icon matching user design (no arrow)
-const SidebarToggleIcon = ({ className }) => (
-  <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-    <line x1="9" y1="3" x2="9" y2="21" />
-  </svg>
-);
-
 // Translation helper function
 const t = (ru, en) => ru || en;
 
@@ -55,6 +50,44 @@ const formatPlayTime = (hoursValue) => {
   } else {
     return `${m} мин.`;
   }
+};
+
+const safeSetLocalStorage = (key, value) => {
+  try {
+    localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+  } catch (err) {
+    console.warn(`[safeSetLocalStorage] Failed to save key "${key}":`, err);
+  }
+};
+
+const compressImage = (dataUrl, maxWidth = 1200, maxHeight = 600, quality = 0.82) => {
+  return new Promise((resolve) => {
+    if (!dataUrl || typeof dataUrl !== "string" || !dataUrl.startsWith("data:image")) {
+      return resolve(dataUrl);
+    }
+    const img = new Image();
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+      let res = canvas.toDataURL("image/webp", quality);
+      if (!res.startsWith("data:image/webp")) {
+        res = canvas.toDataURL("image/jpeg", quality);
+      }
+      resolve(res);
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
 };
 
 // Build a nested directory tree from a flat array of relative file paths
@@ -229,6 +262,14 @@ export default function App() {
   const [customImagesPath, setCustomImagesPath] = useState(() => {
     return localStorage.getItem("cyber_custom_images_path") || "";
   });
+  const [aktogramAiConfig, setAktogramAiConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cyber_aktogram_ai_config");
+      return saved ? JSON.parse(saved) : { mode: "offline", apiKey: "", ollamaUrl: "http://localhost:11434" };
+    } catch {
+      return { mode: "offline", apiKey: "", ollamaUrl: "http://localhost:11434" };
+    }
+  });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [files, setFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -245,19 +286,18 @@ export default function App() {
     const saved = localStorage.getItem("cyber_sidebar_tab");
     return (saved && saved !== "tools") ? saved : "files";
   });
-  React.useEffect(() => {
-    localStorage.setItem("cyber_sidebar_tab", sidebarTab);
-  }, [sidebarTab]);
 
-  const openFileInObsidian = (relPath) => {
+  const openFileInObsidian = (relPath, customVaultPath = null) => {
     if (!relPath) return;
     
     // Normalize path separators
     const cleanRelPath = relPath.replace(/\\/g, '/').replace(/^\//, '');
     let obsidianUrl = '';
 
-    if (vaultPath) {
-      const normalizedVault = vaultPath.replace(/\\/g, '/').replace(/\/$/, '');
+    const targetVault = customVaultPath || vaultPath;
+
+    if (targetVault) {
+      const normalizedVault = targetVault.replace(/\\/g, '/').replace(/\/$/, '');
       const fullPath = `${normalizedVault}/${cleanRelPath}`;
       // Obsidian URI format 1: obsidian://open?path=C%3A%2Fpath%2Fto%2Ffile.md
       obsidianUrl = `obsidian://open?path=${encodeURIComponent(fullPath)}`;
@@ -475,6 +515,48 @@ export default function App() {
   const [launchingGame, setLaunchingGame] = useState(null);
   const [launchLogs, setLaunchLogs] = useState([]);
 
+  const [newGameType, setNewGameType] = useState("pc"); // "pc" | "phantom"
+  const [newGamePlatform, setNewGamePlatform] = useState("mobile"); // "mobile" | "console" | "other"
+  const [newGameInitialHours, setNewGameInitialHours] = useState("");
+  const [fileExistsMap, setFileExistsMap] = useState({});
+  const [collapsedSections, setCollapsedSections] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cyber_collapsed_game_sections");
+      return saved ? JSON.parse(saved) : {};
+    } catch (_) {
+      return {};
+    }
+  });
+
+  const toggleSectionCollapse = (sectionKey) => {
+    setCollapsedSections(prev => {
+      const updated = { ...prev, [sectionKey]: !prev[sectionKey] };
+      safeSetLocalStorage("cyber_collapsed_game_sections", updated);
+      return updated;
+    });
+  };
+
+  const displayedGames = games;
+
+  // Categorize displayed games:
+  // 1. Installed: type === "pc" (or not phantom), path exists and is not marked missing/archived
+  // 2. Phantom: type === "phantom"
+  // 3. Archived / Uninstalled: type === "pc" but file doesn't exist on disk, or game.isArchived === true
+  const installedGames = displayedGames.filter(g => {
+    if (g.gameType === "phantom") return false;
+    if (g.isArchived) return false;
+    if (g.path && fileExistsMap[g.id] === false) return false;
+    return true;
+  });
+
+  const phantomGames = displayedGames.filter(g => g.gameType === "phantom" && !g.isArchived);
+
+  const archivedGames = displayedGames.filter(g => {
+    if (g.isArchived) return true;
+    if (g.gameType !== "phantom" && g.path && fileExistsMap[g.id] === false) return true;
+    return false;
+  });
+
   // Activity tracking and custom news states
   const [selectedGameId, setSelectedGameId] = useState(null);
   const [gameActivities, setGameActivities] = useState(() => {
@@ -500,6 +582,51 @@ export default function App() {
       return saved ? JSON.parse(saved) : {};
     } catch (_) {
       return {};
+    }
+  });
+  const [globalTasks, setGlobalTasks] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cyber_global_tasks");
+      return saved ? JSON.parse(saved) : [];
+    } catch (_) {
+      return [];
+    }
+  });
+  const [isGlobalNotesOpen, setIsGlobalNotesOpen] = useState(false);
+
+  // Aktogram posts state
+  const [aktogramPosts, setAktogramPosts] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cyber_aktogram_posts");
+      if (saved) return JSON.parse(saved);
+      return [
+        {
+          id: "post_init_1",
+          text: "Добро пожаловать в Актограмм — вашу персональную кибер-сеть! Здесь сохраняются скриншоты, игровые достижения и идеи. Публикуйте посты, а виртуальные подписчики хаба будут постепенно ставить эмоции и писать комментарии.",
+          tags: ["актограмм", "cyberpunk", "старт"],
+          imageUrl: null,
+          createdAt: new Date(Date.now() - 3600 * 1000 * 4).toISOString(),
+          reactions: { likes: 7420, flames: 5180, sparks: 3950, diamonds: 2100, laugh: 1840, skull: 920, sad: 110, angry: 45 },
+          userReacted: {},
+          comments: [
+            {
+              id: "bot_cmt_init_1",
+              bot: { id: "usr_ghost52", name: "Ghost52", handle: "@ghost52", avatarColor: "#00ff66" },
+              text: "Сеть синхронизирована. Рад видеть в ленте! 🔥",
+              createdAt: new Date(Date.now() - 3600 * 1000 * 3).toISOString()
+            },
+            {
+              id: "bot_cmt_init_2",
+              bot: { id: "usr_genesis", name: "Genesis_Gr", handle: "@genesis_gr", avatarColor: "#b026ff" },
+              text: "Ждём сочных скриншотов и историй из игр! ⚡",
+              createdAt: new Date(Date.now() - 3600 * 1000 * 2).toISOString()
+            }
+          ],
+          views: 68
+        }
+      ];
+    } catch (_) {
+      return [];
     }
   });
   const [newTaskText, setNewTaskText] = useState("");
@@ -603,6 +730,18 @@ export default function App() {
   }, [gameTasks]);
 
   React.useEffect(() => {
+    localStorage.setItem("cyber_global_tasks", JSON.stringify(globalTasks));
+  }, [globalTasks]);
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem("cyber_aktogram_posts", JSON.stringify(aktogramPosts));
+    } catch (err) {
+      console.warn("Failed to persist aktogram posts to localStorage:", err);
+    }
+  }, [aktogramPosts]);
+
+  React.useEffect(() => {
     localStorage.setItem("obsidian_news_paths", JSON.stringify(obsidianNewsPaths));
   }, [obsidianNewsPaths]);
 
@@ -622,12 +761,18 @@ export default function App() {
   }, [games, selectedGameId]);
 
   const handleOpenObsidian = () => {
-    if (!currentObsidianNewsPath.trim()) {
+    if (!currentObsidianNewsPath || !currentObsidianNewsPath.trim()) {
       setIsNewsPathPromptOpen(true);
     } else {
-      const pathParam = currentObsidianNewsPath ? `?path=${encodeURIComponent(currentObsidianNewsPath)}` : "";
-      invoke("open_url", { url: `obsidian://open${pathParam}` })
-        .catch(err => console.error("Failed to open Obsidian:", err));
+      const normPath = currentObsidianNewsPath.replace(/\\/g, '/');
+      const obsidianUrl = `obsidian://open?path=${encodeURIComponent(normPath)}`;
+      const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
+      if (isTauri) {
+        invoke("open_url", { url: obsidianUrl })
+          .catch(err => console.error("Failed to open Obsidian:", err));
+      } else {
+        window.open(obsidianUrl, '_blank');
+      }
     }
   };
 
@@ -704,7 +849,7 @@ export default function App() {
     try {
       if (isTauri) {
         try {
-          await invoke("create_file", { vaultPath: currentObsidianNewsPath, relPath: relPath });
+          await invoke("create_file", { vaultPath: currentObsidianNewsPath, relPath: relPath, initialContent: "" });
         } catch (e) {
           console.log("Daily note file already exists or notice:", e);
         }
@@ -985,7 +1130,7 @@ export default function App() {
   const [cropTarget, setCropTarget] = useState("gameIcon"); // "gameIcon" | "userAvatar"
 
   React.useEffect(() => {
-    localStorage.setItem("cyber_user_profile", JSON.stringify(userProfile));
+    safeSetLocalStorage("cyber_user_profile", userProfile);
   }, [userProfile]);
 
   const getDaysUntilBirthday = (birthDateStr) => {
@@ -1077,10 +1222,14 @@ export default function App() {
       const isAvatar = cropTarget === "userAvatar";
       const isSideIcon = cropTarget === "sideIcon";
       const isHeader = cropTarget === "gameHeader";
-      const cropW = isAvatar ? 320 : isSideIcon ? 400 : isHeader ? 1200 : 400;
-      const cropH = isAvatar ? 320 : isSideIcon ? 400 : isHeader ? 360 : 600;
-      const canvasW = isAvatar ? 512 : isSideIcon ? 512 : isHeader ? 1920 : 800;
-      const canvasH = isAvatar ? 512 : isSideIcon ? 512 : isHeader ? 576 : 1200;
+
+      const previewW = isAvatar ? 160 : isSideIcon ? 200 : isHeader ? 360 : 200;
+      const previewH = isAvatar ? 160 : isSideIcon ? 200 : isHeader ? 108 : 300;
+
+      const canvasW = isAvatar ? 256 : isSideIcon ? 256 : isHeader ? 1200 : 400;
+      const canvasH = isAvatar ? 256 : isSideIcon ? 256 : isHeader ? 360 : 600;
+
+      const scaleFactor = canvasW / previewW;
 
       const canvas = document.createElement('canvas');
       canvas.width = canvasW;
@@ -1088,26 +1237,30 @@ export default function App() {
       const ctx = canvas.getContext('2d');
 
       let renderW, renderH;
-      const targetAspect = cropW / cropH;
+      const targetAspect = previewW / previewH;
       const aspect = img.width / img.height;
       if (aspect < targetAspect) {
-        renderW = cropW;
-        renderH = cropW / aspect;
+        renderW = canvasW;
+        renderH = canvasW / aspect;
       } else {
-        renderH = cropH;
-        renderW = cropH * aspect;
+        renderH = canvasH;
+        renderW = canvasH * aspect;
       }
 
       ctx.clearRect(0, 0, canvasW, canvasH);
+      ctx.save();
       ctx.translate(canvasW / 2, canvasH / 2);
-      const scale = canvasW / cropW;
-      ctx.scale(scale, scale);
-      ctx.translate(dragPos.x, dragPos.y);
+      ctx.translate(dragPos.x * scaleFactor, dragPos.y * scaleFactor);
       ctx.scale(zoom, zoom);
       
       ctx.drawImage(img, -renderW / 2, -renderH / 2, renderW, renderH);
+      ctx.restore();
 
-      const croppedBase64 = canvas.toDataURL("image/png");
+      let croppedBase64 = canvas.toDataURL("image/webp", 0.85);
+      if (!croppedBase64.startsWith("data:image/webp")) {
+        croppedBase64 = canvas.toDataURL("image/jpeg", 0.85);
+      }
+
       if (cropTarget === "userAvatar") {
         setUserProfile(prev => ({ ...prev, avatar: croppedBase64 }));
       } else if (cropTarget === "sideIcon") {
@@ -1121,6 +1274,46 @@ export default function App() {
     };
   };
 
+  // Migration: automatically re-compress any legacy huge images in games state
+  React.useEffect(() => {
+    let isMounted = true;
+    const migrateLegacyImages = async () => {
+      try {
+        let changedAny = false;
+        const updated = await Promise.all(games.map(async (g) => {
+          let changed = false;
+          let icon = g.icon;
+          let sideIcon = g.sideIcon;
+          let header = g.header;
+          if (header && typeof header === 'string' && header.length > 200000) {
+            header = await compressImage(header, 1200, 360, 0.82);
+            changed = true;
+          }
+          if (icon && typeof icon === 'string' && icon.length > 150000) {
+            icon = await compressImage(icon, 400, 600, 0.82);
+            changed = true;
+          }
+          if (sideIcon && typeof sideIcon === 'string' && sideIcon.length > 150000) {
+            sideIcon = await compressImage(sideIcon, 256, 256, 0.82);
+            changed = true;
+          }
+          if (changed) {
+            changedAny = true;
+            return { ...g, icon, sideIcon, header };
+          }
+          return g;
+        }));
+        if (changedAny && isMounted) {
+          setGames(updated);
+        }
+      } catch (err) {
+        console.warn("Legacy image migration warning:", err);
+      }
+    };
+    migrateLegacyImages();
+    return () => { isMounted = false; };
+  }, []);
+
   const [runningGames, setRunningGames] = useState(() => {
     const saved = localStorage.getItem("cyber_running_games");
     return saved ? JSON.parse(saved) : {};
@@ -1128,7 +1321,7 @@ export default function App() {
   const [tick, setTick] = useState(0);
 
   React.useEffect(() => {
-    localStorage.setItem("cyber_running_games", JSON.stringify(runningGames));
+    safeSetLocalStorage("cyber_running_games", runningGames);
   }, [runningGames]);
 
   React.useEffect(() => {
@@ -1154,11 +1347,11 @@ export default function App() {
   };
 
   React.useEffect(() => {
-    localStorage.setItem("cyber_games", JSON.stringify(games));
+    safeSetLocalStorage("cyber_games", games);
   }, [games]);
 
   React.useEffect(() => {
-    localStorage.setItem("cyber_active_mode", activeMode);
+    safeSetLocalStorage("cyber_active_mode", activeMode);
   }, [activeMode]);
 
   // Active game playtime trackers
@@ -1270,13 +1463,45 @@ export default function App() {
     fetchMissingIcons();
   }, []);
 
+  // Check file existence on disk for PC games
+  React.useEffect(() => {
+    const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
+    if (!isTauri) return;
+
+    let isSubscribed = true;
+    const checkAllGameFiles = async () => {
+      const results = {};
+      for (const game of games) {
+        if (game.gameType !== "phantom" && game.path) {
+          try {
+            const exists = await invoke("check_file_exists", { path: game.path });
+            results[game.id] = !!exists;
+          } catch (err) {
+            results[game.id] = false;
+          }
+        }
+      }
+      if (isSubscribed) {
+        setFileExistsMap(results);
+      }
+    };
+
+    checkAllGameFiles();
+    const interval = setInterval(checkAllGameFiles, 15000);
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
+  }, [games]);
+
   const handleAddGame = async (e) => {
     e.preventDefault();
-    if (!newGameName || !newGamePath) return;
+    if (!newGameName) return;
+    if (newGameType === "pc" && !newGamePath) return;
 
     let iconData = newGameIcon;
     const isTauri = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
-    if (!iconData && isTauri) {
+    if (!iconData && isTauri && newGameType === "pc" && newGamePath) {
       try {
         iconData = await invoke("get_game_icon", { path: newGamePath });
       } catch (err) {
@@ -1287,28 +1512,35 @@ export default function App() {
     if (editingGameId) {
       setGames(prev => prev.map(g => {
         if (g.id === editingGameId) {
+          const hoursNum = parseFloat(newGameInitialHours);
           return {
             ...g,
             name: newGameName,
-            path: newGamePath,
+            path: newGameType === "pc" ? newGamePath : (g.path || ""),
+            gameType: newGameType,
+            platform: newGamePlatform,
             category: newGameCategory,
             coverTheme: newGameTheme,
             icon: iconData || g.icon,
             sideIcon: newGameSideIcon,
             header: newGameHeader,
-            urls: newGameUrls
+            urls: newGameUrls,
+            playTime: !isNaN(hoursNum) && hoursNum >= 0 ? hoursNum : g.playTime
           };
         }
         return g;
       }));
       setEditingGameId(null);
     } else {
+      const hoursNum = parseFloat(newGameInitialHours);
       const newGame = {
         id: Date.now().toString(),
         name: newGameName,
-        path: newGamePath,
+        path: newGameType === "pc" ? newGamePath : "",
+        gameType: newGameType,
+        platform: newGamePlatform,
         category: newGameCategory,
-        playTime: 0,
+        playTime: !isNaN(hoursNum) && hoursNum >= 0 ? hoursNum : 0,
         lastPlayed: "Ни разу",
         coverTheme: newGameTheme,
         icon: iconData,
@@ -1321,6 +1553,9 @@ export default function App() {
     
     setNewGameName("");
     setNewGamePath("");
+    setNewGameType("pc");
+    setNewGamePlatform("mobile");
+    setNewGameInitialHours("");
     setNewGameCategory("RPG / Strategy");
     setNewGameTheme("yellow");
     setNewGameIcon(null);
@@ -1336,10 +1571,24 @@ export default function App() {
     setGames(prev => prev.filter(g => g.id !== id));
   };
 
+  const handleToggleArchiveGame = (game, e) => {
+    if (e) e.stopPropagation();
+    setGames(prev => prev.map(g => {
+      if (g.id === game.id) {
+        return { ...g, isArchived: !g.isArchived };
+      }
+      return g;
+    }));
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
   const handleAddGameOpenClick = () => {
     setEditingGameId(null);
     setNewGameName("");
     setNewGamePath("");
+    setNewGameType("pc");
+    setNewGamePlatform("mobile");
+    setNewGameInitialHours("");
     setNewGameCategory("RPG / Strategy");
     setNewGameTheme("yellow");
     setNewGameIcon(null);
@@ -1353,7 +1602,10 @@ export default function App() {
   const handleEditGameClick = (game) => {
     setEditingGameId(game.id);
     setNewGameName(game.name);
-    setNewGamePath(game.path);
+    setNewGamePath(game.path || "");
+    setNewGameType(game.gameType || "pc");
+    setNewGamePlatform(game.platform || "mobile");
+    setNewGameInitialHours(game.playTime !== undefined ? game.playTime.toString() : "0");
     setNewGameCategory(game.category);
     setNewGameTheme(game.coverTheme || "yellow");
     setNewGameIcon(game.icon || null);
@@ -1399,6 +1651,8 @@ export default function App() {
       setGameToDelete(game);
     } else if (action === "edit") {
       handleEditGameClick(game);
+    } else if (action === "archive") {
+      handleToggleArchiveGame(game);
     }
   };
 
@@ -2854,8 +3108,8 @@ export default function App() {
         }
 
         if (changed) {
-          localStorage.setItem("cyber_games", JSON.stringify(updatedGames));
-          localStorage.setItem("cyber_game_activities", JSON.stringify(updatedActivities));
+          safeSetLocalStorage("cyber_games", updatedGames);
+          safeSetLocalStorage("cyber_game_activities", updatedActivities);
           setGames(updatedGames);
           setGameActivities(updatedActivities);
         }
@@ -2874,7 +3128,6 @@ export default function App() {
   };
 
   const showGlobalTooltip = (e, text, theme = "purple") => {
-    if (!sidebarCollapsed) return;
     const rect = e.currentTarget.getBoundingClientRect();
     setTooltip({
       text: text,
@@ -2887,13 +3140,6 @@ export default function App() {
 
   const hideGlobalTooltip = () => {
     setTooltip(prev => ({ ...prev, visible: false }));
-  };
-
-  const handleSidebarBackgroundClick = (e) => {
-    if (e.target.closest('button, input, textarea, form, a, [role="button"], .cursor-pointer')) {
-      return;
-    }
-    setSidebarCollapsed(prev => !prev);
   };
 
   const handleCloseOnboarding = () => {
@@ -3084,9 +3330,12 @@ export default function App() {
             <aside className="w-16 bg-cyber-sidebar/95 backdrop-blur-xl border-r border-cyber-purple/30 flex flex-col items-center py-4 gap-3 select-none z-20 shrink-0 h-full">
               {/* Overview Icon Button (Compass) */}
               <button
-                onClick={() => setSelectedGameId(null)}
+                onClick={() => {
+                  setActiveMode("game_manager");
+                  setSelectedGameId(null);
+                }}
                 className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all cursor-pointer ${
-                  selectedGameId === null 
+                  selectedGameId === null && activeMode !== "aktogram"
                     ? "border-cyber-yellow bg-cyber-yellow/20 text-cyber-yellow shadow-[0_0_12px_rgba(255,183,0,0.3)]" 
                     : "border-cyber-yellow/20 bg-black/40 text-gray-400 hover:text-cyber-yellow hover:border-cyber-yellow/50"
                 }`}
@@ -3097,19 +3346,23 @@ export default function App() {
 
               <div className="w-8 h-[1px] bg-cyber-yellow/20 my-1" />
 
-              {/* Game Icons List */}
+              {/* Game Icons List (Grouped by Category) */}
               <div className="flex-1 w-full overflow-y-auto space-y-2 px-3 scrollbar-none flex flex-col items-center">
-                {games.map(game => (
+                {/* 1. Installed Games */}
+                {installedGames.map(game => (
                   <button
                     key={game.id}
-                    onClick={() => setSelectedGameId(selectedGameId === game.id ? null : game.id)}
+                    onClick={() => {
+                      setActiveMode("game_manager");
+                      setSelectedGameId(selectedGameId === game.id && activeMode !== "aktogram" ? null : game.id);
+                    }}
                     onContextMenu={(e) => handleGameContextMenu(e, game)}
-                    className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all overflow-hidden cursor-pointer ${
-                      selectedGameId === game.id 
+                    className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all overflow-hidden cursor-pointer shrink-0 ${
+                      selectedGameId === game.id && activeMode !== "aktogram"
                         ? "border-cyber-yellow bg-cyber-yellow/20 shadow-[0_0_12px_rgba(255,183,0,0.3)]" 
                         : "border-cyber-yellow/20 bg-black/40 hover:border-cyber-yellow/50"
                     }`}
-                    title={game.name}
+                    title={`${game.name} (Установлена)`}
                   >
                     {game.sideIcon || game.icon ? (
                       <img src={game.sideIcon || game.icon} alt={game.name} className="w-full h-full object-cover" />
@@ -3119,56 +3372,143 @@ export default function App() {
                   </button>
                 ))}
 
+                {/* 2. Phantom Games Divider & Icons */}
+                {phantomGames.length > 0 && (
+                  <>
+                    <div className="w-5 h-[1px] bg-cyan-500/30 my-0.5 shrink-0" title="Фантомные игры" />
+                    {phantomGames.map(game => (
+                      <button
+                        key={game.id}
+                        onClick={() => {
+                          setActiveMode("game_manager");
+                          setSelectedGameId(selectedGameId === game.id && activeMode !== "aktogram" ? null : game.id);
+                        }}
+                        onContextMenu={(e) => handleGameContextMenu(e, game)}
+                        className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all overflow-hidden cursor-pointer relative shrink-0 ${
+                          selectedGameId === game.id && activeMode !== "aktogram"
+                            ? "border-cyan-400 bg-cyan-500/20 shadow-[0_0_12px_rgba(6,182,212,0.3)]" 
+                            : "border-cyan-500/30 bg-black/40 hover:border-cyan-400/60"
+                        }`}
+                        title={`${game.name} (Фантомная: ${game.platform === "console" ? "Консоль" : game.platform === "other" ? "Облако" : "Телефон"})`}
+                      >
+                        {game.sideIcon || game.icon ? (
+                          <img src={game.sideIcon || game.icon} alt={game.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <Smartphone className="w-5 h-5 text-cyan-400" />
+                        )}
+                        <span className="absolute bottom-0 right-0 w-2 h-2 rounded-tl bg-cyan-400" />
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                {/* 3. Archived Games Divider & Icons */}
+                {archivedGames.length > 0 && (
+                  <>
+                    <div className="w-5 h-[1px] bg-red-500/30 my-0.5 shrink-0" title="В архиве / Удаленные" />
+                    {archivedGames.map(game => (
+                      <button
+                        key={game.id}
+                        onClick={() => {
+                          setActiveMode("game_manager");
+                          setSelectedGameId(selectedGameId === game.id && activeMode !== "aktogram" ? null : game.id);
+                        }}
+                        onContextMenu={(e) => handleGameContextMenu(e, game)}
+                        className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all overflow-hidden cursor-pointer opacity-70 hover:opacity-100 shrink-0 ${
+                          selectedGameId === game.id && activeMode !== "aktogram"
+                            ? "border-red-400 bg-red-500/20 shadow-[0_0_12px_rgba(239,68,68,0.3)]" 
+                            : "border-red-500/30 bg-black/40 hover:border-red-500/50"
+                        }`}
+                        title={`${game.name} (В архиве / Удалена)`}
+                      >
+                        {game.sideIcon || game.icon ? (
+                          <img src={game.sideIcon || game.icon} alt={game.name} className="w-full h-full object-cover grayscale" />
+                        ) : (
+                          <Archive className="w-5 h-5 text-red-400/80" />
+                        )}
+                      </button>
+                    ))}
+                  </>
+                )}
+
                 {/* Add Game Button */}
                 <button
-                  onClick={handleAddGameOpenClick}
+                  onClick={() => {
+                    setActiveMode("game_manager");
+                    handleAddGameOpenClick();
+                  }}
                   className="w-10 h-10 rounded-xl border border-dashed border-cyber-yellow/40 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/15 flex items-center justify-center text-gray-400 hover:text-cyber-yellow transition-all cursor-pointer shrink-0 mt-1"
                   title="Добавить программу"
                 >
                   <Plus className="w-5 h-5" />
                 </button>
               </div>
-            </aside>
 
-            {/* Clean Collapsible Sidebar */}
-            <motion.aside 
-              onClick={handleSidebarBackgroundClick}
-              initial={false}
-              animate={{
-                width: sidebarCollapsed ? 0 : 260,
-              }}
-              transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-              className={`bg-cyber-sidebar/85 backdrop-blur-lg border-r border-cyber-purple/20 flex flex-col justify-between z-10 relative shadow-[5px_0_25px_rgba(0,0,0,0.5)] shrink-0 select-none overflow-hidden py-4 ${sidebarCollapsed ? "opacity-0 border-none pointer-events-none" : "px-4"}`}
-            >
-              <div className="flex flex-col h-full w-full pt-1 overflow-hidden" />
-            </motion.aside>
+              {/* Bottom Divider & Action Buttons (Aktogram & Notes) */}
+              <div className="w-8 h-[1px] bg-cyber-yellow/20 my-1 shrink-0" />
+              <div className="shrink-0 pb-1 flex flex-col items-center gap-2">
+                {/* Aktogram Button */}
+                <button
+                  onClick={() => {
+                    if (activeMode === "aktogram") {
+                      setActiveMode("game_manager");
+                    } else {
+                      setActiveMode("aktogram");
+                      setSelectedGameId(null);
+                    }
+                  }}
+                  className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all cursor-pointer relative group ${
+                    activeMode === "aktogram"
+                      ? "border-cyber-yellow bg-cyber-yellow/25 text-cyber-yellow shadow-[0_0_15px_rgba(255,183,0,0.4)]"
+                      : "border-cyber-yellow/30 bg-black/40 text-cyber-yellow/80 hover:text-cyber-yellow hover:border-cyber-yellow hover:bg-cyber-yellow/10"
+                  }`}
+                  title="Актограмм — локальная кибер-сеть"
+                >
+                  <CyberCameraIcon className="w-5 h-5" />
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-cyber-green animate-pulse" />
+                </button>
+
+                {/* Global Notes Button */}
+                <button
+                  onClick={() => setIsGlobalNotesOpen(true)}
+                  className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-all cursor-pointer relative group ${
+                    isGlobalNotesOpen
+                      ? "border-cyber-yellow bg-cyber-yellow/25 text-cyber-yellow shadow-[0_0_15px_rgba(255,183,0,0.35)]"
+                      : "border-cyber-yellow/30 bg-black/40 text-cyber-yellow/80 hover:text-cyber-yellow hover:border-cyber-yellow hover:bg-cyber-yellow/10"
+                  }`}
+                  title="Общие заметки и задачи"
+                >
+                  <CheckSquare className="w-5 h-5" />
+                  {globalTasks.filter(t => !t.completed).length > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-cyber-yellow text-black font-bold text-[9px] flex items-center justify-center font-mono">
+                      {globalTasks.filter(t => !t.completed).length}
+                    </span>
+                  )}
+                </button>
+              </div>
+            </aside>
 
             {/* Main Workspace Preview Pane */}
             <main className="flex-1 flex flex-col h-full relative z-0 min-w-0 overflow-hidden">
               {/* Workspace Top Header Bar */}
-              <header data-tauri-drag-region className={`h-16 border-b bg-cyber-sidebar/65 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10 relative transition-colors ${ activeMode === "game_manager" ? "border-cyber-yellow/20" : activeMode === "stats" ? "border-cyber-purple/20" : "border-cyber-purple/20" }`}>
+              <header data-tauri-drag-region className="h-16 border-b border-cyber-yellow/20 bg-cyber-sidebar/65 backdrop-blur-md flex items-center justify-between px-4 md:px-6 z-10 relative transition-colors">
                 <div className="min-w-0 flex-1" />
                 
                 <div className="flex items-center gap-2 md:gap-3 shrink-0">
                   <button
-                    onClick={() => setActiveMode(activeMode === "game_manager" ? "notebook" : "game_manager")}
+                    onClick={() => {
+                      setActiveMode(activeMode === "aktogram" ? "game_manager" : "aktogram");
+                      setSelectedGameId(null);
+                    }}
                     className={`h-8 px-3 rounded-lg font-mono text-xs flex items-center gap-1.5 transition-colors border whitespace-nowrap shrink-0 ${
-                      activeMode === "game_manager"
-                        ? "text-cyber-yellow bg-cyber-yellow/15 border-cyber-yellow/40 shadow-[0_0_8px_rgba(255,183,0,0.2)] font-bold"
+                      activeMode === "aktogram"
+                        ? "text-cyber-yellow bg-cyber-yellow/15 border-cyber-yellow/40 shadow-[0_0_8px_rgba(255,183,0,0.25)] font-bold"
                         : "text-gray-400 hover:text-white border-cyber-yellow/20 bg-cyber-yellow/5 hover:bg-cyber-yellow/10"
                     }`}
-                    title="Игровой менеджер"
+                    title="Локальная соцсеть Актограмм"
                   >
-                    <Gamepad2 className="w-3.5 h-3.5 text-cyber-yellow" />
-                    <span className="hidden sm:inline">ИГРЫ</span>
-                  </button>
-
-                  <button
-                    onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                    className="h-8 px-2.5 rounded-lg font-mono text-xs flex items-center justify-center transition-colors border whitespace-nowrap shrink-0 text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10"
-                    title={sidebarCollapsed ? "Раскрыть боковую панель" : "Скрыть боковую панель"}
-                  >
-                    <SidebarToggleIcon className="w-4 h-4 text-cyber-yellow" />
+                    <CyberCameraIcon className="w-3.5 h-3.5 text-cyber-yellow" />
+                    <span className="hidden sm:inline">АКТОГРАММ</span>
                   </button>
 
                   <button
@@ -3181,36 +3521,36 @@ export default function App() {
 
                   <button
                     onClick={() => setShowOnboarding(true)}
-                    className={`h-8 px-3 rounded-lg font-mono text-xs flex items-center gap-1.5 transition-colors border whitespace-nowrap shrink-0 ${ activeMode === "game_manager" ? "text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10" : "text-cyber-green bg-cyber-green/5 border-cyber-green/20 hover:bg-cyber-green/10" }`}
+                    className="h-8 px-3 rounded-lg font-mono text-xs flex items-center gap-1.5 transition-colors border whitespace-nowrap shrink-0 text-cyber-yellow bg-cyber-yellow/5 border-cyber-yellow/20 hover:bg-cyber-yellow/10"
                   >
                     <HelpCircle className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">СПРАВКА</span>
                   </button>
  
                   {/* System Control Widget */}
-                  <div className={`h-8 flex items-center gap-1 bg-[#06040c]/50 px-1 rounded-lg font-mono border whitespace-nowrap shrink-0 system-control-widget ${ activeMode === "game_manager" ? "border-cyber-yellow/25" : "border-cyber-purple/25" }`}>
+                  <div className="h-8 flex items-center gap-1 bg-[#06040c]/50 px-1 rounded-lg font-mono border whitespace-nowrap shrink-0 system-control-widget border-cyber-yellow/25">
                     <button
                       type="button"
                       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                      onMouseEnter={(e) => showGlobalTooltip(e, theme === "dark" ? "Переключить на светлую тему" : "Переключить на темную тему", activeMode === "game_manager" ? "yellow" : "purple")}
+                      onMouseEnter={(e) => showGlobalTooltip(e, theme === "dark" ? "Переключить на светлую тему" : "Переключить на темную тему", "yellow")}
                       onMouseLeave={hideGlobalTooltip}
-                      className={`h-6 px-2 text-xs rounded transition-colors flex items-center gap-1 border border-transparent whitespace-nowrap ${ activeMode === "game_manager" ? "text-cyber-yellow hover:bg-cyber-yellow/20" : "text-cyber-purple hover:bg-cyber-purple/20" }`}
+                      className="h-6 px-2 text-xs rounded transition-colors flex items-center gap-1 border border-transparent whitespace-nowrap text-cyber-yellow hover:bg-cyber-yellow/20"
                       title={theme === "dark" ? "Включить светлую тему" : "Включить темную тему"}
                     >
-                      {theme === "dark" ? <Sun className="w-3.5 h-3.5 shrink-0 text-cyber-yellow" /> : <Moon className="w-3.5 h-3.5 shrink-0 text-cyber-purple" />}
+                      {theme === "dark" ? <Sun className="w-3.5 h-3.5 shrink-0 text-cyber-yellow" /> : <Moon className="w-3.5 h-3.5 shrink-0 text-cyber-yellow" />}
                       <span className="text-[9px] uppercase tracking-wider hidden lg:inline">{theme === "dark" ? "СВЕТ" : "ТЕНЬ"}</span>
                     </button>
-                    <div className={`w-[1px] h-4 ${activeMode === "game_manager" ? "bg-cyber-yellow/20" : "bg-cyber-purple/20"}`} />
+                    <div className="w-[1px] h-4 bg-cyber-yellow/20" />
                     <button
                       type="button"
                       onClick={() => setIsSleeping(true)}
-                      className={`h-6 px-2 text-xs rounded transition-colors flex items-center gap-1 border border-transparent whitespace-nowrap ${ activeMode === "game_manager" ? "text-cyber-yellow hover:bg-cyber-yellow/20" : "text-cyber-purple hover:bg-cyber-purple/20" }`}
+                      className="h-6 px-2 text-xs rounded transition-colors flex items-center gap-1 border border-transparent whitespace-nowrap text-cyber-yellow hover:bg-cyber-yellow/20"
                       title="Войти в спящий режим"
                     >
-                      <Moon className="w-3.5 h-3.5 shrink-0" />
+                      <Moon className="w-3.5 h-3.5 shrink-0 text-cyber-yellow" />
                       <span className="text-[9px] uppercase tracking-wider hidden lg:inline">СОН</span>
                     </button>
-                    <div className={`w-[1px] h-4 ${activeMode === "game_manager" ? "bg-cyber-yellow/20" : "bg-cyber-purple/20"}`} />
+                    <div className="w-[1px] h-4 bg-cyber-yellow/20" />
                     <button
                       type="button"
                       onClick={handleExitApp}
@@ -3319,6 +3659,23 @@ export default function App() {
 
                       </div>
                     </motion.div>
+                  ) : activeMode === "aktogram" ? (
+                    <motion.div
+                      key="aktogram-view"
+                      initial={{ opacity: 0, scale: 0.98 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      transition={{ duration: 0.25 }}
+                      className="w-full h-full flex flex-col min-w-0"
+                    >
+                      <AktogramView
+                        posts={aktogramPosts}
+                        setPosts={setAktogramPosts}
+                        compressImage={compressImage}
+                        aiConfig={aktogramAiConfig}
+                        onOpenSettings={() => setShowSettingsModal(true)}
+                      />
+                    </motion.div>
                   ) : selectedGameId !== null ? (
                       (() => {
                         const activeGame = games.find(g => g.id === selectedGameId);
@@ -3410,12 +3767,34 @@ export default function App() {
                             <div className="bg-[#0b0816]/65 border border-white/10 rounded-xl p-4 flex flex-col gap-4 relative overflow-hidden shrink-0 min-w-0">
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
                                 <div className="space-y-1 text-left min-w-0 flex-1">
-                                  <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
-                                    <Play className="w-4 h-4 text-cyber-green fill-current shrink-0" />
-                                    УПРАВЛЕНИЕ ЗАПУСКОМ
-                                  </h4>
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                                      {activeGame.gameType === "phantom" ? (
+                                        <Smartphone className="w-4 h-4 text-cyan-400 shrink-0" />
+                                      ) : (
+                                        <Play className="w-4 h-4 text-cyber-green fill-current shrink-0" />
+                                      )}
+                                      {activeGame.gameType === "phantom" ? "ТРЕКИНГ СЕССИИ (МОБИЛЬНАЯ / КОНСОЛЬ)" : "УПРАВЛЕНИЕ ЗАПУСКОМ"}
+                                    </h4>
+                                    {activeGame.gameType === "phantom" && (
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 uppercase font-mono">
+                                        {activeGame.platform === "console" ? "КОНСОЛЬ" : activeGame.platform === "other" ? "ДРУГОЕ" : "ТЕЛЕФОН"}
+                                      </span>
+                                    )}
+                                    {activeGame.gameType !== "phantom" && (fileExistsMap[activeGame.id] === false || activeGame.isArchived) && (
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/30 text-red-400 uppercase font-mono">
+                                        НЕ НАЙДЕНА НА ДИСКЕ
+                                      </span>
+                                    )}
+                                  </div>
                                   <p className="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1 min-w-0">
-                                    <span className="shrink-0">Исполняемый файл:</span> <span className="text-gray-400 font-mono select-all truncate inline-block min-w-0 flex-1" title={activeGame.path}>{activeGame.path}</span>
+                                    {activeGame.gameType === "phantom" ? (
+                                      <span className="text-gray-400 font-mono">Фантомная игра. Запустите на устройстве и включите таймер ниже.</span>
+                                    ) : (
+                                      <>
+                                        <span className="shrink-0">Исполняемый файл:</span> <span className={`font-mono select-all truncate inline-block min-w-0 flex-1 ${fileExistsMap[activeGame.id] === false ? "text-red-400 line-through" : "text-gray-400"}`} title={activeGame.path}>{activeGame.path || "Не указан"}</span>
+                                      </>
+                                    )}
                                   </p>
                                 </div>
                                 {runningGames[activeGame.id] ? (
@@ -3425,11 +3804,43 @@ export default function App() {
                                       <span>{formatElapsed(Date.now() - runningGames[activeGame.id])}</span>
                                     </div>
                                     <button
-                                      onClick={() => handleStopGame(activeGame)}
+                                      onClick={() => {
+                                        if (activeGame.gameType === "phantom") {
+                                          stopTrackingAndLog(activeGame.id);
+                                        } else {
+                                          handleStopGame(activeGame);
+                                        }
+                                      }}
                                       className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border border-red-500/40 bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:border-red-500 text-xs font-black uppercase tracking-widest transition-all shadow-md shadow-[0_0_15px_rgba(239,68,68,0.15)] shrink-0"
                                     >
                                       <Square className="w-4 h-4 fill-current" />
-                                      <span>ЗАКРЫТЬ</span>
+                                      <span>{activeGame.gameType === "phantom" ? "ЗАВЕРШИТЬ СЕССИЮ" : "ЗАКРЫТЬ"}</span>
+                                    </button>
+                                  </div>
+                                ) : activeGame.gameType === "phantom" ? (
+                                  <button
+                                    onClick={() => startTracking(activeGame)}
+                                    className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border text-xs font-black uppercase tracking-widest transition-all shadow-md shrink-0 bg-cyan-500/10 border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
+                                  >
+                                    <Play className="w-4.5 h-4.5 fill-current" />
+                                    <span>НАЧАТЬ СЕССИЮ</span>
+                                  </button>
+                                ) : (fileExistsMap[activeGame.id] === false || activeGame.isArchived) ? (
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => handleEditGameClick(activeGame)}
+                                      className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-yellow-500/40 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 text-xs font-black uppercase tracking-widest transition-all shadow-md shrink-0"
+                                      title="Указать новый путь к файлу"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                      <span>УКАЗАТЬ ПУТЬ</span>
+                                    </button>
+                                    <button
+                                      onClick={() => setSelectedGameActions(activeGame)}
+                                      className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-white/20 bg-white/5 text-gray-300 hover:bg-white/10 text-xs font-black uppercase tracking-widest transition-all shrink-0"
+                                      title="Открыть экран перед запуском"
+                                    >
+                                      <CornerUpRight className="w-3.5 h-3.5" />
                                     </button>
                                   </div>
                                 ) : (
@@ -3752,7 +4163,7 @@ export default function App() {
                                     <div className="text-xs uppercase tracking-widest text-cyber-yellow border-b border-white/5 pb-2 font-bold flex justify-between items-center select-none shrink-0">
                                       <span>// NEWS FEED // ЛЕНТА НОВОСТЕЙ</span>
                                       <button
-                                        onClick={() => openFileInObsidian(selectedNewsPost?.id)}
+                                        onClick={handleOpenObsidian}
                                         className="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-cyber-yellow/20 hover:border-cyber-yellow hover:bg-cyber-yellow/10 text-cyber-yellow transition-all text-[10px] tracking-wider"
                                       >
                                         <CornerUpRight className="w-3.5 h-3.5" />
@@ -3832,7 +4243,7 @@ export default function App() {
                                             ) : (
                                               <>
                                                 <div
-                                                  onClick={() => openFileInObsidian(post.id)}
+                                                  onClick={() => openFileInObsidian(post.id, currentObsidianNewsPath)}
                                                   className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
                                                 >
                                                   <FileText className="w-4 h-4 text-cyber-yellow/70 shrink-0" />
@@ -3859,7 +4270,7 @@ export default function App() {
                                                     <Trash2 className="w-3.5 h-3.5" />
                                                   </button>
                                                   <button
-                                                    onClick={() => openFileInObsidian(post.id)}
+                                                    onClick={() => openFileInObsidian(post.id, currentObsidianNewsPath)}
                                                     className="text-cyber-yellow/40 group-hover:text-cyber-yellow p-1 hover:translate-x-0.5 transition-all"
                                                     title="Открыть в Obsidian"
                                                   >
@@ -4369,44 +4780,180 @@ export default function App() {
                               ДОСТУПНЫЕ ИГРЫ И ПО
                             </div>
                             <div className="text-[10px] text-gray-500 font-mono">
-                              КОЛИЧЕСТВО: {games.length} ШТ.
+                              КОЛИЧЕСТВО: {displayedGames.length} ШТ.
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,180px))] gap-5 overflow-y-auto max-h-[calc(100vh-160px)] pr-1">
-                            {games.map(game => (
-                              <div
-                                key={game.id}
-                                onClick={() => setSelectedGameId(game.id)}
-                                onContextMenu={(e) => handleGameContextMenu(e, game)}
-                                className={`group relative aspect-[2/3] w-full rounded-none overflow-hidden border border-cyber-yellow/20 hover:border-cyber-yellow shadow-lg transition-all duration-300 cursor-pointer bg-[#0a0614]/80 flex items-center justify-center ${ game.coverTheme === "purple" ? "hover:border-cyber-purple" : game.coverTheme === "green" ? "hover:border-cyber-green" : "" }`}
-                                title={game.name}
-                              >
-                                {game.icon ? (
-                                  <img 
-                                    src={game.icon} 
-                                    alt={game.name} 
-                                    className="w-full h-full object-cover block rounded-none transition-transform duration-300 scale-105" 
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-white/5 text-gray-400 group-hover:text-cyber-yellow transition-all rounded-none">
-                                    <Gamepad2 className="w-12 h-12 mb-2" />
-                                    <span className="text-xs font-mono font-bold truncate max-w-full px-1">{game.name}</span>
+                          <div className="flex-1 overflow-y-auto max-h-[calc(100vh-160px)] pr-1 space-y-6">
+                            {/* SECTION 1: INSTALLED GAMES */}
+                            {installedGames.length > 0 && (
+                              <div className="space-y-3">
+                                <div 
+                                  onClick={() => toggleSectionCollapse("installed")}
+                                  className="flex items-center justify-between border-b border-cyber-yellow/25 pb-1.5 cursor-pointer group"
+                                >
+                                  <div className="flex items-center gap-2 text-xs font-bold text-cyber-yellow tracking-wider uppercase font-mono">
+                                    <Gamepad2 className="w-4 h-4 text-cyber-yellow" />
+                                    <span>Установленные игры</span>
+                                    <span className="text-[10px] text-gray-500 font-normal">[{installedGames.length}]</span>
+                                  </div>
+                                  <div className="text-gray-500 group-hover:text-cyber-yellow transition-colors">
+                                    {collapsedSections["installed"] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                                  </div>
+                                </div>
+
+                                {!collapsedSections["installed"] && (
+                                  <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,180px))] gap-5">
+                                    {installedGames.map(game => (
+                                      <div
+                                        key={game.id}
+                                        onClick={() => setSelectedGameId(game.id)}
+                                        onContextMenu={(e) => handleGameContextMenu(e, game)}
+                                        className={`group relative aspect-[2/3] w-full rounded-none overflow-hidden border border-cyber-yellow/20 hover:border-cyber-yellow shadow-lg transition-all duration-300 cursor-pointer bg-[#0a0614]/80 flex items-center justify-center ${ game.coverTheme === "purple" ? "hover:border-cyber-purple" : game.coverTheme === "green" ? "hover:border-cyber-green" : "" }`}
+                                        title={game.name}
+                                      >
+                                        {game.icon ? (
+                                          <img 
+                                            src={game.icon} 
+                                            alt={game.name} 
+                                            className="w-full h-full object-cover block rounded-none transition-transform duration-300 scale-105" 
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-white/5 text-gray-400 group-hover:text-cyber-yellow transition-all rounded-none">
+                                            <Gamepad2 className="w-12 h-12 mb-2" />
+                                            <span className="text-xs font-mono font-bold truncate max-w-full px-1">{game.name}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+
+                                    {/* Add Game Button inside installed section */}
+                                    <div
+                                      onClick={handleAddGameOpenClick}
+                                      className="group relative aspect-[2/3] w-full rounded-none border border-dashed border-cyber-yellow/25 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 transition-all duration-300 flex items-center justify-center cursor-pointer shadow-lg p-3"
+                                      title="Добавить программу"
+                                    >
+                                      <div className="w-12 h-12 rounded-none border border-dashed border-cyber-yellow/45 flex items-center justify-center text-gray-400 group-hover:text-cyber-yellow group-hover:border-cyber-yellow transition-all">
+                                        <Plus className="w-6 h-6" />
+                                      </div>
+                                    </div>
                                   </div>
                                 )}
                               </div>
-                            ))}
+                            )}
 
-                            {/* Predefined Add Game Button in Grid (Plus icon only) */}
-                            <div
-                              onClick={handleAddGameOpenClick}
-                              className="group relative aspect-[2/3] w-full rounded-none border border-dashed border-cyber-yellow/25 hover:border-cyber-yellow bg-cyber-yellow/5 hover:bg-cyber-yellow/10 transition-all duration-300 flex items-center justify-center cursor-pointer shadow-lg p-3"
-                              title="Добавить программу"
-                            >
-                              <div className="w-12 h-12 rounded-none border border-dashed border-cyber-yellow/45 flex items-center justify-center text-gray-400 group-hover:text-cyber-yellow group-hover:border-cyber-yellow transition-all">
-                                <Plus className="w-6 h-6" />
+                            {/* SECTION 2: PHANTOM GAMES (MOBILE / CONSOLE) */}
+                            {(phantomGames.length > 0 || installedGames.length === 0) && (
+                              <div className="space-y-3">
+                                <div 
+                                  onClick={() => toggleSectionCollapse("phantom")}
+                                  className="flex items-center justify-between border-b border-cyan-500/30 pb-1.5 cursor-pointer group"
+                                >
+                                  <div className="flex items-center gap-2 text-xs font-bold text-cyan-400 tracking-wider uppercase font-mono">
+                                    <Smartphone className="w-4 h-4 text-cyan-400" />
+                                    <span>Фантомные игры (Мобильные / Консоль)</span>
+                                    <span className="text-[10px] text-gray-500 font-normal">[{phantomGames.length}]</span>
+                                  </div>
+                                  <div className="text-gray-500 group-hover:text-cyan-400 transition-colors">
+                                    {collapsedSections["phantom"] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                                  </div>
+                                </div>
+
+                                {!collapsedSections["phantom"] && (
+                                  <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,180px))] gap-5">
+                                    {phantomGames.map(game => (
+                                      <div
+                                        key={game.id}
+                                        onClick={() => setSelectedGameId(game.id)}
+                                        onContextMenu={(e) => handleGameContextMenu(e, game)}
+                                        className="group relative aspect-[2/3] w-full rounded-none overflow-hidden border border-cyan-500/30 hover:border-cyan-400 shadow-lg transition-all duration-300 cursor-pointer bg-[#0a0614]/80 flex items-center justify-center"
+                                        title={game.name}
+                                      >
+                                        <div className="absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded bg-black/70 border border-cyan-500/40 text-[9px] text-cyan-400 font-mono uppercase tracking-wider backdrop-blur-sm">
+                                          {game.platform === "console" ? "КОНСОЛЬ" : game.platform === "other" ? "ОБЛАКО" : "ТЕЛЕФОН"}
+                                        </div>
+
+                                        {game.icon ? (
+                                          <img 
+                                            src={game.icon} 
+                                            alt={game.name} 
+                                            className="w-full h-full object-cover block rounded-none transition-transform duration-300 scale-105" 
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-white/5 text-gray-400 group-hover:text-cyan-400 transition-all rounded-none">
+                                            <Smartphone className="w-12 h-12 mb-2 text-cyan-400" />
+                                            <span className="text-xs font-mono font-bold truncate max-w-full px-1">{game.name}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+
+                                    {/* Quick add phantom button if installed has 0 */}
+                                    {installedGames.length === 0 && phantomGames.length === 0 && (
+                                      <div
+                                        onClick={handleAddGameOpenClick}
+                                        className="group relative aspect-[2/3] w-full rounded-none border border-dashed border-cyan-500/30 hover:border-cyan-400 bg-cyan-500/5 hover:bg-cyan-500/10 transition-all duration-300 flex items-center justify-center cursor-pointer shadow-lg p-3"
+                                        title="Добавить фантомную игру"
+                                      >
+                                        <div className="w-12 h-12 rounded-none border border-dashed border-cyan-500/45 flex items-center justify-center text-gray-400 group-hover:text-cyan-400 transition-all">
+                                          <Plus className="w-6 h-6" />
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                            </div>
+                            )}
+
+                            {/* SECTION 3: ARCHIVED / UNINSTALLED GAMES */}
+                            {archivedGames.length > 0 && (
+                              <div className="space-y-3 pt-2">
+                                <div 
+                                  onClick={() => toggleSectionCollapse("archived")}
+                                  className="flex items-center justify-between border-b border-red-500/30 pb-1.5 cursor-pointer group"
+                                >
+                                  <div className="flex items-center gap-2 text-xs font-bold text-red-400 tracking-wider uppercase font-mono">
+                                    <Archive className="w-4 h-4 text-red-400" />
+                                    <span>Архив / Удаленные с ПК</span>
+                                    <span className="text-[10px] text-gray-500 font-normal">[{archivedGames.length}]</span>
+                                  </div>
+                                  <div className="text-gray-500 group-hover:text-red-400 transition-colors">
+                                    {collapsedSections["archived"] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                                  </div>
+                                </div>
+
+                                {!collapsedSections["archived"] && (
+                                  <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,180px))] gap-5">
+                                    {archivedGames.map(game => (
+                                      <div
+                                        key={game.id}
+                                        onClick={() => setSelectedGameId(game.id)}
+                                        onContextMenu={(e) => handleGameContextMenu(e, game)}
+                                        className="group relative aspect-[2/3] w-full rounded-none overflow-hidden border border-red-500/30 hover:border-red-400/80 shadow-lg transition-all duration-300 cursor-pointer bg-[#0a0614]/80 flex items-center justify-center opacity-75 hover:opacity-100"
+                                        title={`${game.name} (Удалена с диска / Архив)`}
+                                      >
+                                        <div className="absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded bg-red-950/80 border border-red-500/50 text-[8px] text-red-300 font-mono uppercase tracking-wider backdrop-blur-sm">
+                                          В АРХИВЕ
+                                        </div>
+
+                                        {game.icon ? (
+                                          <img 
+                                            src={game.icon} 
+                                            alt={game.name} 
+                                            className="w-full h-full object-cover block rounded-none grayscale transition-all duration-300 group-hover:grayscale-0 scale-105" 
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-white/5 text-gray-500 group-hover:text-red-400 transition-all rounded-none">
+                                            <Archive className="w-12 h-12 mb-2 text-red-500/70" />
+                                            <span className="text-xs font-mono font-bold truncate max-w-full px-1">{game.name}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </motion.div>
@@ -4790,6 +5337,10 @@ export default function App() {
                         onTouchStart={handleTouchStart}
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleMouseUp}
+                        onWheel={(e) => {
+                          e.preventDefault();
+                          setZoom(prev => Math.min(4, Math.max(0.1, +(prev - e.deltaY * 0.001).toFixed(2))));
+                        }}
                       >
                         <img 
                           src={cropSrc} 
@@ -4799,16 +5350,16 @@ export default function App() {
                             position: 'absolute',
                             left: '50%',
                             top: '50%',
-                            width: imageAspect < (cropTarget === "sideIcon" ? 1 : cropTarget === "gameHeader" ? 3.33 : 2/3) ? '100%' : 'auto',
-                            height: imageAspect < (cropTarget === "sideIcon" ? 1 : cropTarget === "gameHeader" ? 3.33 : 2/3) ? 'auto' : '100%',
+                            width: imageAspect < (cropTarget === "sideIcon" ? 1 : cropTarget === "gameHeader" ? (360 / 108) : (2 / 3)) ? '100%' : 'auto',
+                            height: imageAspect < (cropTarget === "sideIcon" ? 1 : cropTarget === "gameHeader" ? (360 / 108) : (2 / 3)) ? 'auto' : '100%',
                             maxWidth: 'none',
                             transform: `translate(-50%, -50%) translate(${dragPos.x}px, ${dragPos.y}px) scale(${zoom})`,
                             pointerEvents: 'none'
                           }}
                         />
                         {/* Crop boundary overlay */}
-                        <div className={`absolute inset-2 border-2 border-dashed border-cyber-yellow pointer-events-none opacity-50 shadow-[0_0_0_9999px_rgba(6,4,12,0.6)] ${
-                          cropTarget === "sideIcon" || cropTarget === "gameHeader" ? "rounded-lg" : "rounded-none"
+                        <div className={`absolute inset-0 border-2 border-dashed border-cyber-yellow/60 pointer-events-none ${
+                          cropTarget === "sideIcon" || cropTarget === "gameHeader" ? "rounded-xl" : "rounded-none"
                         }`} />
                       </div>
 
@@ -4850,6 +5401,67 @@ export default function App() {
                       {activeModalTab === "parameters" ? (
                         /* Parameters Tab */
                         <div className="space-y-4">
+                          {/* Game Type Switcher */}
+                          <div className="space-y-1.5">
+                            <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">ТИП ПРОГРАММЫ / ПЛАТФОРМА:</label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setNewGameType("pc")}
+                                className={`py-2 px-3 rounded-lg border text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
+                                  newGameType === "pc"
+                                    ? "bg-cyber-yellow/15 border-cyber-yellow text-cyber-yellow shadow-[0_0_10px_rgba(255,183,0,0.2)]"
+                                    : "bg-[#050308] border-white/10 text-gray-400 hover:text-white hover:border-white/25"
+                                }`}
+                              >
+                                <Gamepad2 className="w-3.5 h-3.5" />
+                                <span>ПК Игра (.exe)</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setNewGameType("phantom")}
+                                className={`py-2 px-3 rounded-lg border text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
+                                  newGameType === "phantom"
+                                    ? "bg-cyan-500/15 border-cyan-400 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.2)]"
+                                    : "bg-[#050308] border-white/10 text-gray-400 hover:text-white hover:border-white/25"
+                                }`}
+                              >
+                                <Smartphone className="w-3.5 h-3.5" />
+                                <span>Фантомная / Телефон</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Phantom Sub-Platform selector & initial hours */}
+                          {newGameType === "phantom" && (
+                            <div className="grid grid-cols-2 gap-3 p-2.5 rounded-lg bg-cyan-950/20 border border-cyan-500/20">
+                              <div className="space-y-1">
+                                <label className="block text-cyan-400 font-bold uppercase text-[9px] tracking-wider">УСТРОЙСТВО:</label>
+                                <select
+                                  value={newGamePlatform}
+                                  onChange={(e) => setNewGamePlatform(e.target.value)}
+                                  className="w-full bg-[#050308] border border-cyan-500/30 focus:border-cyan-400 text-white rounded px-2.5 py-1.5 text-xs transition-all font-mono focus:outline-none"
+                                >
+                                  <option value="mobile">📱 Телефон / Планшет</option>
+                                  <option value="console">🎮 Консоль (PS/Xbox/Switch)</option>
+                                  <option value="other">🌐 Облако / Другое</option>
+                                </select>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-cyan-400 font-bold uppercase text-[9px] tracking-wider">НАИГРАНО ЧАСОВ:</label>
+                                <input
+                                  type="number"
+                                  step="0.5"
+                                  min="0"
+                                  value={newGameInitialHours}
+                                  onChange={(e) => setNewGameInitialHours(e.target.value)}
+                                  placeholder="0"
+                                  className="w-full bg-[#050308] border border-cyan-500/30 focus:border-cyan-400 text-white rounded px-2.5 py-1.5 text-xs transition-all font-mono focus:outline-none"
+                                />
+                              </div>
+                            </div>
+                          )}
+
                           <div className="space-y-1.5">
                             <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">НАЗВАНИЕ ИГРЫ:</label>
                             <input
@@ -4857,22 +5469,24 @@ export default function App() {
                               required
                               value={newGameName}
                               onChange={(e) => setNewGameName(e.target.value)}
-                              placeholder="Arknights: Endfield"
+                              placeholder={newGameType === "phantom" ? "Genshin Impact (Mobile)" : "Arknights: Endfield"}
                               className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
                             />
                           </div>
 
-                          <div className="space-y-1.5">
-                            <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">ПУТЬ К ФАЙЛУ (.EXE):</label>
-                            <input
-                              type="text"
-                              required
-                              value={newGamePath}
-                              onChange={(e) => setNewGamePath(e.target.value)}
-                              placeholder="C:\Games\Endfield\Endfield.exe"
-                              className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
-                            />
-                          </div>
+                          {newGameType === "pc" && (
+                            <div className="space-y-1.5">
+                              <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">ПУТЬ К ФАЙЛУ (.EXE):</label>
+                              <input
+                                type="text"
+                                required={newGameType === "pc"}
+                                value={newGamePath}
+                                onChange={(e) => setNewGamePath(e.target.value)}
+                                placeholder="C:\Games\Endfield\Endfield.exe"
+                                className="w-full bg-[#050308] border border-cyber-yellow/25 focus:border-cyber-yellow text-white rounded px-3 py-2 text-xs transition-all font-mono focus:outline-none"
+                              />
+                            </div>
+                          )}
 
                           <div className="space-y-1.5">
                             <label className="block text-gray-400 font-bold uppercase text-[9px] tracking-wider">ОСНОВНАЯ ИКОНКА (КАРТОЧКА):</label>
@@ -5230,6 +5844,10 @@ export default function App() {
                       onTouchStart={handleTouchStart}
                       onTouchMove={handleTouchMove}
                       onTouchEnd={handleMouseUp}
+                      onWheel={(e) => {
+                        e.preventDefault();
+                        setZoom(prev => Math.min(4, Math.max(0.1, +(prev - e.deltaY * 0.001).toFixed(2))));
+                      }}
                     >
                       <img
                         src={cropSrc}
@@ -5239,14 +5857,14 @@ export default function App() {
                           position: "absolute",
                           left: "50%",
                           top: "50%",
-                          width: imageAspect > 1 ? "auto" : "100%",
-                          height: imageAspect > 1 ? "100%" : "auto",
+                          width: imageAspect < 1 ? "100%" : "auto",
+                          height: imageAspect < 1 ? "auto" : "100%",
                           maxWidth: "none",
                           transform: `translate(-50%, -50%) translate(${dragPos.x}px, ${dragPos.y}px) scale(${zoom})`,
                           pointerEvents: "none"
                         }}
                       />
-                      <div className="absolute inset-2 border-2 border-dashed border-cyber-yellow rounded-xl pointer-events-none opacity-50 shadow-[0_0_0_9999px_rgba(6,4,12,0.6)]" />
+                      <div className="absolute inset-0 border-2 border-dashed border-cyber-yellow/60 rounded-2xl pointer-events-none" />
                     </div>
 
                     <div className="w-full space-y-1.5 px-4">
@@ -5491,6 +6109,13 @@ export default function App() {
               <span>Изменить параметры</span>
             </button>
             <button
+              onClick={() => handleGameContextAction("archive")}
+              className="w-full text-left py-3 px-4 hover:bg-yellow-500/10 text-yellow-400 hover:text-yellow-300 rounded flex items-center gap-3 transition-colors font-bold"
+            >
+              <Archive className="w-4.5 h-4.5 text-yellow-400" />
+              <span>{contextMenu?.node?.isArchived ? "Вернуть из архива" : "Перенести в архив"}</span>
+            </button>
+            <button
               onClick={() => handleGameContextAction("delete")}
               className="w-full text-left py-3 px-4 hover:bg-red-500/10 text-red-400 hover:text-red-300 rounded flex items-center gap-3 transition-colors font-black"
             >
@@ -5548,9 +6173,7 @@ export default function App() {
                   type="button"
                   onClick={() => {
                     setIsNewsPathPromptOpen(false);
-                    const pathParam = currentObsidianNewsPath ? `?path=${encodeURIComponent(currentObsidianNewsPath)}` : "";
-                    invoke("open_url", { url: `obsidian://open${pathParam}` })
-                      .catch(err => console.error("Failed to open Obsidian:", err));
+                    handleOpenObsidian();
                   }}
                   className="flex-1 bg-cyber-yellow/10 border border-cyber-yellow text-cyber-yellow hover:bg-cyber-yellow hover:text-black rounded-xl py-2.5 text-center font-bold uppercase transition-all text-xs shadow-[0_0_15px_rgba(255,183,0,0.15)]"
                 >
@@ -5688,6 +6311,105 @@ export default function App() {
                     Укажите папки типа C:\Vault\img — фото будут грузиться напрямую и мгновенно!
                   </span>
                 </div>
+
+                {/* Aktogram AI Comments Engine */}
+                <div className="pt-3 border-t border-white/10">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-cyber-yellow" />
+                    Генератор комментариев Актограмма
+                  </label>
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = { ...aktogramAiConfig, mode: "offline" };
+                        setAktogramAiConfig(updated);
+                        localStorage.setItem("cyber_aktogram_ai_config", JSON.stringify(updated));
+                      }}
+                      className={`py-1.5 px-2 rounded-lg text-[10px] font-bold border transition-all ${
+                        aktogramAiConfig.mode === "offline"
+                          ? "bg-cyber-yellow/20 border-cyber-yellow text-cyber-yellow shadow-[0_0_10px_rgba(255,183,0,0.2)]"
+                          : "bg-black/40 border-white/10 text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      Автономный
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = { ...aktogramAiConfig, mode: "groq" };
+                        setAktogramAiConfig(updated);
+                        localStorage.setItem("cyber_aktogram_ai_config", JSON.stringify(updated));
+                      }}
+                      className={`py-1.5 px-2 rounded-lg text-[10px] font-bold border transition-all ${
+                        aktogramAiConfig.mode === "groq"
+                          ? "bg-cyber-purple/25 border-cyber-purple text-cyber-purple shadow-[0_0_10px_rgba(176,38,255,0.25)]"
+                          : "bg-black/40 border-white/10 text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      Groq API (Free)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = { ...aktogramAiConfig, mode: "ollama" };
+                        setAktogramAiConfig(updated);
+                        localStorage.setItem("cyber_aktogram_ai_config", JSON.stringify(updated));
+                      }}
+                      className={`py-1.5 px-2 rounded-lg text-[10px] font-bold border transition-all ${
+                        aktogramAiConfig.mode === "ollama"
+                          ? "bg-cyan-500/20 border-cyan-400 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.2)]"
+                          : "bg-black/40 border-white/10 text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      Ollama Local
+                    </button>
+                  </div>
+
+                  {aktogramAiConfig.mode === "groq" && (
+                    <div className="space-y-1.5 mt-2">
+                      <input
+                        type="password"
+                        value={aktogramAiConfig.apiKey || ""}
+                        onChange={(e) => {
+                          const updated = { ...aktogramAiConfig, apiKey: e.target.value };
+                          setAktogramAiConfig(updated);
+                          localStorage.setItem("cyber_aktogram_ai_config", JSON.stringify(updated));
+                        }}
+                        placeholder="Ключ Groq: gsk_..."
+                        className="w-full bg-[#06040c]/80 border border-cyber-purple/40 text-cyber-purple placeholder-gray-600 focus:outline-none focus:border-cyber-purple rounded px-3 py-2 text-xs transition-all font-mono"
+                      />
+                      <span className="text-[9px] text-gray-400 block">
+                        Бесплатный ключ на console.groq.com. Ответ за 1 секунду без нагрузки на ПК.
+                      </span>
+                    </div>
+                  )}
+
+                  {aktogramAiConfig.mode === "ollama" && (
+                    <div className="space-y-1.5 mt-2">
+                      <input
+                        type="text"
+                        value={aktogramAiConfig.ollamaUrl || "http://localhost:11434"}
+                        onChange={(e) => {
+                          const updated = { ...aktogramAiConfig, ollamaUrl: e.target.value };
+                          setAktogramAiConfig(updated);
+                          localStorage.setItem("cyber_aktogram_ai_config", JSON.stringify(updated));
+                        }}
+                        placeholder="http://localhost:11434"
+                        className="w-full bg-[#06040c]/80 border border-cyan-500/40 text-cyan-400 placeholder-gray-600 focus:outline-none focus:border-cyan-400 rounded px-3 py-2 text-xs transition-all font-mono"
+                      />
+                      <span className="text-[9px] text-gray-400 block">
+                        Локальный эндпоинт Ollama. Запускается разово при создании поста.
+                      </span>
+                    </div>
+                  )}
+
+                  {aktogramAiConfig.mode === "offline" && (
+                    <span className="text-[10px] text-cyber-yellow/80 mt-1 block">
+                      Умный семантический анализ событий (боссы, лут, баги, графон). 0% нагрузки.
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="mt-6 flex justify-end">
@@ -5703,6 +6425,14 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Global Notes & Tasks Modal */}
+      <GlobalNotesModal
+        isOpen={isGlobalNotesOpen}
+        onClose={() => setIsGlobalNotesOpen(false)}
+        tasks={globalTasks}
+        setTasks={setGlobalTasks}
+      />
     </div>
   );
 }

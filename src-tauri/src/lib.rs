@@ -84,7 +84,11 @@ async fn move_file(vault_path: String, old_rel_path: String, new_rel_path: Strin
 }
 
 #[tauri::command]
-async fn create_file(vault_path: String, rel_path: String) -> Result<Vec<String>, String> {
+async fn create_file(
+    vault_path: String, 
+    rel_path: String, 
+    initial_content: Option<String>
+) -> Result<Vec<String>, String> {
     let base = Path::new(&vault_path);
     let file_path = base.join(&rel_path);
     
@@ -99,13 +103,27 @@ async fn create_file(vault_path: String, rel_path: String) -> Result<Vec<String>
         return Err("File already exists".to_string());
     }
     
-    let filename = file_path.file_name()
-        .and_then(|f| f.to_str())
-        .unwrap_or("Untitled.md");
-    let title = filename.strip_suffix(".md").unwrap_or(filename);
-    let initial_content = format!("# {}\n\n", title);
+    let content_to_write = if let Some(content) = initial_content {
+        content
+    } else if rel_path.ends_with(".canvas") {
+        "{\n  \"nodes\": [],\n  \"edges\": []\n}".to_string()
+    } else {
+        let filename = file_path.file_name()
+            .and_then(|f| f.to_str())
+            .unwrap_or("Untitled.md");
+        let title = filename.strip_suffix(".md").unwrap_or(filename);
+        
+        let is_date = title.len() == 10 
+            && title.chars().enumerate().all(|(i, c)| if i == 4 || i == 7 { c == '-' } else { c.is_ascii_digit() });
 
-    fs::write(&file_path, initial_content)
+        if is_date {
+            String::new()
+        } else {
+            format!("# {}\n\n", title)
+        }
+    };
+
+    fs::write(&file_path, content_to_write)
         .map_err(|e| format!("Failed to create file: {}", e))?;
         
     read_vault_files(vault_path).await
@@ -593,6 +611,14 @@ fn launch_game(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn check_file_exists(path: String) -> bool {
+    if path.trim().is_empty() {
+        return false;
+    }
+    std::path::Path::new(&path).exists()
+}
+
+#[tauri::command]
 fn is_game_running(path: String) -> bool {
     let path_buf = std::path::PathBuf::from(&path);
     let exe_name = match path_buf.file_name().and_then(|n| n.to_str()) {
@@ -739,6 +765,7 @@ pub fn run() {
             show_in_explorer,
             create_directory,
             launch_game,
+            check_file_exists,
             is_game_running,
             stop_game,
             get_game_icon,
